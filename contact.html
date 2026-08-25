@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>تواصل معنا | بيست لابتوب</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet" />
+    <link rel="icon" href="img/logo.jpg" type="image/jpeg" />
+    <link rel="stylesheet" href="css/styles.css?v=20" />
+    <script>
+      document.documentElement.dataset.theme =
+        localStorage.getItem("bestlaptop-theme") === "light" ? "light" : "dark";
+    </script>
+  </head>
+  <body>
+    <div class="topbar">
+      <div class="container topbar-inner">
+        <span>بغداد · شارع الصناعة، مجمع النعمان، الطابق الثاني · ضمان سنتين حقيقي</span>
+        <div class="topbar-actions">
+          <span>IQD</span>
+          <button class="icon-btn" data-theme-toggle type="button" aria-label="تبديل المظهر">فاتح</button>
+        </div>
+      </div>
+    </div>
+
+    <header class="site-header">
+      <div class="container nav">
+        <a class="logo" href="index.html">
+          <img src="img/logo.jpg" alt="BEST LAPTOP" />
+          <span class="logo-text">
+            <strong>BEST LAPTOP</strong>
+            <small>بيست لابتوب</small>
+          </span>
+        </a>
+        <form class="header-search" data-search-box action="products.html" method="get">
+          <button class="search-toggle" type="button" data-search-toggle aria-label="بحث">بحث</button>
+          <input name="q" data-header-search type="search" placeholder="ابحث عن لابتوب أو مواصفات..." />
+        </form>
+        <button class="menu-btn" data-menu type="button">القائمة</button>
+        <ul class="nav-links">
+          <li><a href="index.html">الرئيسية</a></li>
+          <li><a href="products.html">صفحة المنتجات</a></li>
+          <li><a class="active" href="contact.html">تواصل معنا</a></li>
+        </ul>
+        <a class="btn-cart" href="cart.html">
+          السلة
+          <span class="cart-count" data-cart-count>0</span>
+        </a>
+      </div>
+    </header>
+    <div class="header-brands">
+      <div class="container header-brands-track" data-header-brands aria-label="الماركات العالمية"></div>
+    </div>
+
+    <main class="section">
+      <div class="container">
+        <p class="eyebrow">تواصل مع المكتب</p>
+        <h1>أخبرنا باحتياجك لنرشّح الجهاز المناسب</h1>
+        <p class="lead muted">ألعاب، مونتاج، تصميم، أو ميزانية محددة — نرد خلال ساعات العمل.</p>
+        <div class="contact-grid" style="margin-top: 24px">
+          <form class="card form" data-contact-form>
+            <label>الاسم<input name="name" required placeholder="اسمك الكامل" /></label>
+            <label>الجوال<input name="phone" required placeholder="05xxxxxxxx" /></label>
+            <label>
+              نوع الاستفسار
+              <select name="topic">
+                <option>طلب جهاز قيمنق</option>
+                <option>طلب جهاز إنتاج</option>
+                <option>متابعة طلب</option>
+                <option>ضمان وصيانة</option>
+              </select>
+            </label>
+            <label>الرسالة<textarea name="message" required placeholder="صف احتياجك والميزانية..."></textarea></label>
+            <button class="btn btn-primary" type="submit">إرسال الرسالة</button>
+          </form>
+          <aside class="card" data-store-contact>
+            <h2>بيانات المعرض</h2>
+            <p class="muted">بغداد — شارع الصناعة، مجمع النعمان، الطابق الثاني</p>
+            <p><strong>الجوال:</strong> +964 770 123 4567</p>
+            <p><strong>البريد:</strong> support@bestlaptop.iq</p>
+            <p><strong>السبت–الخميس:</strong> 9:30 ص – 8:30 م</p>
+            <p><strong>الضمان:</strong> سنتان حقيقي معتمد</p>
+            <a class="btn btn-ghost" href="products.html" style="margin-top: 18px">العودة للمنتجات</a>
+          </aside>
+        </div>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-grid">
+          <div>
+            <h3>بيست لابتوب</h3>
+            <p>استشارة مجانية قبل الشراء · ضمان سنتين حقيقي · بغداد.</p>
+          </div>
+          <div>
+            <h3>روابط</h3>
+            <ul>
+              <li><a href="index.html">الرئيسية</a></li>
+              <li><a href="products.html">المنتجات</a></li>
+            </ul>
+          </div>
+          <div>
+            <h3>تواصل</h3>
+            <ul>
+              <li>support@bestlaptop.iq</li>
+            </ul>
+          </div>
+        </div>
+        <p class="footer-copy">© 2026 بيست لابتوب.</p>
+      </div>
+    </footer>
+
+    <div class="overlay" data-overlay data-close-cart></div>
+    <aside class="cart-drawer" data-drawer>
+      <div class="cart-head">
+        <h2>سلة الشراء</h2>
+        <button class="btn btn-ghost" data-close-cart>إغلاق</button>
+      </div>
+      <div class="cart-items" data-cart-items></div>
+      <div class="cart-foot">
+        <p>الإجمالي: <strong data-cart-total>0 IQD</strong></p>
+        <a class="btn btn-primary" href="checkout.html" style="width: 100%; margin-top: 12px">إتمام الطلب</a>
+      </div>
+    </aside>
+    <div class="toast" data-toast></div>
+    <script src="js/data.js?v=20"></script>
+    <script src="js/api-client.js?v=20"></script>
+    <script src="js/store-db.js?v=20"></script>
+    <script src="js/theme.js"></script>
+    <script src="js/app.js?v=20"></script>
+  </body>
+</html>

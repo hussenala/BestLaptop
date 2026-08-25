@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>إتمام الدفع | BEST LAPTOP</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet" />
+    <link rel="icon" href="img/logo.jpg" type="image/jpeg" />
+    <link rel="stylesheet" href="css/styles.css?v=38" />
+    <script>
+      document.documentElement.dataset.theme =
+        localStorage.getItem("bestlaptop-theme") === "light" ? "light" : "dark";
+    </script>
+  </head>
+  <body>
+    <div class="topbar">
+      <div class="container topbar-inner">
+        <span>بغداد · شارع الصناعة، مجمع النعمان، الطابق الثاني · ضمان سنتين حقيقي</span>
+        <div class="topbar-actions">
+          <span>IQD</span>
+          <button class="icon-btn" data-theme-toggle type="button" aria-label="تبديل المظهر">فاتح</button>
+        </div>
+      </div>
+    </div>
+    <header class="site-header">
+      <div class="container nav">
+        <a class="logo" href="index.html">
+          <img src="img/logo.jpg" alt="BEST LAPTOP" />
+          <span class="logo-text">
+            <strong>BEST LAPTOP</strong>
+            <small>بيست لابتوب</small>
+          </span>
+        </a>
+        <form class="header-search" data-search-box action="products.html" method="get">
+          <button class="search-toggle" type="button" data-search-toggle aria-label="بحث">بحث</button>
+          <input name="q" data-header-search type="search" placeholder="ابحث عن لابتوب أو مواصفات..." />
+        </form>
+        <button class="menu-btn" data-menu type="button">القائمة</button>
+        <ul class="nav-links">
+          <li><a href="index.html">الرئيسية</a></li>
+          <li><a href="products.html">صفحة المنتجات</a></li>
+          <li><a href="contact.html">تواصل معنا</a></li>
+        </ul>
+        <a class="btn-cart" href="cart.html">
+          السلة
+          <span class="cart-count" data-cart-count>0</span>
+        </a>
+      </div>
+    </header>
+    <div class="header-brands">
+      <div class="container header-brands-track" data-header-brands aria-label="الماركات العالمية"></div>
+    </div>
+    <main class="section checkout-page">
+      <div class="container">
+        <div data-checkout-steps></div>
+        <p class="eyebrow">الخطوة الأخيرة</p>
+        <h1>إتمام الدفع</h1>
+        <p class="muted lead-tight">أكمل بياناتك واختر التوصيل وطريقة الدفع ثم أكّد الطلب.</p>
+        <form class="shop-layout" id="checkout-form" data-checkout-form>
+          <div class="checkout-main">
+            <section class="panel">
+              <h2>بيانات إتمام الدفع</h2>
+              <div class="form-grid">
+                <label class="span-2">الاسم الكامل<input name="name" required placeholder="اسمك الثلاثي" autocomplete="name" /></label>
+                <label class="span-2">
+                  رقم الهاتف
+                  <input
+                    name="phone"
+                    required
+                    placeholder="07701234567"
+                    inputmode="numeric"
+                    autocomplete="tel"
+                    minlength="11"
+                    maxlength="11"
+                    pattern="0[0-9]{10}"
+                    title="11 رقم يبدأ بـ 0"
+                  />
+                </label>
+                <label>
+                  المدينة
+                  <select name="city" required></select>
+                </label>
+                <label>المنطقة<input name="area" required placeholder="الكرادة، المنصور..." /></label>
+                <label class="span-2">أقرب نقطة دالة عليك<input name="street" required placeholder="مثال: قرب مول المنصور، محطة وقود..." /></label>
+                <label class="span-2">ملاحظات التوصيل<textarea name="notes" required placeholder="وقت مناسب، تفاصيل إضافية للمندوب..."></textarea></label>
+              </div>
+            </section>
+            <section class="panel">
+              <h2>التوصيل</h2>
+              <div class="choice-list" data-delivery-options></div>
+            </section>
+            <section class="panel">
+              <h2>طرق الدفع</h2>
+              <div class="choice-list" data-payment-options></div>
+              <button class="btn btn-primary btn-lg checkout-mobile-submit" type="submit">تأكيد الطلب</button>
+            </section>
+          </div>
+          <aside class="order-summary" data-checkout-summary></aside>
+        </form>
+      </div>
+    </main>
+    <footer class="site-footer">
+      <div class="container">
+        <p class="footer-copy">الأسعار بـ IQD · ضمان سنتين حقيقي.</p>
+      </div>
+    </footer>
+    <div class="overlay" data-overlay data-close-cart></div>
+    <aside class="cart-drawer" data-drawer>
+      <div class="cart-head">
+        <h2>سلة الشراء</h2>
+        <button class="btn btn-ghost" data-close-cart>إغلاق</button>
+      </div>
+      <div class="cart-items" data-cart-items></div>
+      <div class="cart-foot">
+        <p>الإجمالي: <strong data-cart-total>0 IQD</strong></p>
+        <a class="btn btn-primary" href="checkout.html" style="width: 100%; margin-top: 12px">إتمام الطلب</a>
+      </div>
+    </aside>
+    <div class="toast" data-toast></div>
+    <script src="js/data.js?v=37"></script>
+    <script src="js/api-client.js?v=37"></script>
+    <script src="js/store-db.js?v=37"></script>
+    <script src="js/theme.js"></script>
+    <script src="js/app.js?v=38"></script>
+  </body>
+</html>

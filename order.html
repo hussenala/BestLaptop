@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>تأكيد الطلب | BEST LAPTOP</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet" />
+    <link rel="icon" href="img/logo.jpg" type="image/jpeg" />
+    <link rel="stylesheet" href="css/styles.css?v=38" />
+    <script>
+      document.documentElement.dataset.theme =
+        localStorage.getItem("bestlaptop-theme") === "light" ? "light" : "dark";
+    </script>
+  </head>
+  <body>
+    <div class="topbar">
+      <div class="container topbar-inner">
+        <span>بغداد · شارع الصناعة، مجمع النعمان، الطابق الثاني · ضمان سنتين حقيقي</span>
+        <div class="topbar-actions">
+          <span>IQD</span>
+          <button class="icon-btn" data-theme-toggle type="button" aria-label="تبديل المظهر">فاتح</button>
+        </div>
+      </div>
+    </div>
+    <header class="site-header">
+      <div class="container nav">
+        <a class="logo" href="index.html">
+          <img src="img/logo.jpg" alt="BEST LAPTOP" />
+          <span class="logo-text">
+            <strong>BEST LAPTOP</strong>
+            <small>بيست لابتوب</small>
+          </span>
+        </a>
+        <form class="header-search" data-search-box action="products.html" method="get">
+          <button class="search-toggle" type="button" data-search-toggle aria-label="بحث">بحث</button>
+          <input name="q" data-header-search type="search" placeholder="ابحث عن لابتوب أو مواصفات..." />
+        </form>
+        <button class="menu-btn" data-menu type="button">القائمة</button>
+        <ul class="nav-links">
+          <li><a href="index.html">الرئيسية</a></li>
+          <li><a href="products.html">صفحة المنتجات</a></li>
+          <li><a href="contact.html">تواصل معنا</a></li>
+        </ul>
+        <a class="btn-cart" href="cart.html">
+          السلة
+          <span class="cart-count" data-cart-count>0</span>
+        </a>
+      </div>
+    </header>
+    <div class="header-brands">
+      <div class="container header-brands-track" data-header-brands aria-label="الماركات العالمية"></div>
+    </div>
+    <main class="section checkout-page">
+      <div class="container">
+        <div data-checkout-steps></div>
+        <div data-order-page></div>
+      </div>
+    </main>
+    <footer class="site-footer">
+      <div class="container">
+        <p class="footer-copy">شكراً لتسوقك من بيست لابتوب.</p>
+      </div>
+    </footer>
+    <div class="overlay" data-overlay data-close-cart></div>
+    <aside class="cart-drawer" data-drawer>
+      <div class="cart-head">
+        <h2>سلة الشراء</h2>
+        <button class="btn btn-ghost" data-close-cart>إغلاق</button>
+      </div>
+      <div class="cart-items" data-cart-items></div>
+      <div class="cart-foot">
+        <p>الإجمالي: <strong data-cart-total>0 IQD</strong></p>
+        <a class="btn btn-primary" href="checkout.html" style="width: 100%; margin-top: 12px">إتمام الطلب</a>
+      </div>
+    </aside>
+    <div class="toast" data-toast></div>
+    <script src="js/data.js?v=34"></script>
+    <script src="js/api-client.js?v=34"></script>
+    <script src="js/store-db.js?v=34"></script>
+    <script src="js/theme.js"></script>
+    <script src="js/app.js?v=38"></script>
+  </body>
+</html>

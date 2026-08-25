@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>لوحة التحكم | BEST LAPTOP</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet" />
+    <link rel="icon" href="../img/logo.jpg" type="image/jpeg" />
+    <link rel="stylesheet" href="../css/styles.css?v=38" />
+    <link rel="stylesheet" href="css/admin.css?v=38" />
+    <script>
+      document.documentElement.dataset.theme =
+        localStorage.getItem("bestlaptop-theme") === "light" ? "light" : "dark";
+    </script>
+  </head>
+  <body class="admin-body">
+    <div class="admin-app">
+      <aside class="admin-sidebar" data-sidebar>
+        <a class="admin-brand" href="#/">
+          <img src="../img/logo.jpg" alt="" data-admin-logo />
+          <span>
+            <strong>BEST LAPTOP</strong>
+            <small>لوحة التحكم</small>
+          </span>
+        </a>
+        <nav class="admin-nav" data-admin-nav></nav>
+      </aside>
+      <div class="admin-main">
+        <header class="admin-top">
+          <button class="icon-btn" type="button" data-sidebar-toggle aria-label="القائمة">☰</button>
+          <div>
+            <p class="eyebrow" data-page-kicker>الإحصائيات</p>
+            <h1 data-page-title>نظرة عامة</h1>
+          </div>
+          <div class="admin-top-actions">
+            <a class="btn btn-ghost" href="../index.html">عرض المتجر</a>
+            <button class="icon-btn" data-theme-toggle type="button" aria-label="تبديل المظهر">فاتح</button>
+            <div class="admin-user">
+              <b data-user-name></b>
+              <small data-user-role></small>
+            </div>
+            <button class="btn btn-ghost" type="button" data-logout>خروج</button>
+          </div>
+        </header>
+        <div class="admin-content" data-admin-view></div>
+      </div>
+    </div>
+    <div class="admin-modal" data-modal hidden>
+      <div class="admin-modal-card" data-modal-card></div>
+    </div>
+    <div class="toast" data-toast></div>
+    <script src="../js/data.js?v=33"></script>
+    <script src="../js/api-client.js?v=33"></script>
+    <script src="../js/store-db.js?v=33"></script>
+    <script src="../js/theme.js"></script>
+    <script src="js/admin.js?v=38"></script>
+  </body>
+</html>

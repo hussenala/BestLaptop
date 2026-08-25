@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>المنتجات | بيست لابتوب</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet" />
+    <link rel="icon" href="img/logo.jpg" type="image/jpeg" />
+    <link rel="stylesheet" href="css/styles.css?v=39" />
+    <script>
+      document.documentElement.dataset.theme =
+        localStorage.getItem("bestlaptop-theme") === "light" ? "light" : "dark";
+    </script>
+  </head>
+  <body>
+    <div class="topbar">
+      <div class="container topbar-inner">
+        <span>بغداد · شارع الصناعة، مجمع النعمان، الطابق الثاني · ضمان سنتين حقيقي</span>
+        <div class="topbar-actions">
+          <span>IQD</span>
+          <button class="icon-btn" data-theme-toggle type="button" aria-label="تبديل المظهر">فاتح</button>
+        </div>
+      </div>
+    </div>
+
+    <header class="site-header">
+      <div class="container nav">
+        <a class="logo" href="index.html">
+          <img src="img/logo.jpg" alt="BEST LAPTOP" />
+          <span class="logo-text">
+            <strong>BEST LAPTOP</strong>
+            <small>بيست لابتوب</small>
+          </span>
+        </a>
+        <form class="header-search" data-search-box action="products.html" method="get">
+          <button class="search-toggle" type="button" data-search-toggle aria-label="بحث">بحث</button>
+          <input name="q" data-header-search type="search" placeholder="ابحث عن لابتوب أو مواصفات..." />
+        </form>
+        <button class="menu-btn" data-menu type="button">القائمة</button>
+        <ul class="nav-links">
+          <li><a href="index.html">الرئيسية</a></li>
+          <li><a class="active" href="products.html">صفحة المنتجات</a></li>
+          <li><a href="contact.html">تواصل معنا</a></li>
+        </ul>
+        <a class="btn-cart" href="cart.html">
+          السلة
+          <span class="cart-count" data-cart-count>0</span>
+        </a>
+      </div>
+    </header>
+    <div class="header-brands">
+      <div class="container header-brands-track" data-header-brands aria-label="الماركات العالمية"></div>
+    </div>
+
+    <div class="filter-backdrop" data-filter-close aria-hidden="true"></div>
+
+    <main class="catalog-page">
+      <div class="catalog-shell">
+        <aside class="shop-filters" aria-label="فلاتر المنتجات">
+          <div class="filter-panel">
+            <div class="filter-panel-head">
+              <div class="filter-panel-title">
+                <span class="filter-icon" aria-hidden="true">⚙</span>
+                <h2>تصفية النتائج</h2>
+              </div>
+              <div class="filter-panel-actions">
+                <button class="btn btn-ghost btn-sm" type="button" data-filter-reset>مسح الكل</button>
+                <button class="filter-close-btn" type="button" data-filter-close aria-label="إغلاق الفلاتر">×</button>
+              </div>
+            </div>
+
+            <div class="filter-panel-scroll">
+              <div class="filter-block">
+                <h3>السعر (IQD)</h3>
+                <div class="price-range-inputs">
+                  <label class="price-field">
+                    <span>من</span>
+                    <input type="number" data-price-min placeholder="0" min="0" step="50000" />
+                  </label>
+                  <label class="price-field">
+                    <span>إلى</span>
+                    <input type="number" data-price-max placeholder="∞" min="0" step="50000" />
+                  </label>
+                </div>
+              </div>
+
+              <div class="filter-block">
+                <h3>القسم</h3>
+                <select class="select filter-select" data-filter>
+                  <option value="all">كل الفئات</option>
+                  <option value="gaming">قيمنق</option>
+                  <option value="production">إنتاج</option>
+                  <option value="oled">شاشات OLED</option>
+                  <option value="workstation">محطات عمل</option>
+                </select>
+              </div>
+
+              <div class="filter-block filter-block-brands">
+                <h3>الماركة</h3>
+                <div class="filter-checks" data-brand-filters></div>
+              </div>
+            </div>
+
+            <div class="filter-panel-foot">
+              <p class="muted filter-foot-count"><span data-filter-count>0</span> جهاز في المتجر</p>
+              <button class="btn btn-primary btn-block" type="button" data-filter-apply>عرض النتائج</button>
+            </div>
+          </div>
+        </aside>
+
+        <div class="catalog-main">
+          <div class="container catalog-main-inner">
+            <div class="catalog-page-head">
+              <div>
+                <p class="eyebrow">تشكيلة المتجر</p>
+                <h1>جميع لابتوبات القيمنق والإنتاج</h1>
+                <p class="lead muted">صفِّ حسب السعر والماركة، وقارن الأجهزة وأضف للسلة.</p>
+              </div>
+            </div>
+
+            <div class="catalog-toolbar">
+              <button class="btn btn-ghost filter-mobile-toggle" type="button" data-filter-toggle>
+                <span class="filter-toggle-icon" aria-hidden="true">☰</span>
+                الفلاتر
+                <span class="filter-active-badge" data-active-filters hidden>0</span>
+              </button>
+              <input class="search" data-search type="search" placeholder="ابحث باسم الجهاز أو المواصفات" />
+              <select class="select" data-sort>
+                <option value="featured">المميزة</option>
+                <option value="price-asc">السعر: من الأقل</option>
+                <option value="price-desc">السعر: من الأعلى</option>
+              </select>
+              <p class="muted catalog-count" data-results-count></p>
+            </div>
+            <div class="catalog-grid" data-catalog></div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-grid">
+          <div>
+            <h3>بيست لابتوب</h3>
+            <p>متجر متخصص بلابتوبات القيمنق والإنتاج في العراق.</p>
+          </div>
+          <div>
+            <h3>أقسام المتجر</h3>
+            <ul>
+              <li><a href="index.html">الرئيسية</a></li>
+              <li><a href="products.html">جميع الأجهزة</a></li>
+            </ul>
+          </div>
+          <div>
+            <h3>تواصل معنا</h3>
+            <ul data-store-footer-contact>
+              <li>بغداد — شارع الصناعة، مجمع النعمان، الطابق الثاني</li>
+            </ul>
+          </div>
+        </div>
+        <p class="muted copy">© 2026 بيست لابتوب. جميع الحقوق محفوظة.</p>
+      </div>
+    </footer>
+
+    <aside class="cart-drawer" data-cart hidden>
+      <div class="cart-head">
+        <h2>سلة الشراء</h2>
+        <button class="icon-btn" data-close-cart type="button" aria-label="إغلاق">×</button>
+      </div>
+      <div class="cart-body" data-cart-items></div>
+      <div class="cart-foot">
+        <p>الإجمالي: <strong data-cart-total>0 IQD</strong></p>
+        <a class="btn btn-primary" href="checkout.html">إتمام الطلب</a>
+      </div>
+    </aside>
+    <div class="toast" data-toast></div>
+
+    <script src="js/data.js?v=34"></script>
+    <script src="js/api-client.js?v=34"></script>
+    <script src="js/app.js?v=39"></script>
+    <script src="js/theme.js"></script>
+  </body>
+</html>

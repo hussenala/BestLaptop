@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>بيست لابتوب | لابتوبات القيمنق والإنتاج</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet" />
+    <link rel="icon" href="img/logo.jpg" type="image/jpeg" />
+    <link rel="stylesheet" href="css/styles.css?v=34" />
+    <script>
+      document.documentElement.dataset.theme =
+        localStorage.getItem("bestlaptop-theme") === "light" ? "light" : "dark";
+    </script>
+  </head>
+  <body>
+    <div class="topbar">
+      <div class="container topbar-inner">
+        <span>بغداد · شارع الصناعة، مجمع النعمان، الطابق الثاني · ضمان سنتين حقيقي</span>
+        <div class="topbar-actions">
+          <span>IQD</span>
+          <button class="icon-btn" data-theme-toggle type="button" aria-label="تبديل المظهر">فاتح</button>
+        </div>
+      </div>
+    </div>
+
+    <header class="site-header">
+      <div class="container nav">
+        <a class="logo" href="index.html">
+          <img src="img/logo.jpg" alt="BEST LAPTOP" />
+          <span class="logo-text">
+            <strong>BEST LAPTOP</strong>
+            <small>بيست لابتوب</small>
+          </span>
+        </a>
+        <form class="header-search" data-search-box action="products.html" method="get">
+          <button class="search-toggle" type="button" data-search-toggle aria-label="بحث">بحث</button>
+          <input name="q" data-header-search type="search" placeholder="ابحث عن لابتوب أو مواصفات..." />
+        </form>
+        <button class="menu-btn" data-menu type="button">القائمة</button>
+        <ul class="nav-links">
+          <li><a class="active" href="index.html">الرئيسية</a></li>
+          <li><a href="products.html">صفحة المنتجات</a></li>
+          <li><a href="contact.html">تواصل معنا</a></li>
+        </ul>
+        <a class="btn-cart" href="cart.html">
+          السلة
+          <span class="cart-count" data-cart-count>0</span>
+        </a>
+      </div>
+    </header>
+    <div class="header-brands">
+      <div class="container header-brands-track" data-header-brands aria-label="الماركات العالمية"></div>
+    </div>
+
+    <main>
+      <section class="hero-slider" data-slider>
+        <div class="slider-viewport">
+          <div class="slider-track" data-slide-track></div>
+          <div class="slider-shade" aria-hidden="true"></div>
+        </div>
+        <div class="hero-inner">
+          <div>
+            <div class="chips">
+              <span class="chip">ضمان سنتين حقيقي</span>
+              <span class="chip">أداء كامل للكرت</span>
+            </div>
+            <h1 data-slide-name>Apex 16 Pro</h1>
+            <p class="lead" data-slide-head></p>
+            <p class="muted" data-slide-blurb></p>
+            <div class="slide-price" data-slide-price></div>
+            <div class="hero-cta">
+              <a class="btn btn-primary" data-slide-link href="product.html">تصفح المواصفات واطلبه الآن</a>
+              <button class="btn btn-ghost" data-slide-add data-add>أضف إلى السلة</button>
+            </div>
+          </div>
+          <aside class="spec-card">
+            <div><span>كرت الشاشة</span><b data-slide-gpu></b></div>
+            <div><span>قدرة الكرت</span><b data-slide-tgp></b></div>
+            <div><span>التبريد</span><b data-slide-cool></b></div>
+            <div><span>الشاشة</span><b data-slide-screen></b></div>
+          </aside>
+        </div>
+        <div class="slider-nav">
+          <button class="icon-btn" data-prev type="button">‹</button>
+          <div class="dots" data-slide-dots></div>
+          <button class="icon-btn" data-next type="button">›</button>
+        </div>
+      </section>
+
+      <div data-product-sliders></div>
+
+      <div data-new-products></div>
+
+      <section class="section">
+        <div class="container">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">تصفح حسب القسم</p>
+              <h2>اختر فئة الاستخدام</h2>
+            </div>
+          </div>
+          <div class="cat-grid">
+            <a class="cat-mini" href="products.html?cat=gaming"><h3>لابتوبات القيمنق</h3><p class="muted">شاشات عالية التردد وكروت RTX</p></a>
+            <a class="cat-mini" href="products.html?cat=production"><h3>لابتوبات الإنتاج</h3><p class="muted">OLED ودقة ألوان للمونتاج</p></a>
+            <a class="cat-mini" href="products.html?cat=oled"><h3>شاشات OLED</h3><p class="muted">تغطية لونية للمصممين</p></a>
+            <a class="cat-mini" href="products.html?cat=workstation"><h3>محطات العمل</h3><p class="muted">ذاكرة واسعة ورندر ثقيل</p></a>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="container">
+          <div class="trust">
+            <article>
+              <h3>قدرة الكرت الكاملة</h3>
+              <p class="muted">نوضح الواط الفعلي للكرت قبل الشراء حتى لا تشتري جهازاً مخفّض الطاقة.</p>
+            </article>
+            <article>
+              <h3>شاشات جاهزة للمونتاج</h3>
+              <p class="muted">OLED و DCI-P3 للأعمال التي تحتاج ألواناً صحيحة لا تقديراً.</p>
+            </article>
+            <article>
+              <h3>ضمان سنتين حقيقي معتمد</h3>
+              <p class="muted" data-store-warranty-blurb>كفالة حقيقية وصيانة في مكتب بغداد: شارع الصناعة، مجمع النعمان، الطابق الثاني.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-grid">
+          <div>
+            <h3>بيست لابتوب</h3>
+            <p>متجر متخصص بلابتوبات القيمنق والإنتاج في العراق، بأسعار IQD وضمان سنتين حقيقي.</p>
+          </div>
+          <div>
+            <h3>أقسام المتجر</h3>
+            <ul>
+              <li><a href="index.html">الرئيسية</a></li>
+              <li><a href="products.html">جميع الأجهزة</a></li>
+              <li><a href="products.html?cat=gaming">أجهزة القيمنق</a></li>
+              <li><a href="products.html?cat=production">أجهزة الإنتاج</a></li>
+            </ul>
+          </div>
+          <div>
+            <h3>تواصل معنا</h3>
+            <ul data-store-footer-contact>
+              <li>بغداد — شارع الصناعة، مجمع النعمان، الطابق الثاني</li>
+              <li>+964 770 123 4567</li>
+              <li>support@bestlaptop.iq</li>
+              <li><a href="contact.html">نموذج التواصل</a></li>
+              <li><a href="admin/login.html">لوحة التحكم</a></li>
+            </ul>
+          </div>
+        </div>
+        <p class="footer-copy">© 2026 بيست لابتوب. جميع الحقوق محفوظة.</p>
+      </div>
+    </footer>
+
+    <div class="overlay" data-overlay data-close-cart></div>
+    <aside class="cart-drawer" data-drawer>
+      <div class="cart-head">
+        <h2>سلة الشراء</h2>
+        <button class="btn btn-ghost" data-close-cart>إغلاق</button>
+      </div>
+      <div class="cart-items" data-cart-items></div>
+      <div class="cart-foot">
+        <p>الإجمالي: <strong data-cart-total>0 IQD</strong></p>
+        <a class="btn btn-primary" href="checkout.html" style="width: 100%; margin-top: 12px">إتمام الطلب</a>
+      </div>
+    </aside>
+    <div class="toast" data-toast></div>
+    <script src="js/data.js?v=34"></script>
+    <script src="js/api-client.js?v=34"></script>
+    <script src="js/store-db.js?v=34"></script>
+    <script src="js/theme.js"></script>
+    <script src="js/app.js?v=34"></script>
+  </body>
+</html>
