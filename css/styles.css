@@ -1163,6 +1163,27 @@ body.filters-open { overflow: hidden; }
 }
 .footer-grid h3 { color: var(--text); margin-bottom: 10px; font-size: 1rem; }
 .footer-grid ul { list-style: none; display: grid; gap: 6px; }
+.footer-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+.footer-logo img {
+  height: 52px;
+  background: #071018;
+}
+.footer-location {
+  color: var(--text);
+  font-weight: 700;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  margin: 0;
+}
+.footer-brand [data-store-footer-about] {
+  margin: 0;
+  max-width: 38ch;
+}
 .footer-copy { border-top: 1px solid var(--line); padding-top: 16px; font-size: 13px; }
 .empty { color: var(--muted); padding: 28px 0; text-align: center; }
 .is-oos img {
@@ -1289,7 +1310,8 @@ body.filters-open { overflow: hidden; }
   .hero-inner, .trust, .contact-grid, .footer-grid, .grid, .cat-grid, .pdp, .shop-layout {
     grid-template-columns: 1fr;
   }
-  .logo img { height: 48px; }
+  .logo img,
+  .footer-logo img { height: 48px; }
   .spec-card { order: -1; }
   .cart-line {
     grid-template-columns: 88px 1fr;

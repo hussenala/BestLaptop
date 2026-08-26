@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet" />
     <link rel="icon" href="img/logo.jpg" type="image/jpeg" />
-    <link rel="stylesheet" href="css/styles.css?v=20" />
+    <link rel="stylesheet" href="css/styles.css?v=41" />
     <script>
       document.documentElement.dataset.theme =
         localStorage.getItem("bestlaptop-theme") === "light" ? "light" : "dark";
@@ -91,9 +91,16 @@
     <footer class="site-footer">
       <div class="container">
         <div class="footer-grid">
-          <div>
-            <h3>بيست لابتوب</h3>
-            <p>استشارة مجانية قبل الشراء · ضمان سنتين حقيقي · بغداد.</p>
+          <div class="footer-brand">
+            <a class="logo footer-logo" href="index.html">
+              <img src="img/logo.jpg" alt="BEST LAPTOP" />
+              <span class="logo-text">
+                <strong>BEST LAPTOP</strong>
+                <small>بيست لابتوب</small>
+              </span>
+            </a>
+            <p class="footer-location" data-store-footer-location>بغداد · شارع الصناعة، مجمع النعمان، الطابق الثاني</p>
+            <p data-store-footer-about>استشارة مجانية قبل الشراء · ضمان سنتين حقيقي · بغداد.</p>
           </div>
           <div>
             <h3>روابط</h3>
@@ -130,6 +137,6 @@
     <script src="js/api-client.js?v=20"></script>
     <script src="js/store-db.js?v=20"></script>
     <script src="js/theme.js"></script>
-    <script src="js/app.js?v=20"></script>
+    <script src="js/app.js?v=41"></script>
   </body>
 </html>

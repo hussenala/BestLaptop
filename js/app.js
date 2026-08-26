@@ -105,12 +105,20 @@ function applyStoreBranding() {
   const fav = document.querySelector('link[rel="icon"]');
   if (fav && s.logo) fav.href = resolveAsset(s.logo);
 
-  const footerTitle = document.querySelector(".site-footer .footer-grid > div:first-child h3");
+  const footerTitle = document.querySelector(".site-footer .footer-grid > div:first-child > h3");
   if (footerTitle) footerTitle.textContent = s.nameAr || s.name;
 
-  const footerDesc = document.querySelector(".site-footer .footer-grid > div:first-child p");
-  if (footerDesc && footerDesc.closest(".site-footer")) {
-    footerDesc.textContent = `متجر متخصص بلابتوبات القيمنق والإنتاج في العراق، بأسعار ${s.currency || "IQD"} و${s.warranty}.`;
+  document.querySelectorAll("[data-store-footer-location]").forEach((el) => {
+    el.textContent = s.fullAddress || [s.city, s.address].filter(Boolean).join(" · ");
+  });
+
+  const footerAbout = document.querySelector("[data-store-footer-about]");
+  const aboutText = `متجر متخصص بلابتوبات القيمنق والإنتاج في العراق، بأسعار ${s.currency || "IQD"} و${s.warranty}.`;
+  if (footerAbout) {
+    footerAbout.textContent = aboutText;
+  } else {
+    const footerDesc = document.querySelector(".site-footer .footer-grid > div:first-child p:not([data-store-footer-location])");
+    if (footerDesc) footerDesc.textContent = aboutText;
   }
 
   const footerContact = document.querySelector("[data-store-footer-contact]");
