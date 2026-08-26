@@ -185,6 +185,7 @@ const STORE = {
   phone: "0772 222 4489",
   whatsapp: "0772 222 4489",
   email: "support@bestlaptop.iq",
+  siteUrl: "https://way-company.com",
   hours: "السبت – الخميس: 9:30 ص – 8:30 م",
   warranty: "ضمان سنتين حقيقي معتمد",
   currency: "IQD",

@@ -7,7 +7,9 @@ const StoreAPI = (() => {
   function siteRoot() {
     const el = document.querySelector("script[src*='api-client.js']");
     if (el?.src) return new URL("../", el.src).href;
-    if (location.pathname.includes("/admin/")) return new URL("../", location.href.replace(/[^/]+$/, "")).href;
+    if (/^\/admin(\/|$)/.test(location.pathname)) {
+      return new URL("../", location.origin + location.pathname.replace(/[^/]+$/, "")).href;
+    }
     return new URL("./", location.href.replace(/[^/]*$/, "")).href;
   }
 

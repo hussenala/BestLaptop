@@ -429,6 +429,8 @@ async function handleApi(req, res, pathname) {
 }
 
 function serveStatic(req, res, pathname) {
+  if (pathname === "/admin" || pathname === "/admin/") pathname = "/admin/index.html";
+  if (pathname === "/admin/login") pathname = "/admin/login.html";
   let filePath = pathname === "/" ? "/index.html" : pathname;
   filePath = filePath.split("?")[0];
   const abs = path.normalize(path.join(ROOT, filePath.replace(/^\//, "").replace(/\//g, path.sep)));

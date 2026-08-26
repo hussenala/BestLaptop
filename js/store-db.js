@@ -49,7 +49,7 @@ const StoreDB = (() => {
     });
     if (res.status === 401) {
       logout();
-      if (location.pathname.includes("/admin/") && !location.pathname.includes("login")) {
+      if (/^\/admin(\/|$)/.test(location.pathname) && !location.pathname.includes("login")) {
         location.replace("login.html");
       }
       throw new Error("Unauthorized");
