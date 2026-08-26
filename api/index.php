@@ -344,6 +344,10 @@ function session_user(PDO $pdo) {
     if ($row) $pdo->prepare("DELETE FROM sessions WHERE token=?")->execute([$token]);
     return null;
   }
+  $pdo->prepare("UPDATE sessions SET expires_at=? WHERE token=?")->execute([
+    (int) (microtime(true) * 1000) + 1000 * 60 * 60 * 24 * 30,
+    $token,
+  ]);
   return ["id" => $row["id"], "name" => $row["name"], "username" => $row["username"], "role" => $row["role"]];
 }
 
@@ -445,7 +449,7 @@ try {
       json_out(401, ["error" => "Invalid credentials"]);
     }
     $token = bin2hex(random_bytes(32));
-    $expires = (int) (microtime(true) * 1000) + 1000 * 60 * 60 * 12;
+    $expires = (int) (microtime(true) * 1000) + 1000 * 60 * 60 * 24 * 30;
     $pdo->prepare("INSERT INTO sessions (token,user_id,expires_at) VALUES (?,?,?)")->execute([$token, $user["id"], $expires]);
     json_out(200, [
       "token" => $token,

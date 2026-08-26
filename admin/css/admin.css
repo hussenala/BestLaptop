@@ -35,6 +35,22 @@
   box-shadow: var(--shadow);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
+  transition: opacity 0.2s ease;
+}
+.login-card.is-checking {
+  opacity: 0.72;
+  pointer-events: none;
+}
+.login-warn {
+  color: var(--gold);
+  font-weight: 800;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--gold) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--gold) 28%, transparent);
+  font-size: 0.88rem;
+  line-height: 1.55;
 }
 .login-brand {
   display: flex;
