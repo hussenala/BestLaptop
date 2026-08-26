@@ -216,16 +216,6 @@ function applyEnvAdminCredentials() {
   console.log(`Admin user created from environment: ${username}`);
 }
 
-function applySiteUrl() {
-  const fromEnv = String(process.env.STORE_SITE_URL || "").trim().replace(/\/$/, "");
-  const s = getSettings();
-  const next = fromEnv || s.siteUrl || "https://way-company.com";
-  if (s.siteUrl === next) return;
-  s.siteUrl = next;
-  saveSettings(s);
-  if (fromEnv) console.log(`Site URL set from environment: ${next}`);
-}
-
 function getHealth() {
   try {
     const users = db.prepare("SELECT COUNT(*) AS n FROM users").get()?.n || 0;
@@ -349,7 +339,6 @@ function initDb() {
   if (!seeded) seedDatabase();
   ensureAdminUsers();
   applyEnvAdminCredentials();
-  applySiteUrl();
   migrateCheckoutOptions();
   bumpVersion();
 }
@@ -1111,7 +1100,6 @@ function getPublicStore() {
       phone: settings.phone,
       whatsapp: settings.whatsapp || settings.phone,
       email: settings.email,
-      siteUrl: settings.siteUrl || "https://way-company.com",
       hours: settings.hours,
       warranty: settings.warranty,
       currency: settings.currency || "IQD",

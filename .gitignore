@@ -1,3 +1,5 @@
 uploads/
 server/data/*.db
 server/data/*.db-*
+.env
+api/.env

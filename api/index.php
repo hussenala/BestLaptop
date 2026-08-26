@@ -4,12 +4,7 @@ header("Cache-Control: no-store");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
 header("Access-Control-Allow-Methods: GET,POST,PUT,PATCH,DELETE,OPTIONS");
 if (!empty($_SERVER["HTTP_ORIGIN"])) {
-  $origin = $_SERVER["HTTP_ORIGIN"];
-  $allowed = ["https://way-company.com", "https://www.way-company.com", "http://127.0.0.1:8765", "http://localhost:8765"];
-  if (in_array($origin, $allowed, true) || preg_match("#^https://([a-z0-9-]+\\.)?way-company\\.com$#i", $origin)) {
-    header("Access-Control-Allow-Origin: " . $origin);
-    header("Vary: Origin");
-  }
+  header("Access-Control-Allow-Origin: " . $_SERVER["HTTP_ORIGIN"]);
 }
 if (($_SERVER["REQUEST_METHOD"] ?? "") === "OPTIONS") {
   http_response_code(204);
@@ -108,21 +103,11 @@ function init_schema(PDO $pdo) {
     );
     CREATE TABLE IF NOT EXISTS product_sliders (
       id TEXT PRIMARY KEY, sort_order INTEGER NOT NULL DEFAULT 0, active INTEGER NOT NULL DEFAULT 1,
-      eyebrow TEXT, title TEXT NOT NULL, category TEXT DEFAULT 'all', brand TEXT DEFAULT '',
-      limit_count INTEGER DEFAULT 8, product_ids_json TEXT DEFAULT '[]', autoplay INTEGER DEFAULT 1,
-      speed_ms INTEGER DEFAULT 4500, link_url TEXT DEFAULT 'products.html'
+      eyebrow TEXT, title TEXT NOT NULL, category TEXT DEFAULT 'all', limit_count INTEGER DEFAULT 8,
+      product_ids_json TEXT DEFAULT '[]', autoplay INTEGER DEFAULT 1, speed_ms INTEGER DEFAULT 4500,
+      link_url TEXT DEFAULT 'products.html'
     );
   ");
-  try {
-    $cols = $pdo->query("PRAGMA table_info(product_sliders)")->fetchAll();
-    $hasBrand = false;
-    foreach ($cols as $c) {
-      if (($c["name"] ?? "") === "brand") $hasBrand = true;
-    }
-    if (!$hasBrand) $pdo->exec("ALTER TABLE product_sliders ADD COLUMN brand TEXT DEFAULT ''");
-  } catch (Throwable $e) {
-    /* ignore migration errors */
-  }
   $n = (int) $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
   if ($n === 0) {
     $ins = $pdo->prepare("INSERT INTO users (id,name,username,password_hash,role) VALUES (?,?,?,?,?)");
@@ -311,7 +296,6 @@ function list_ps(PDO $pdo, $activeOnly = false) {
     $out[] = [
       "id" => $row["id"], "sortOrder" => (int) $row["sort_order"], "active" => !empty($row["active"]),
       "eyebrow" => $row["eyebrow"] ?? "", "title" => $row["title"], "category" => $row["category"] ?? "all",
-      "brand" => $row["brand"] ?? "",
       "limit" => (int) ($row["limit_count"] ?? 8), "productIds" => json_decode($row["product_ids_json"] ?: "[]", true) ?: [],
       "autoplay" => (int) $row["autoplay"] !== 0, "speedMs" => (int) ($row["speed_ms"] ?? 4500),
       "linkUrl" => $row["link_url"] ?? "products.html",
@@ -348,77 +332,6 @@ function unique_customers($orders) {
 }
 function list_users(PDO $pdo) {
   return $pdo->query("SELECT id,name,username,role FROM users ORDER BY name")->fetchAll();
-}
-
-function get_slide(PDO $pdo, $id) {
-  foreach (list_slides($pdo, false) as $s) {
-    if ($s["id"] === $id) return $s;
-  }
-  return null;
-}
-
-function upsert_slide(PDO $pdo, array $s) {
-  $id = $s["id"] ?? uid("sl");
-  $pdo->prepare("INSERT INTO hero_slides (id,sort_order,active,title,headline,blurb,image,video_url,product_id,category,tag,gpu,tgp,cooling,screen,chip1,chip2)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-    ON CONFLICT(id) DO UPDATE SET sort_order=excluded.sort_order, active=excluded.active, title=excluded.title, headline=excluded.headline,
-      blurb=excluded.blurb, image=excluded.image, video_url=excluded.video_url, product_id=excluded.product_id, category=excluded.category,
-      tag=excluded.tag, gpu=excluded.gpu, tgp=excluded.tgp, cooling=excluded.cooling, screen=excluded.screen, chip1=excluded.chip1, chip2=excluded.chip2")
-    ->execute([
-      $id,
-      (int) ($s["sortOrder"] ?? 0),
-      !empty($s["active"]) ? 1 : 0,
-      $s["title"] ?? "",
-      $s["headline"] ?? "",
-      $s["blurb"] ?? "",
-      $s["image"] ?? "",
-      $s["videoUrl"] ?? "",
-      $s["productId"] ?? "",
-      $s["category"] ?? "",
-      $s["tag"] ?? "",
-      $s["gpu"] ?? "",
-      $s["tgp"] ?? "",
-      $s["cooling"] ?? "",
-      $s["screen"] ?? "",
-      $s["chip1"] ?? "",
-      $s["chip2"] ?? "",
-    ]);
-  bump($pdo);
-  return get_slide($pdo, $id);
-}
-
-function get_ps(PDO $pdo, $id) {
-  foreach (list_ps($pdo, false) as $s) {
-    if ($s["id"] === $id) return $s;
-  }
-  return null;
-}
-
-function upsert_ps(PDO $pdo, array $s) {
-  $id = $s["id"] ?? uid("ps");
-  $productIds = $s["productIds"] ?? [];
-  if (!is_array($productIds)) $productIds = [];
-  $pdo->prepare("INSERT INTO product_sliders (id,sort_order,active,eyebrow,title,category,brand,limit_count,product_ids_json,autoplay,speed_ms,link_url)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
-    ON CONFLICT(id) DO UPDATE SET sort_order=excluded.sort_order, active=excluded.active, eyebrow=excluded.eyebrow, title=excluded.title,
-      category=excluded.category, brand=excluded.brand, limit_count=excluded.limit_count, product_ids_json=excluded.product_ids_json,
-      autoplay=excluded.autoplay, speed_ms=excluded.speed_ms, link_url=excluded.link_url")
-    ->execute([
-      $id,
-      (int) ($s["sortOrder"] ?? 0),
-      !empty($s["active"]) ? 1 : 0,
-      $s["eyebrow"] ?? "",
-      $s["title"] ?? "",
-      $s["category"] ?? "all",
-      $s["brand"] ?? "",
-      (int) ($s["limit"] ?? 8),
-      json_encode($productIds, JSON_UNESCAPED_UNICODE),
-      !empty($s["autoplay"]) ? 1 : 0,
-      (int) ($s["speedMs"] ?? 4500),
-      $s["linkUrl"] ?? "products.html",
-    ]);
-  bump($pdo);
-  return get_ps($pdo, $id);
 }
 
 function session_user(PDO $pdo) {
@@ -725,7 +638,7 @@ try {
     $ext = $mm[1] === "jpeg" ? "jpg" : $mm[1];
     $bin = base64_decode($mm[2], true);
     if ($bin === false || strlen($bin) > 8 * 1024 * 1024) json_out(400, ["error" => "Image too large (max 8MB)"]);
-    $folder = in_array($body["folder"] ?? "", ["logo", "slides", "gallery"], true) ? $body["folder"] : "products";
+    $folder = in_array($body["folder"] ?? "", ["logo", "slides"], true) ? $body["folder"] : "products";
     $dir = dirname(__DIR__) . DIRECTORY_SEPARATOR . "uploads" . DIRECTORY_SEPARATOR . $folder;
     if (!is_dir($dir) && !mkdir($dir, 0775, true) && !is_dir($dir)) json_out(400, ["error" => "Upload failed"]);
     $name = (int) (microtime(true) * 1000) . "-" . bin2hex(random_bytes(4)) . "." . $ext;
@@ -797,54 +710,6 @@ try {
       }
       if ($admins < 2 && ($target["role"] ?? "") === "admin") json_out(400, ["error" => "Cannot delete last admin"]);
       $pdo->prepare("DELETE FROM users WHERE id=?")->execute([$id]);
-      json_out(200, ["ok" => true]);
-    }
-  }
-
-  if ($path === "/admin/slides") {
-    require_auth($pdo);
-    if ($method === "GET") json_out(200, list_slides($pdo, false));
-    if ($method === "POST") {
-      $body = read_json();
-      if (!isset($body["sortOrder"])) $body["sortOrder"] = count(list_slides($pdo, false));
-      json_out(201, upsert_slide($pdo, $body));
-    }
-  }
-  if (preg_match("#^/admin/slides/([^/]+)$#", $path, $m)) {
-    require_auth($pdo);
-    $id = urldecode($m[1]);
-    if ($method === "PUT") {
-      $body = read_json();
-      $body["id"] = $id;
-      json_out(200, upsert_slide($pdo, $body));
-    }
-    if ($method === "DELETE") {
-      $pdo->prepare("DELETE FROM hero_slides WHERE id=?")->execute([$id]);
-      bump($pdo);
-      json_out(200, ["ok" => true]);
-    }
-  }
-
-  if ($path === "/admin/product-sliders") {
-    require_auth($pdo);
-    if ($method === "GET") json_out(200, list_ps($pdo, false));
-    if ($method === "POST") {
-      $body = read_json();
-      if (!isset($body["sortOrder"])) $body["sortOrder"] = count(list_ps($pdo, false));
-      json_out(201, upsert_ps($pdo, $body));
-    }
-  }
-  if (preg_match("#^/admin/product-sliders/([^/]+)$#", $path, $m)) {
-    require_auth($pdo);
-    $id = urldecode($m[1]);
-    if ($method === "PUT") {
-      $body = read_json();
-      $body["id"] = $id;
-      json_out(200, upsert_ps($pdo, $body));
-    }
-    if ($method === "DELETE") {
-      $pdo->prepare("DELETE FROM product_sliders WHERE id=?")->execute([$id]);
-      bump($pdo);
       json_out(200, ["ok" => true]);
     }
   }

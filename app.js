@@ -1,2 +1,2 @@
-// Hostinger Node entry — runs the store API and static site (no npm/package.json needed).
+// Compatibility entry if Hostinger is still set to app.js — prefer server/server.js.
 require("./server/server").start();
