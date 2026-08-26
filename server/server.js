@@ -281,7 +281,7 @@ async function handleApi(req, res, pathname) {
     if (!user) return;
     try {
       const body = await readBody(req);
-      const folder = ["logo", "slides"].includes(body?.folder) ? body.folder : "products";
+      const folder = ["logo", "slides", "gallery"].includes(body?.folder) ? body.folder : "products";
       const urlPath = saveUpload(body?.data, folder);
       return send(res, 201, { url: urlPath });
     } catch (err) {

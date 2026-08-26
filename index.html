@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet" />
     <link rel="icon" href="img/logo.jpg" type="image/jpeg" />
-    <link rel="stylesheet" href="css/styles.css?v=44" />
+    <link rel="stylesheet" href="css/styles.css?v=57" />
     <script>
       document.documentElement.dataset.theme =
         localStorage.getItem("bestlaptop-theme") === "light" ? "light" : "dark";
@@ -38,16 +38,15 @@
           <button class="search-toggle" type="button" data-search-toggle aria-label="بحث">بحث</button>
           <input name="q" data-header-search type="search" placeholder="ابحث عن لابتوب أو مواصفات..." />
         </form>
-        <button class="menu-btn" data-menu type="button">القائمة</button>
+        <button class="menu-btn" data-menu type="button" aria-label="فتح القائمة" aria-expanded="false" aria-controls="mobile-nav">
+          <span class="menu-bars" aria-hidden="true"></span>
+        </button>
         <ul class="nav-links">
           <li><a class="active" href="index.html">الصفحة الرئيسية</a></li>
           <li><a href="products.html">صفحة المنتجات</a></li>
           <li><a href="contact.html">صفحة التواصل</a></li>
         </ul>
-        <a class="btn-cart" href="cart.html">
-          السلة
-          <span class="cart-count" data-cart-count>0</span>
-        </a>
+        <a class="btn-cart" href="cart.html">السلة</a>
       </div>
     </header>
     <div class="header-brands">
@@ -73,6 +72,7 @@
             <div class="hero-cta">
               <a class="btn btn-primary" data-slide-link href="product.html">تصفح المواصفات واطلبه الآن</a>
               <button class="btn btn-ghost" data-slide-add data-add>أضف إلى السلة</button>
+              <a class="btn btn-whatsapp" data-slide-wa href="#" target="_blank" rel="noopener" hidden></a>
             </div>
           </div>
           <aside class="spec-card">
@@ -92,6 +92,8 @@
       <div data-product-sliders></div>
 
       <div data-new-products></div>
+
+      <section class="section office-gallery-section" data-office-gallery hidden></section>
 
       <section class="section">
         <div class="container">
@@ -157,7 +159,7 @@
             <h3>تواصل معنا</h3>
             <ul data-store-footer-contact>
               <li>بغداد — شارع الصناعة، مجمع النعمان، الطابق الثاني</li>
-              <li>+964 770 123 4567</li>
+              <li>0772 222 4489</li>
               <li>support@bestlaptop.iq</li>
               <li><a href="contact.html">صفحة التواصل</a></li>
               <li><a href="admin/login.html">لوحة التحكم</a></li>
@@ -185,6 +187,6 @@
     <script src="js/api-client.js?v=46"></script>
     <script src="js/store-db.js?v=34"></script>
     <script src="js/theme.js"></script>
-    <script src="js/app.js?v=47"></script>
+    <script src="js/app.js?v=59"></script>
   </body>
 </html>

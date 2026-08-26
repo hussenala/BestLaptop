@@ -385,6 +385,9 @@ function migrateSchema() {
   if (!columnExists("hero_slides", "video_url")) {
     db.exec("ALTER TABLE hero_slides ADD COLUMN video_url TEXT");
   }
+  if (!columnExists("product_sliders", "brand")) {
+    db.exec("ALTER TABLE product_sliders ADD COLUMN brand TEXT DEFAULT ''");
+  }
   db.exec(`
     CREATE TABLE IF NOT EXISTS product_sliders (
       id TEXT PRIMARY KEY,
@@ -393,6 +396,7 @@ function migrateSchema() {
       eyebrow TEXT,
       title TEXT NOT NULL,
       category TEXT DEFAULT 'all',
+      brand TEXT DEFAULT '',
       limit_count INTEGER DEFAULT 8,
       product_ids_json TEXT DEFAULT '[]',
       autoplay INTEGER DEFAULT 1,
@@ -463,25 +467,45 @@ function migrateSchema() {
       f.category || "all",
       Number(f.limit) || 8,
       JSON.stringify(Array.isArray(f.productIds) ? f.productIds : []),
-      f.autoplay !== false ? 1 : 0,
+      0,
       Number(f.speedMs) || 4500,
       "products.html"
     );
   }
-  const settings = getSettings();
-  if (!settings.featured) {
-    settings.featured = {
-      eyebrow: "الأكثر مبيعاً",
-      title: "منتجات مميزة للقيمنق والمونتاج",
-      category: "all",
-      limit: 8,
-      productIds: [],
-      autoplay: true,
-      speedMs: 4500,
-    };
-    db.prepare("INSERT INTO settings (key,value) VALUES ('main',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(
-      JSON.stringify(settings)
-    );
+  {
+    const row = db.prepare("SELECT value FROM settings WHERE key='main'").get();
+    const raw = row ? JSON.parse(row.value) : {};
+    let dirty = false;
+    if (!raw.featured) {
+      raw.featured = {
+        eyebrow: "الأكثر مبيعاً",
+        title: "منتجات مميزة للقيمنق والمونتاج",
+        category: "all",
+        limit: 8,
+        productIds: [],
+        autoplay: true,
+        speedMs: 4500,
+      };
+      dirty = true;
+    }
+    if (!raw.officeGallery) {
+      raw.officeGallery = {
+        active: true,
+        title: "من داخل مكتب بيست لابتوب",
+        images: {
+          wide: "https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?auto=format&fit=crop&w=1200&q=80",
+          tall: "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=800&q=80",
+          bottomStart: "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80",
+          bottomEnd: "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80",
+        },
+      };
+      dirty = true;
+    }
+    if (dirty) {
+      db.prepare("INSERT INTO settings (key,value) VALUES ('main',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(
+        JSON.stringify(raw)
+      );
+    }
   }
   const globalBrands = [
     ["br-asus", "ASUS"],
@@ -570,8 +594,8 @@ function seedDatabase() {
     );
 
     const insPs = db.prepare(`
-      INSERT INTO product_sliders (id,sort_order,active,eyebrow,title,category,limit_count,product_ids_json,autoplay,speed_ms,link_url)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?)
+      INSERT INTO product_sliders (id,sort_order,active,eyebrow,title,category,brand,limit_count,product_ids_json,autoplay,speed_ms,link_url)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
     `);
     (seed.productSliders || []).forEach((s, i) =>
       insPs.run(
@@ -581,6 +605,7 @@ function seedDatabase() {
         s.eyebrow || "",
         s.title,
         s.category || "all",
+        s.brand || "",
         Number(s.limit) || 8,
         JSON.stringify(Array.isArray(s.productIds) ? s.productIds : []),
         s.autoplay !== false ? 1 : 0,
@@ -608,10 +633,38 @@ function getVersion() {
   return db.prepare("SELECT value FROM meta WHERE key='version'").get()?.value || "0";
 }
 
+function defaultOfficeGallery() {
+  return {
+    active: true,
+    title: "من داخل مكتب بيست لابتوب",
+    images: {
+      wide: "",
+      tall: "",
+      bottomStart: "",
+      bottomEnd: "",
+    },
+  };
+}
+
 function getSettings() {
   const row = db.prepare("SELECT value FROM settings WHERE key='main'").get();
   const s = row ? JSON.parse(row.value) : {};
   if (!s.notice && s.city) s.notice = `${s.city} · ${s.address} · ${s.warranty}`;
+  if (!s.officeGallery || typeof s.officeGallery !== "object") {
+    s.officeGallery = defaultOfficeGallery();
+  } else {
+    const d = defaultOfficeGallery();
+    s.officeGallery = {
+      active: s.officeGallery.active !== false,
+      title: s.officeGallery.title || d.title,
+      images: {
+        wide: s.officeGallery.images?.wide || "",
+        tall: s.officeGallery.images?.tall || "",
+        bottomStart: s.officeGallery.images?.bottomStart || "",
+        bottomEnd: s.officeGallery.images?.bottomEnd || "",
+      },
+    };
+  }
   return s;
 }
 
@@ -820,6 +873,7 @@ function rowToProductSlider(row) {
     eyebrow: row.eyebrow || "",
     title: row.title,
     category: row.category || "all",
+    brand: row.brand || "",
     limit: row.limit_count ?? 8,
     productIds,
     autoplay: row.autoplay !== 0,
@@ -836,6 +890,7 @@ function productSliderToRow(s) {
     eyebrow: s.eyebrow || "",
     title: s.title,
     category: s.category || "all",
+    brand: s.brand || "",
     limit_count: Number(s.limit) || 8,
     product_ids_json: JSON.stringify(Array.isArray(s.productIds) ? s.productIds : []),
     autoplay: s.autoplay !== false ? 1 : 0,
@@ -858,11 +913,11 @@ function getProductSlider(id) {
 
 function upsertProductSlider(s) {
   db.prepare(`
-    INSERT INTO product_sliders (id,sort_order,active,eyebrow,title,category,limit_count,product_ids_json,autoplay,speed_ms,link_url)
-    VALUES (@id,@sort_order,@active,@eyebrow,@title,@category,@limit_count,@product_ids_json,@autoplay,@speed_ms,@link_url)
+    INSERT INTO product_sliders (id,sort_order,active,eyebrow,title,category,brand,limit_count,product_ids_json,autoplay,speed_ms,link_url)
+    VALUES (@id,@sort_order,@active,@eyebrow,@title,@category,@brand,@limit_count,@product_ids_json,@autoplay,@speed_ms,@link_url)
     ON CONFLICT(id) DO UPDATE SET
       sort_order=excluded.sort_order, active=excluded.active, eyebrow=excluded.eyebrow, title=excluded.title,
-      category=excluded.category, limit_count=excluded.limit_count, product_ids_json=excluded.product_ids_json,
+      category=excluded.category, brand=excluded.brand, limit_count=excluded.limit_count, product_ids_json=excluded.product_ids_json,
       autoplay=excluded.autoplay, speed_ms=excluded.speed_ms, link_url=excluded.link_url
   `).run(productSliderToRow(s));
   bumpVersion();
@@ -1000,7 +1055,7 @@ function login(username, password) {
   }
   if (!user || !verifyPassword(pass, user.password_hash)) return null;
   const token = crypto.randomBytes(32).toString("hex");
-  const expires = Date.now() + 1000 * 60 * 60 * 12;
+  const expires = Date.now() + 1000 * 60 * 60 * 24 * 30;
   db.prepare("INSERT INTO sessions (token,user_id,expires_at) VALUES (?,?,?)").run(token, user.id, expires);
   return { token, user: { id: user.id, name: user.name, username: user.username, role: user.role }, expires };
 }
@@ -1020,6 +1075,7 @@ function getSessionUser(token) {
     if (row) db.prepare("DELETE FROM sessions WHERE token=?").run(token);
     return null;
   }
+  db.prepare("UPDATE sessions SET expires_at=? WHERE token=?").run(Date.now() + 1000 * 60 * 60 * 24 * 30, token);
   return { id: row.id, name: row.name, username: row.username, role: row.role };
 }
 
@@ -1051,6 +1107,7 @@ function getPublicStore() {
       shipping: settings.shipping || [],
       payments: settings.payments || [],
       featured: settings.featured || { eyebrow: "الأكثر مبيعاً", title: "منتجات مميزة للقيمنق والمونتاج", category: "all", limit: 8, productIds: [], autoplay: true, speedMs: 4500 },
+      officeGallery: settings.officeGallery || defaultOfficeGallery(),
     },
   };
 }

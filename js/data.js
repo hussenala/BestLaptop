@@ -182,8 +182,8 @@ const STORE = {
   city: "بغداد",
   address: "شارع الصناعة، مجمع النعمان، الطابق الثاني",
   fullAddress: "العراق، بغداد — شارع الصناعة، مجمع النعمان، الطابق الثاني",
-  phone: "+964 770 123 4567",
-  whatsapp: "+964 770 123 4567",
+  phone: "0772 222 4489",
+  whatsapp: "0772 222 4489",
   email: "support@bestlaptop.iq",
   hours: "السبت – الخميس: 9:30 ص – 8:30 م",
   warranty: "ضمان سنتين حقيقي معتمد",
@@ -239,6 +239,16 @@ const STORE = {
     title: "منتجات مميزة للقيمنق والمونتاج",
     category: "all",
     limit: 8,
+  },
+  officeGallery: {
+    active: true,
+    title: "من داخل مكتب بيست لابتوب",
+    images: {
+      wide: "",
+      tall: "",
+      bottomStart: "",
+      bottomEnd: "",
+    },
   },
 };
 

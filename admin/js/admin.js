@@ -9,6 +9,7 @@ const ICO = {
   stock: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M4 18V8l8-4 8 4v10l-8 4z"/></svg>',
   star: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 3 9.5 9H3l5.2 3.8L6 19l6-4 6 4-2.2-6.2L21 9h-6.5z"/></svg>',
   featured: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M13 2 15 9h7l-5.5 4 2 7L13 17l-5.5 3 2-7L4 9h7z"/></svg>',
+  gallery: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M4 5h16v14H4zm2 2v6l3.2-2.4L14 15l4-5v9H6zm9-1.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3z"/></svg>',
   gear: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M10 2h4l.6 3.2a7 7 0 0 1 2.2 1.3L20 5.6 22 9l-2.6 1.6a7 7 0 0 1 0 2.8L22 15l-2 3.4-3.2-.9a7 7 0 0 1-2.2 1.3L14 22h-4l-.6-3.2a7 7 0 0 1-2.2-1.3L4 18.4 2 15l2.6-1.6a7 7 0 0 1 0-2.8L2 9l2-3.4 3.2.9A7 7 0 0 1 9.4 5.2zM12 15a3 3 0 1 0-3-3 3 3 0 0 0 3 3z"/></svg>',
   shield: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2 4 6v6c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V6z"/></svg>',
 };
@@ -22,8 +23,9 @@ const NAV = [
   { id: "customers", label: "العملاء", icon: ICO.users },
   { id: "coupons", label: "الخصومات والكوبونات", icon: ICO.tag },
   { id: "inventory", label: "المخزون", icon: ICO.stock },
-  { id: "slider", label: "السلايدر", icon: ICO.star },
-  { id: "featured", label: "سلاider المنتجات", icon: ICO.featured },
+  { id: "slider", label: "بانر الموقع", icon: ICO.star },
+  { id: "featured", label: "سلايدر منتجات", icon: ICO.featured },
+  { id: "gallery", label: "معرض المكتب", icon: ICO.gallery },
   { id: "settings", label: "إعدادات المتجر", icon: ICO.gear },
   { id: "users", label: "المستخدمون والصلاحيات", icon: ICO.shield },
 ];
@@ -37,8 +39,9 @@ const TITLES = {
   customers: ["العملاء", "سجل المشترين"],
   coupons: ["الكوبونات", "خصومات العروض"],
   inventory: ["المخزون", "الكميات والتنبيهات"],
-  slider: ["السلايدر", "شرائح العروض الرئيسية"],
-  featured: ["سلاider المنتجات", "سلاiders متعددة أفقية"],
+  slider: ["بانر الموقع", "شرائح العروض الرئيسية"],
+  featured: ["سلايدر منتجات", "سلايدرات متعددة أفقية"],
+  gallery: ["معرض المكتب", "صور من داخل المكتب"],
   settings: ["الإعدادات", "هوية المتجر"],
   users: ["الصلاحيات", "مستخدمو اللوحة"],
 };
@@ -173,6 +176,125 @@ function toast(msg) {
   toast._t = setTimeout(() => el.classList.remove("show"), 2000);
 }
 
+function productDeleteConfirmModal(p) {
+  if (!p) return "";
+  const cat = db().categories.find((c) => c.id === p.category);
+  return `<div class="confirm-delete">
+    <h2>تأكيد حذف المنتج</h2>
+    <p class="muted">هل أنت متأكد من حذف هذا المنتج؟ لا يمكن التراجع بعد الحذف.</p>
+    <div class="confirm-delete-card">
+      <img src="${esc(resolveAdminAsset(p.image))}" alt="" />
+      <div class="confirm-delete-meta">
+        <b>${esc(p.name)}</b>
+        <ul class="confirm-delete-facts">
+          <li><span>الماركة</span><strong>${esc(p.brand || "—")}</strong></li>
+          <li><span>التصنيف</span><strong>${esc(cat?.title || p.category || "—")}</strong></li>
+          <li><span>السعر</span><strong>${money(p.price)}</strong></li>
+          <li><span>المخزون</span><strong>${esc(p.stock ?? "—")}</strong></li>
+          <li><span>المعرّف</span><strong><code>${esc(p.id)}</code></strong></li>
+        </ul>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" type="button" data-close-modal>إلغاء</button>
+      <button class="btn btn-danger" type="button" data-confirm-del-product="${esc(p.id)}">نعم، احذف المنتج</button>
+    </div>
+  </div>`;
+}
+
+function ordersForCustomerPhone(phone) {
+  return db()
+    .orders.filter((o) => (o.customer?.phone || "") === phone)
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+}
+
+function customerHistoryModal(customer) {
+  if (!customer) return "";
+  const list = ordersForCustomerPhone(customer.phone);
+  const rows = list.length
+    ? list
+        .map(
+          (o) => `<article class="customer-order-row">
+            <div>
+              <b>${esc(o.id)}</b>
+              <p class="muted">${new Date(o.createdAt).toLocaleString("ar-IQ")} · ${esc(statusLabel(o.status))}</p>
+              <p class="muted">${esc(orderItemsSummary(o.items))}</p>
+            </div>
+            <div class="customer-order-side">
+              <strong>${money(o.total)}</strong>
+              <div class="row-actions">
+                <button class="btn btn-ghost" type="button" data-order-detail="${esc(o.id)}">تفاصيل</button>
+                <button class="btn btn-ghost danger-text" type="button" data-del-order="${esc(o.id)}" data-del-order-return-phone="${esc(customer.phone)}">حذف السجل</button>
+              </div>
+            </div>
+          </article>`
+        )
+        .join("")
+    : `<p class="muted">لا يوجد سجل مشتريات لهذا العميل.</p>`;
+  return `<div class="customer-history">
+    <h2>سجل مشتريات العميل</h2>
+    <p class="muted">${esc(customer.name)} · <a href="tel:${esc(customer.phone)}">${esc(customer.phone)}</a>${customer.city ? ` · ${esc(customer.city)}` : ""}</p>
+    <div class="customer-history-kpis">
+      <div class="kpi"><span>الطلبات</span><b>${list.length}</b></div>
+      <div class="kpi"><span>الإنفاق</span><b>${money(list.reduce((s, o) => s + (o.total || 0), 0))}</b></div>
+    </div>
+    <div class="customer-history-list">${rows}</div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" type="button" data-close-modal>إغلاق</button>
+    </div>
+  </div>`;
+}
+
+function orderDeleteConfirmModal(order, returnPhone = "") {
+  if (!order) return "";
+  return `<div class="confirm-delete">
+    <h2>تأكيد حذف سجل الشراء</h2>
+    <p class="muted">هل أنت متأكد من حذف هذا السجل من مشتريات العميل؟ لا يمكن التراجع بعد الحذف.</p>
+    <div class="confirm-delete-card confirm-delete-card--order">
+      <div class="confirm-delete-meta">
+        <b>طلب ${esc(order.id)}</b>
+        <ul class="confirm-delete-facts">
+          <li><span>العميل</span><strong>${esc(order.customer?.name || "—")}</strong></li>
+          <li><span>الهاتف</span><strong>${esc(order.customer?.phone || "—")}</strong></li>
+          <li><span>التاريخ</span><strong>${new Date(order.createdAt).toLocaleString("ar-IQ")}</strong></li>
+          <li><span>المنتجات</span><strong>${esc(orderItemsSummary(order.items))}</strong></li>
+          <li><span>الإجمالي</span><strong>${money(order.total)}</strong></li>
+          <li><span>الحالة</span><strong>${esc(statusLabel(order.status))}</strong></li>
+        </ul>
+      </div>
+    </div>
+    <div class="modal-actions">
+      ${
+        returnPhone
+          ? `<button class="btn btn-ghost" type="button" data-customer-history="${esc(returnPhone)}">رجوع للسجل</button>`
+          : `<button class="btn btn-ghost" type="button" data-close-modal>إلغاء</button>`
+      }
+      <button class="btn btn-danger" type="button" data-confirm-del-order="${esc(order.id)}" data-del-order-return-phone="${esc(returnPhone || "")}">نعم، احذف السجل</button>
+    </div>
+  </div>`;
+}
+
+function openCustomerHistoryByPhone(phone) {
+  const customer = db().customers.find((c) => c.phone === phone);
+  if (!customer) {
+    const orders = ordersForCustomerPhone(phone);
+    if (!orders.length) {
+      toast("لا يوجد سجل لهذا العميل");
+      return;
+    }
+    openModal(
+      customerHistoryModal({
+        name: orders[0].customer?.name || "عميل",
+        phone,
+        city: orders[0].address?.city || "",
+      }),
+      { wide: true }
+    );
+    return;
+  }
+  openModal(customerHistoryModal(customer), { wide: true });
+}
+
 function pageId() {
   const route = parseRoute();
   return route.page === "product-editor" ? "products" : route.page;
@@ -210,13 +332,16 @@ function closeModal() {
   const box = document.querySelector("[data-modal]");
   box.hidden = true;
   box.classList.remove("is-open");
+  box.querySelector("[data-modal-card]")?.classList.remove("admin-modal-card--wide");
 }
 
-function openModal(html) {
+function openModal(html, opts = {}) {
   const box = document.querySelector("[data-modal]");
+  const card = box.querySelector("[data-modal-card]");
   box.hidden = false;
   box.classList.add("is-open");
-  box.querySelector("[data-modal-card]").innerHTML = html;
+  card.classList.toggle("admin-modal-card--wide", !!opts.wide);
+  card.innerHTML = html;
 }
 
 function renderNav(user) {
@@ -272,7 +397,7 @@ function ordersTable(list, editable = true) {
                 editable
                   ? `<td class="row-actions">
                       <button class="btn btn-ghost" type="button" data-order-detail="${esc(o.id)}">تفاصيل</button>
-                      <button class="btn btn-ghost" type="button" data-del-order="${esc(o.id)}">حذف</button>
+                      <button class="btn btn-ghost danger-text" type="button" data-del-order="${esc(o.id)}">حذف</button>
                     </td>`
                   : ""
               }
@@ -288,6 +413,70 @@ function resolveAdminAsset(src) {
   if (!src) return "";
   if (src.startsWith("data:") || src.startsWith("http") || src.startsWith("/")) return src;
   return `../${src}`;
+}
+
+function youtubeIdFromUrl(url) {
+  if (!url || typeof url !== "string") return "";
+  const raw = url.trim();
+  if (!raw) return "";
+  try {
+    const u = new URL(raw);
+    const host = u.hostname.replace(/^www\./, "").toLowerCase();
+    if (host === "youtu.be") return (u.pathname.split("/").filter(Boolean)[0] || "").split("?")[0];
+    if (host === "youtube.com" || host === "m.youtube.com" || host === "music.youtube.com" || host === "youtube-nocookie.com") {
+      if (u.pathname.startsWith("/embed/")) return u.pathname.split("/")[2] || "";
+      if (u.pathname.startsWith("/shorts/")) return u.pathname.split("/")[2] || "";
+      if (u.pathname.startsWith("/live/")) return u.pathname.split("/")[2] || "";
+      return u.searchParams.get("v") || "";
+    }
+  } catch {
+    /* not a valid URL */
+  }
+  return "";
+}
+
+function youtubeBackgroundEmbedUrl(id) {
+  const q = new URLSearchParams({
+    autoplay: "1",
+    mute: "1",
+    controls: "0",
+    modestbranding: "1",
+    playsinline: "1",
+    rel: "0",
+    loop: "1",
+    playlist: id,
+    iv_load_policy: "3",
+    disablekb: "1",
+    fs: "0",
+    cc_load_policy: "0",
+    showinfo: "0",
+    enablejsapi: "1",
+  });
+  try {
+    if (typeof location !== "undefined" && location.origin && location.origin !== "null") {
+      q.set("origin", location.origin);
+    }
+  } catch {
+    /* ignore */
+  }
+  return `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?${q.toString()}`;
+}
+
+function adminHeroMediaHtml(videoUrl, imageUrl) {
+  const yt = youtubeIdFromUrl(videoUrl);
+  if (yt) {
+    const src = youtubeBackgroundEmbedUrl(yt);
+    const poster = imageUrl ? resolveAdminAsset(imageUrl) : "";
+    const posterStyle = poster ? ` style="--yt-poster:url('${poster}')"` : "";
+    return `<div class="slider-panel slider-panel-video slider-panel-youtube is-yt-playing"${posterStyle}><iframe src="${src}" title="" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="eager" tabindex="-1"></iframe><div class="yt-poster" aria-hidden="true"></div><div class="yt-chrome-mask" aria-hidden="true"></div></div>`;
+  }
+  if (videoUrl) {
+    return `<div class="slider-panel slider-panel-video"><video src="${esc(resolveAdminAsset(videoUrl))}" autoplay muted loop playsinline></video></div>`;
+  }
+  if (imageUrl) {
+    return `<div class="slider-panel" style="background-image:url('${esc(imageUrl)}')"></div>`;
+  }
+  return `<div class="slider-panel"><span class="slide-hero-preview-empty">أضف صورة أو رابط يوتيوب للشريحة</span></div>`;
 }
 
 function readFileAsDataUrl(file) {
@@ -629,7 +818,7 @@ function renderProducts() {
               <td><span class="pill ${p.stock ? "" : "danger"}">${p.stock}</span></td>
               <td class="row-actions">
                 <a class="btn btn-ghost" href="#/products/edit/${encodeURIComponent(p.id)}">تعديل</a>
-                <button class="btn btn-ghost" data-del-product="${esc(p.id)}">حذف</button>
+                <button class="btn btn-ghost danger-text" data-del-product="${esc(p.id)}">حذف</button>
               </td>
             </tr>`
             )
@@ -698,9 +887,29 @@ function renderOrders() {
 }
 
 function renderCustomers() {
+  const list = db().customers || [];
+  if (!list.length) {
+    return `<div class="panel slide-empty">
+      <h2>لا يوجد عملاء بعد</h2>
+      <p class="muted">يظهر العملاء هنا تلقائياً بعد إتمام الطلبات من المتجر.</p>
+    </div>`;
+  }
   return `<div class="panel table-wrap"><table class="data-table">
-    <thead><tr><th>الاسم</th><th>الهاتف</th><th>المدينة</th><th>الطلبات</th><th>الإنفاق</th></tr></thead>
-    <tbody>${db().customers.map((c) => `<tr><td>${esc(c.name)}</td><td>${esc(c.phone)}</td><td>${esc(c.city)}</td><td>${c.orders}</td><td>${money(c.spent)}</td></tr>`).join("")}</tbody>
+    <thead><tr><th>الاسم</th><th>الهاتف</th><th>المدينة</th><th>الطلبات</th><th>الإنفاق</th><th></th></tr></thead>
+    <tbody>${list
+      .map(
+        (c) => `<tr>
+          <td><b>${esc(c.name)}</b></td>
+          <td><a href="tel:${esc(c.phone)}">${esc(c.phone)}</a></td>
+          <td>${esc(c.city || "—")}</td>
+          <td>${c.orders}</td>
+          <td>${money(c.spent)}</td>
+          <td class="row-actions">
+            <button class="btn btn-ghost" type="button" data-customer-history="${esc(c.phone)}">سجل المشتريات</button>
+          </td>
+        </tr>`
+      )
+      .join("")}</tbody>
   </table></div>`;
 }
 
@@ -757,6 +966,15 @@ function slideForm(s = {}) {
   return `<h2>${s.id ? "تعديل شريحة" : "شريحة عرض جديدة"}</h2>
     <p class="muted span-2">السلايدر يتحرك أفقياً (يسار ↔ يمين) على الصفحة الرئيسية. رتّب الشرائح من لوحة القائمة.</p>
     <form class="admin-form slide-form" data-slide-form data-id="${esc(s.id || "")}">
+      <div class="span-2 slide-live-preview-panel">
+        <div class="slide-live-preview-head">
+          <div>
+            <h3>معاينة كما ستظهر في الصفحة الرئيسية</h3>
+            <p class="muted">تتحدّث فوراً مع تعديلاتك — قبل الحفظ والنشر.</p>
+          </div>
+        </div>
+        <div class="slide-hero-preview" data-slide-hero-preview></div>
+      </div>
       <div class="form-section span-2"><h3>المعلومات الأساسية</h3></div>
       <label>عنوان الشريحة<input name="title" required value="${esc(s.title || "")}" placeholder="مثال: Apex 16 Pro" /></label>
       <label>الحالة<select name="active"><option value="1" ${s.active !== false ? "selected" : ""}>نشطة — تظهر في الموقع</option><option value="0" ${s.active === false ? "selected" : ""}>متوقفة — مخفية</option></select></label>
@@ -773,20 +991,96 @@ function slideForm(s = {}) {
       <label>التبريد<input name="cooling" value="${esc(s.cooling || "")}" /></label>
       <label>الشاشة<input name="screen" value="${esc(s.screen || "")}" /></label>
       <div class="form-section span-2"><h3>الوسائط — صورة أو فيديو</h3></div>
-      <label class="span-2">رابط فيديو (اختياري — يُعرض بدل الصورة)<input name="videoUrl" type="url" value="${esc(s.videoUrl || "")}" placeholder="https://example.com/video.mp4" /></label>
+      <label class="span-2">رابط يوتيوب أو فيديو (اختياري — يُعرض بدل الصورة)<input name="videoUrl" type="url" value="${esc(s.videoUrl || "")}" placeholder="https://youtu.be/... أو رابط ملف mp4" /><small class="field-hint">يعمل صامتاً وبدون أزرار يوتيوب قدر الإمكان. بعض مقاطع يوتيوب قد تمنع التضمين — جرّب المقطع في المعاينة أعلاه.</small></label>
       <label class="span-2">رفع صورة<input type="file" accept="image/*" data-slide-file /></label>
       <input type="hidden" name="image" data-slide-image value="${esc(image)}" />
-      <div class="span-2 slide-form-preview" data-slide-preview>
-        ${image ? `<img src="${esc(resolveAdminAsset(image))}" alt="" />` : `<span class="muted">معاينة الصورة تظهر هنا</span>`}
-      </div>
       <div class="modal-actions span-2"><button class="btn btn-ghost" type="button" data-close-modal>إلغاء</button>
       <button class="btn btn-primary" type="submit">حفظ الشريحة</button></div>
     </form>`;
 }
 
+function setupSlideEditor() {
+  const form = document.querySelector("[data-slide-form]");
+  const preview = document.querySelector("[data-slide-hero-preview]");
+  if (!form || !preview) return;
+
+  function val(name) {
+    return form.querySelector(`[name="${name}"]`)?.value?.trim() || "";
+  }
+
+  function syncSlidePreview() {
+    const productId = val("productId");
+    const product = productId ? db().products.find((p) => p.id === productId) : null;
+    const title = val("title") || product?.name || "عنوان الشريحة";
+    const headline = val("headline") || product?.headline || "العنوان الفرعي يظهر هنا";
+    const blurb = val("blurb") || product?.blurb || "وصف قصير للعرض على الهيرو";
+    const chip1 = val("chip1") || "ضمان سنتين حقيقي";
+    const chip2 = val("chip2") || "أداء كامل للكرت";
+    const gpu = val("gpu") || product?.gpu || "—";
+    const tgp = val("tgp") || product?.tgp || "—";
+    const cooling = val("cooling") || product?.cooling || "—";
+    const screen = val("screen") || product?.screen || "—";
+    const videoUrl = val("videoUrl");
+    const imageRaw = val("image") || product?.image || "";
+    const image = imageRaw ? resolveAdminAsset(imageRaw) : "";
+    const active = form.querySelector('[name="active"]')?.value !== "0";
+    const stock = product ? Number(product.stock) || 0 : 0;
+    const showPrice = !!(product && stock > 0);
+    const showAdd = !!product;
+    const addLabel = product ? (stock > 0 ? "أضف إلى السلة" : "غير متوفر") : "";
+
+    const mediaHtml = adminHeroMediaHtml(videoUrl, image);
+
+    preview.innerHTML = `
+      <div class="slide-hero-mock${active ? "" : " is-inactive"}">
+        ${active ? "" : `<span class="slide-hero-inactive-badge">متوقفة — لن تظهر في الموقع حتى تُفعَّل</span>`}
+        <section class="hero-slider" aria-hidden="true">
+          <div class="slider-viewport">
+            <div class="slider-track">${mediaHtml}</div>
+            <div class="slider-shade"></div>
+          </div>
+          <div class="hero-inner">
+            <div>
+              <div class="chips">
+                ${chip1 ? `<span class="chip">${esc(chip1)}</span>` : ""}
+                ${chip2 ? `<span class="chip">${esc(chip2)}</span>` : ""}
+              </div>
+              <h1>${esc(title)}</h1>
+              <p class="lead">${esc(headline)}</p>
+              <p class="muted">${esc(blurb)}</p>
+              ${showPrice ? `<div class="slide-price">${money(product.price)}</div>` : ""}
+              <div class="hero-cta">
+                <span class="btn btn-primary">تصفح المواصفات واطلبه الآن</span>
+                ${showAdd ? `<span class="btn btn-ghost">${esc(addLabel)}</span>` : ""}
+              </div>
+            </div>
+            <aside class="spec-card">
+              <div><span>كرت الشاشة</span><b>${esc(gpu)}</b></div>
+              <div><span>قدرة الكرت</span><b>${esc(tgp)}</b></div>
+              <div><span>التبريد</span><b>${esc(cooling)}</b></div>
+              <div><span>الشاشة</span><b>${esc(screen)}</b></div>
+            </aside>
+          </div>
+          <div class="slider-nav">
+            <span class="icon-btn" aria-hidden="true">‹</span>
+            <div class="dots"><button type="button" class="on" tabindex="-1"></button><button type="button" tabindex="-1"></button></div>
+            <span class="icon-btn" aria-hidden="true">›</span>
+          </div>
+        </section>
+      </div>`;
+  }
+
+  if (!form.dataset.previewBound) {
+    form.dataset.previewBound = "1";
+    form.addEventListener("input", syncSlidePreview);
+    form.addEventListener("change", syncSlidePreview);
+  }
+  syncSlidePreview();
+}
+
 function psProductsListHtml(ids = [], formAttr = "data-ps-products-list") {
   if (!ids.length) {
-    return `<p class="muted fp-empty">لا منتجات محددة — سيُعرض حسب القسم تلقائياً.</p>`;
+    return `<p class="muted fp-empty">لا منتجات محددة بعد — أضف منتجات من القائمة أدناه.</p>`;
   }
   return ids
     .map((id, idx) => {
@@ -795,7 +1089,7 @@ function psProductsListHtml(ids = [], formAttr = "data-ps-products-list") {
       return `<article class="fp-row" data-fp-row="${esc(id)}">
         <span class="fp-num">${idx + 1}</span>
         <img src="${esc(resolveAdminAsset(p.image))}" alt="" />
-        <div><b>${esc(p.name)}</b><p class="muted">${esc(p.specs || "")}</p></div>
+        <div><b>${esc(p.name)}</b><p class="muted">${esc(p.brand || "")} · ${esc(p.specs || "")}</p></div>
         <div class="fp-actions">
           <button class="btn btn-ghost" type="button" data-fp-up="${esc(id)}" ${idx === 0 ? "disabled" : ""}>↑</button>
           <button class="btn btn-ghost" type="button" data-fp-down="${esc(id)}" ${idx === ids.length - 1 ? "disabled" : ""}>↓</button>
@@ -804,6 +1098,159 @@ function psProductsListHtml(ids = [], formAttr = "data-ps-products-list") {
       </article>`;
     })
     .join("");
+}
+
+function adminBrandNames() {
+  const fromTable = (db().brands || []).map((b) => b.name).filter(Boolean);
+  const fromProducts = [...new Set(db().products.map((p) => p.brand).filter(Boolean))];
+  return [...new Set([...fromTable, ...fromProducts])].sort((a, b) => a.localeCompare(b, "en"));
+}
+
+function psSourceMode(s = {}) {
+  if (Array.isArray(s.productIds) && s.productIds.length) return "manual";
+  if (s.brand) return "brand";
+  return "category";
+}
+
+function psSourceLabel(s) {
+  if (Array.isArray(s.productIds) && s.productIds.length) return `${s.productIds.length} منتج محدد`;
+  if (s.brand) return `ماركة: ${s.brand}`;
+  if (s.category && s.category !== "all") {
+    const c = db().categories.find((x) => x.id === s.category);
+    return `قسم: ${c?.title || s.category}`;
+  }
+  return "كل الأقسام";
+}
+
+function syncPsFormPanels(form) {
+  if (!form) return;
+  const source = form.querySelector("[data-ps-source]")?.value || "category";
+  form.querySelectorAll("[data-ps-panel]").forEach((panel) => {
+    panel.hidden = panel.dataset.psPanel !== source;
+  });
+  const brand = form.querySelector("[name='brand']")?.value || "";
+  const hint = form.querySelector("[data-ps-brand-count]");
+  if (hint) {
+    const n = brand ? db().products.filter((p) => p.brand === brand).length : 0;
+    hint.textContent = brand ? `${n} منتج متاح لهذه الماركة` : "اختر ماركة لعرض عدد منتجاتها";
+  }
+  const link = form.querySelector("[name='linkUrl']");
+  if (link && source === "brand" && brand && (!link.dataset.touched || link.value.includes("brand="))) {
+    link.value = `products.html?brand=${encodeURIComponent(brand)}`;
+  }
+}
+
+function productSliderForm(s = {}) {
+  const source = psSourceMode(s);
+  const cat = s.category || "all";
+  const brand = s.brand || "";
+  const ids = source === "manual" && Array.isArray(s.productIds) ? s.productIds : [];
+  const brands = adminBrandNames();
+  const brandCount = brand ? db().products.filter((p) => p.brand === brand).length : 0;
+  const addOptions = db()
+    .products.filter((p) => !ids.includes(p.id))
+    .map((p) => `<option value="${esc(p.id)}">${esc(p.brand ? `${p.brand} — ${p.name}` : p.name)}</option>`)
+    .join("");
+  return `<h2>${s.id ? "تعديل سلايدر منتجات" : "سلايدر منتجات جديد"}</h2>
+    <p class="muted span-2">عرّف مصدراً واحداً للعرض: قسم، ماركة كاملة، أو منتجات تختارها يدوياً.</p>
+    <form class="admin-form ps-form" data-ps-form data-id="${esc(s.id || "")}">
+      <label>العنوان الصغير<input name="eyebrow" value="${esc(s.eyebrow || "")}" placeholder="مثال: أجهزة ASUS" /></label>
+      <label>الحالة<select name="active"><option value="1" ${s.active !== false ? "selected" : ""}>نشط</option><option value="0" ${s.active === false ? "selected" : ""}>متوقف</option></select></label>
+      <label class="span-2">العنوان<input name="title" required value="${esc(s.title || "")}" placeholder="مثال: تشكيلة ASUS المميزة" /></label>
+
+      <label class="span-2">مصدر العرض
+        <select name="source" data-ps-source>
+          <option value="category" ${source === "category" ? "selected" : ""}>حسب القسم</option>
+          <option value="brand" ${source === "brand" ? "selected" : ""}>حسب الماركة</option>
+          <option value="manual" ${source === "manual" ? "selected" : ""}>منتجات محددة يدوياً</option>
+        </select>
+      </label>
+
+      <div class="span-2 ps-panel" data-ps-panel="category" ${source === "category" ? "" : "hidden"}>
+        <div class="ps-panel-grid">
+          <label>القسم<select name="category"><option value="all" ${cat === "all" ? "selected" : ""}>كل الأقسام</option>${db().categories.map((c) => `<option value="${c.id}" ${cat === c.id ? "selected" : ""}>${esc(c.title)}</option>`).join("")}</select></label>
+          <label>عدد المنتجات<input name="limit" type="number" min="1" max="24" value="${esc(s.limit || 8)}" /></label>
+        </div>
+      </div>
+
+      <div class="span-2 ps-panel" data-ps-panel="brand" ${source === "brand" ? "" : "hidden"}>
+        <div class="ps-panel-grid">
+          <label>الماركة<select name="brand" data-ps-brand>
+            <option value="">— اختر ماركة —</option>
+            ${brands.map((b) => `<option value="${esc(b)}" ${brand === b ? "selected" : ""}>${esc(b)}</option>`).join("")}
+          </select></label>
+          <label>عدد المنتجات<input name="limitBrand" type="number" min="1" max="24" value="${esc(s.limit || 8)}" /></label>
+        </div>
+        <p class="muted ps-brand-hint" data-ps-brand-count>${brand ? `${brandCount} منتج متاح لهذه الماركة` : "اختر ماركة لعرض عدد منتجاتها"}</p>
+      </div>
+
+      <div class="span-2 ps-panel" data-ps-panel="manual" ${source === "manual" ? "" : "hidden"}>
+        <div class="fp-panel">
+          <div class="fp-list" data-ps-products-list>${psProductsListHtml(ids)}</div>
+          <div class="fp-add"><select data-ps-pick ${addOptions ? "" : "disabled"}><option value="">+ إضافة منتج</option>${addOptions}</select></div>
+          <input type="hidden" name="productIds" data-ps-ids value="${esc(JSON.stringify(ids))}" />
+        </div>
+      </div>
+
+      <label class="span-2">رابط «كل المنتجات»<input name="linkUrl" data-ps-link value="${esc(s.linkUrl || "products.html")}" /></label>
+      <div class="modal-actions span-2"><button class="btn btn-ghost" type="button" data-close-modal>إلغاء</button>
+      <button class="btn btn-primary" type="submit">حفظ السلايدر</button></div>
+    </form>`;
+}
+
+function renderFeaturedAdmin() {
+  const list = [...(db().productSliders || [])].sort((a, b) => a.sortOrder - b.sortOrder);
+  const active = list.filter((s) => s.active !== false).length;
+  const brandCount = list.filter((s) => s.brand && !(s.productIds || []).length).length;
+  return `
+    <div class="slider-admin-head">
+      <div class="kpi-grid slider-kpis">
+        <div class="kpi"><span>سلايدرات المنتجات</span><b>${list.length}</b></div>
+        <div class="kpi"><span>نشطة</span><b>${active}</b></div>
+        <div class="kpi"><span>حسب ماركة</span><b>${brandCount}</b></div>
+        <div class="kpi"><span>العرض</span><b>أفقي</b></div>
+      </div>
+      <div class="toolbar-admin slider-toolbar">
+        <button class="btn btn-primary" type="button" data-add-ps>+ سلايدر منتجات جديد</button>
+        <a class="btn btn-ghost" href="../index.html" target="_blank" rel="noopener">معاينة المتجر ↗</a>
+      </div>
+    </div>
+    ${
+      list.length
+        ? `<div class="slide-admin-list ps-admin-list" data-ps-list>
+            ${list
+              .map(
+                (s, idx) => `
+              <article class="slide-admin-card ps-admin-card ${s.active === false ? "is-off" : ""}" data-ps-row="${esc(s.id)}">
+                <div class="slide-drag" title="اسحب لإعادة الترتيب">⠿</div>
+                <div class="slide-order">${idx + 1}</div>
+                <div class="ps-card-icon" aria-hidden="true">${s.brand ? "◆" : Array.isArray(s.productIds) && s.productIds.length ? "▣" : "▤"}</div>
+                <div class="slide-meta">
+                  <b>${esc(s.title)}</b>
+                  <p class="muted">${esc(s.eyebrow || "بدون عنوان صغير")}</p>
+                  <div class="slide-tags">
+                    <span class="pill">${esc(psSourceLabel(s))}</span>
+                    <span class="pill ${s.active === false ? "warn" : ""}">${s.active === false ? "متوقف" : "نشط"}</span>
+                    ${!(s.productIds || []).length ? `<span class="pill">حد ${Number(s.limit) || 8}</span>` : ""}
+                  </div>
+                </div>
+                <div class="slide-actions">
+                  <button class="btn btn-ghost" type="button" data-ps-up="${esc(s.id)}" ${idx === 0 ? "disabled" : ""}>↑</button>
+                  <button class="btn btn-ghost" type="button" data-ps-down="${esc(s.id)}" ${idx === list.length - 1 ? "disabled" : ""}>↓</button>
+                  <button class="btn btn-ghost" type="button" data-ps-toggle="${esc(s.id)}">${s.active === false ? "تفعيل" : "إيقاف"}</button>
+                  <button class="btn btn-ghost" type="button" data-edit-ps="${esc(s.id)}">تعديل</button>
+                  <button class="btn btn-ghost danger-text" type="button" data-del-ps="${esc(s.id)}">حذف</button>
+                </div>
+              </article>`
+              )
+              .join("")}
+          </div>`
+        : `<div class="panel slide-empty">
+            <h2>لا توجد سلايدرات منتجات</h2>
+            <p class="muted">أنشئ سلايدراً حسب القسم أو الماركة أو باختيار منتجات يدوياً.</p>
+            <button class="btn btn-primary" type="button" data-add-ps>+ سلايدر منتجات جديد</button>
+          </div>`
+    }`;
 }
 
 function readPsIds(form) {
@@ -826,91 +1273,10 @@ function updatePsIdsForm(form, ids) {
     pick.disabled = false;
     pick.innerHTML = `<option value="">+ إضافة منتج</option>${db()
       .products.filter((p) => !ids.includes(p.id))
-      .map((p) => `<option value="${esc(p.id)}">${esc(p.name)}</option>`)
+      .map((p) => `<option value="${esc(p.id)}">${esc(p.brand ? `${p.brand} — ${p.name}` : p.name)}</option>`)
       .join("")}`;
     if (!pick.querySelector("option[value]:not([value=''])")) pick.disabled = true;
   }
-}
-
-function productSliderForm(s = {}) {
-  const cat = s.category || "all";
-  const ids = Array.isArray(s.productIds) ? s.productIds : [];
-  const addOptions = db()
-    .products.filter((p) => !ids.includes(p.id))
-    .map((p) => `<option value="${esc(p.id)}">${esc(p.name)}</option>`)
-    .join("");
-  return `<h2>${s.id ? "تعديل سلاider منتجات" : "سلاider منتجات جديد"}</h2>
-    <p class="muted span-2">عرض أفقي متحرك — اسحب المنتجات على الموقع يميناً ويساراً.</p>
-    <form class="admin-form" data-ps-form data-id="${esc(s.id || "")}">
-      <label>العنوان الصغير<input name="eyebrow" value="${esc(s.eyebrow || "")}" /></label>
-      <label>الحالة<select name="active"><option value="1" ${s.active !== false ? "selected" : ""}>نشط</option><option value="0" ${s.active === false ? "selected" : ""}>متوقف</option></select></label>
-      <label class="span-2">العنوان<input name="title" required value="${esc(s.title || "")}" /></label>
-      <label>التبديل التلقائي<select name="autoplay"><option value="1" ${s.autoplay !== false ? "selected" : ""}>مفعّل</option><option value="0" ${s.autoplay === false ? "selected" : ""}>متوقف</option></select></label>
-      <label>السرعة (ث)<input name="speedSec" type="number" min="2" max="15" step="0.5" value="${esc((Number(s.speedMs) || 4500) / 1000)}" /></label>
-      <label>القسم (تلقائي)<select name="category"><option value="all" ${cat === "all" ? "selected" : ""}>كل الأقسام</option>${db().categories.map((c) => `<option value="${c.id}" ${cat === c.id ? "selected" : ""}>${esc(c.title)}</option>`).join("")}</select></label>
-      <label>عدد المنتجات<input name="limit" type="number" min="1" max="24" value="${esc(s.limit || 8)}" /></label>
-      <label class="span-2">رابط «كل المنتجات»<input name="linkUrl" value="${esc(s.linkUrl || "products.html")}" /></label>
-      <div class="form-section span-2"><h3>منتجات هذا السلاider</h3></div>
-      <div class="span-2 fp-panel">
-        <div class="fp-list" data-ps-products-list>${psProductsListHtml(ids)}</div>
-        <div class="fp-add"><select data-ps-pick ${addOptions ? "" : "disabled"}><option value="">+ إضافة منتج</option>${addOptions}</select></div>
-        <input type="hidden" name="productIds" data-ps-ids value="${esc(JSON.stringify(ids))}" />
-      </div>
-      <div class="modal-actions span-2"><button class="btn btn-ghost" type="button" data-close-modal>إلغاء</button>
-      <button class="btn btn-primary" type="submit">حفظ</button></div>
-    </form>`;
-}
-
-function renderFeaturedAdmin() {
-  const list = [...(db().productSliders || [])].sort((a, b) => a.sortOrder - b.sortOrder);
-  const active = list.filter((s) => s.active !== false).length;
-  return `
-    <div class="slider-admin-head">
-      <div class="kpi-grid slider-kpis">
-        <div class="kpi"><span>سلاiders المنتجات</span><b>${list.length}</b></div>
-        <div class="kpi"><span>نشطة</span><b>${active}</b></div>
-        <div class="kpi"><span>الحركة</span><b>↔ سحب سلس</b></div>
-        <div class="kpi"><span>النوع</span><b>عرضي</b></div>
-      </div>
-      <div class="toolbar-admin slider-toolbar">
-        <button class="btn btn-primary" type="button" data-add-ps>+ إضافة سلاider</button>
-        <a class="btn btn-ghost" href="../index.html" target="_blank" rel="noopener">معاينة المتجر ↗</a>
-      </div>
-    </div>
-    ${
-      list.length
-        ? `<div class="slide-admin-list" data-ps-list>
-            ${list
-              .map(
-                (s, idx) => `
-              <article class="slide-admin-card ${s.active === false ? "is-off" : ""}" data-ps-row="${esc(s.id)}">
-                <div class="slide-order">${idx + 1}</div>
-                <div class="slide-meta">
-                  <b>${esc(s.title)}</b>
-                  <p class="muted">${esc(s.eyebrow || "بدون عنوان صغير")} · ${esc(s.category || "all")}</p>
-                  <div class="slide-tags">
-                    <span class="pill">${Array.isArray(s.productIds) && s.productIds.length ? `${s.productIds.length} منتج` : "تلقائي"}</span>
-                    <span class="pill ${s.active === false ? "warn" : ""}">${s.active === false ? "متوقف" : "نشط"}</span>
-                    <span class="pill">${s.autoplay === false ? "يدوي" : `${(Number(s.speedMs) || 4500) / 1000}ث`}</span>
-                  </div>
-                </div>
-                <div class="slide-actions">
-                  <button class="btn btn-ghost" type="button" data-ps-up="${esc(s.id)}" ${idx === 0 ? "disabled" : ""}>↑</button>
-                  <button class="btn btn-ghost" type="button" data-ps-down="${esc(s.id)}" ${idx === list.length - 1 ? "disabled" : ""}>↓</button>
-                  <button class="btn btn-ghost" type="button" data-ps-toggle="${esc(s.id)}">${s.active === false ? "تفعيل" : "إيقاف"}</button>
-                  <button class="btn btn-ghost" type="button" data-edit-ps="${esc(s.id)}">تعديل</button>
-                  <button class="btn btn-ghost danger-text" type="button" data-del-ps="${esc(s.id)}">حذف</button>
-                </div>
-              </article>`
-              )
-              .join("")}
-          </div>`
-        : `<div class="panel slide-empty">
-            <h2>لا توجد سلاiders منتجات</h2>
-            <p class="muted">أضف سلاiderاً أفقياً متحركاً لعرض المنتجات على الصفحة الرئيسية.</p>
-            <button class="btn btn-primary" type="button" data-add-ps>+ إضافة أول سلاider</button>
-          </div>`
-    }`;
 }
 
 function setupPsDragDrop() {
@@ -1080,7 +1446,7 @@ function renderSettings() {
     <label>اسم المتجر AR<input name="nameAr" value="${esc(s.nameAr)}" /></label>
     <label>المدينة<input name="city" value="${esc(s.city)}" /></label>
     <label>الهاتف<input name="phone" value="${esc(s.phone)}" /></label>
-    <label>رقم واتساب المدير<input name="whatsapp" value="${esc(s.whatsapp || s.phone)}" placeholder="+964 770 123 4567" /></label>
+    <label>رقم واتساب المدير<input name="whatsapp" value="${esc(s.whatsapp || s.phone)}" placeholder="0772 222 4489" /></label>
     <p class="muted span-2">رقم واتساب المدير يستقبل رسالة تأكيد الطلب التلقائية من الزبون بعد إتمام الشراء.</p>
     <label class="span-2">العنوان<input name="address" value="${esc(s.address)}" /></label>
     <label class="span-2">العنوان الكامل<input name="fullAddress" value="${esc(s.fullAddress)}" /></label>
@@ -1091,6 +1457,47 @@ function renderSettings() {
     <label class="span-2">رفع شعار جديد<input name="logoFile" type="file" accept="image/*" /></label>
     <p class="muted span-2">الشعار الحالي: ${s.logo ? `<img src="${esc(resolveAdminAsset(s.logo))}" alt="" class="logo-preview" />` : "—"}</p>
     <div class="span-2"><button class="btn btn-primary" type="submit">حفظ الإعدادات</button></div>
+  </form>`;
+}
+
+function gallerySlotPreview(src, label) {
+  if (!src) return `<div class="gallery-slot-empty">${esc(label)}</div>`;
+  return `<img src="${esc(resolveAdminAsset(src))}" alt="" class="gallery-slot-preview" />`;
+}
+
+function renderGalleryAdmin() {
+  const g = db().settings?.officeGallery || {
+    active: true,
+    title: "من داخل مكتب بيست لابتوب",
+    images: {},
+  };
+  const images = g.images || {};
+  const slots = [
+    { key: "wide", label: "علوية عريضة", hint: "الصورة الأفقية في الأعلى" },
+    { key: "tall", label: "يمين طويلة", hint: "الصورة العمودية على اليمين" },
+    { key: "bottomStart", label: "سفلى يمين", hint: "تحت العريضة باتجاه اليمين" },
+    { key: "bottomEnd", label: "سفلى يسار", hint: "تحت العريضة باتجاه اليسار" },
+  ];
+  return `<form class="panel admin-form gallery-admin-form" data-gallery-form>
+    <label class="span-2 check-row"><input type="checkbox" name="active" value="1" ${g.active !== false ? "checked" : ""} /> تفعيل قسم المعرض على الرئيسية</label>
+    <label class="span-2">عنوان القسم<input name="title" value="${esc(g.title || "من داخل مكتب بيست لابتوب")}" /></label>
+    <div class="span-2 gallery-slots">
+      ${slots
+        .map(
+          (s) => `<div class="gallery-slot" data-gallery-slot="${esc(s.key)}">
+          <div class="gallery-slot-thumb">${gallerySlotPreview(images[s.key], s.label)}</div>
+          <div class="gallery-slot-meta">
+            <strong>${esc(s.label)}</strong>
+            <p class="muted">${esc(s.hint)}</p>
+            <input type="hidden" name="keep_${s.key}" value="${esc(images[s.key] || "")}" />
+            <label class="file-label">رفع / استبدال<input name="file_${s.key}" type="file" accept="image/*" /></label>
+            <button class="btn btn-ghost" type="button" data-clear-gallery="${esc(s.key)}" ${images[s.key] ? "" : "disabled"}>إزالة الصورة</button>
+          </div>
+        </div>`
+        )
+        .join("")}
+    </div>
+    <div class="span-2"><button class="btn btn-primary" type="submit">حفظ المعرض</button></div>
   </form>`;
 }
 
@@ -1157,6 +1564,7 @@ const PAGES = {
   inventory: renderInventory,
   slider: renderSliderAdmin,
   featured: renderFeaturedAdmin,
+  gallery: renderGalleryAdmin,
   settings: renderSettings,
   users: renderUsers,
 };
@@ -1215,10 +1623,17 @@ document.addEventListener("click", (e) => {
   if (e.target.closest("[data-sidebar-toggle]")) document.querySelector(".admin-app").classList.toggle("nav-open");
   if (e.target.closest("[data-close-modal]") || e.target.matches("[data-modal]")) closeModal();
   const delP = e.target.closest("[data-del-product]");
-  if (delP && confirm("حذف هذا المنتج؟")) {
+  if (delP) {
+    const product = db().products.find((x) => x.id === delP.dataset.delProduct);
+    if (product) openModal(productDeleteConfirmModal(product));
+    else toast("المنتج غير موجود");
+  }
+  const confirmDelP = e.target.closest("[data-confirm-del-product]");
+  if (confirmDelP) {
     void (async () => {
       try {
-        await StoreDB.deleteProduct(delP.dataset.delProduct);
+        await StoreDB.deleteProduct(confirmDelP.dataset.confirmDelProduct);
+        closeModal();
         toast("تم حذف المنتج");
         render();
       } catch (err) {
@@ -1268,9 +1683,15 @@ document.addEventListener("click", (e) => {
       }
     })();
   }
-  if (e.target.closest("[data-add-slide]")) openModal(slideForm());
+  if (e.target.closest("[data-add-slide]")) {
+    openModal(slideForm(), { wide: true });
+    setupSlideEditor();
+  }
   const editSlide = e.target.closest("[data-edit-slide]");
-  if (editSlide) openModal(slideForm(db().slides.find((x) => x.id === editSlide.dataset.editSlide)));
+  if (editSlide) {
+    openModal(slideForm(db().slides.find((x) => x.id === editSlide.dataset.editSlide)), { wide: true });
+    setupSlideEditor();
+  }
   const delSlide = e.target.closest("[data-del-slide]");
   if (delSlide && confirm("حذف هذه الشريحة؟")) {
     void (async () => {
@@ -1352,11 +1773,31 @@ document.addEventListener("click", (e) => {
       updatePsIdsForm(form, ids);
     }
   }
-  if (e.target.closest("[data-add-ps]")) openModal(productSliderForm());
+  if (e.target.closest("[data-add-ps]")) {
+    openModal(productSliderForm(), { wide: true });
+    syncPsFormPanels(document.querySelector("[data-ps-form]"));
+  }
+  const clearGallery = e.target.closest("[data-clear-gallery]");
+  if (clearGallery) {
+    const slot = clearGallery.closest("[data-gallery-slot]");
+    if (slot) {
+      const key = clearGallery.dataset.clearGallery;
+      const keep = slot.querySelector(`input[name="keep_${key}"]`);
+      if (keep) keep.value = "";
+      const thumb = slot.querySelector(".gallery-slot-thumb");
+      if (thumb) thumb.innerHTML = `<div class="gallery-slot-empty">${esc(slot.querySelector("strong")?.textContent || "صورة")}</div>`;
+      const file = slot.querySelector(`input[name="file_${key}"]`);
+      if (file) file.value = "";
+      clearGallery.disabled = true;
+    }
+  }
   const editPs = e.target.closest("[data-edit-ps]");
-  if (editPs) openModal(productSliderForm(db().productSliders.find((x) => x.id === editPs.dataset.editPs)));
+  if (editPs) {
+    openModal(productSliderForm(db().productSliders.find((x) => x.id === editPs.dataset.editPs)), { wide: true });
+    syncPsFormPanels(document.querySelector("[data-ps-form]"));
+  }
   const delPs = e.target.closest("[data-del-ps]");
-  if (delPs && confirm("حذف هذا السلاider؟")) {
+  if (delPs && confirm("حذف هذا السلايدر؟")) {
     void (async () => {
       try {
         await StoreDB.deleteProductSlider(delPs.dataset.delPs);
@@ -1429,6 +1870,11 @@ document.addEventListener("click", (e) => {
       }
     })();
   }
+  const customerHistory = e.target.closest("[data-customer-history]");
+  if (customerHistory) {
+    openCustomerHistoryByPhone(customerHistory.dataset.customerHistory);
+    return;
+  }
   const orderDetail = e.target.closest("[data-order-detail]");
   if (orderDetail) {
     const o = db().orders.find((x) => x.id === orderDetail.dataset.orderDetail);
@@ -1436,16 +1882,30 @@ document.addEventListener("click", (e) => {
     return;
   }
   const delOrder = e.target.closest("[data-del-order]");
-  if (delOrder && confirm("حذف هذا الطلب نهائياً؟")) {
+  if (delOrder) {
+    const order = db().orders.find((x) => x.id === delOrder.dataset.delOrder);
+    if (!order) {
+      toast("الطلب غير موجود");
+      return;
+    }
+    openModal(orderDeleteConfirmModal(order, delOrder.dataset.delOrderReturnPhone || ""));
+    return;
+  }
+  const confirmDelOrder = e.target.closest("[data-confirm-del-order]");
+  if (confirmDelOrder) {
+    const returnPhone = confirmDelOrder.dataset.delOrderReturnPhone || "";
     void (async () => {
       try {
-        await StoreDB.deleteOrder(delOrder.dataset.delOrder);
-        toast("تم حذف الطلب");
+        await StoreDB.deleteOrder(confirmDelOrder.dataset.confirmDelOrder);
+        toast("تم حذف سجل الشراء");
         render();
+        if (returnPhone) openCustomerHistoryByPhone(returnPhone);
+        else closeModal();
       } catch (err) {
         toast(err.message || "تعذر الحذف");
       }
     })();
+    return;
   }
   const rmImg = e.target.closest("[data-rm-img]");
   if (rmImg) {
@@ -1507,6 +1967,13 @@ document.addEventListener("change", (e) => {
     updatePsIdsForm(form, ids);
     e.target.value = "";
   }
+  if (e.target.matches("[data-ps-source], [data-ps-brand]")) {
+    const form = e.target.closest("[data-ps-form]");
+    syncPsFormPanels(form);
+  }
+  if (e.target.matches("[data-ps-link]")) {
+    e.target.dataset.touched = "1";
+  }
   if (e.target.matches("[data-slide-file]")) {
     void (async () => {
       const file = e.target.files?.[0];
@@ -1517,8 +1984,7 @@ document.addEventListener("change", (e) => {
         const form = e.target.closest("form");
         const hidden = form?.querySelector("[data-slide-image]");
         if (hidden) hidden.value = url;
-        const preview = form?.querySelector("[data-slide-preview]");
-        if (preview) preview.innerHTML = `<img src="${esc(resolveAdminAsset(url))}" alt="" />`;
+        setupSlideEditor();
         toast("تم رفع الصورة");
       } catch (err) {
         toast(err.message || "تعذر رفع الصورة");
@@ -1529,7 +1995,10 @@ document.addEventListener("change", (e) => {
     const form = e.target.closest("form");
     if (!form) return;
     const p = db().products.find((x) => x.id === e.target.value);
-    if (!p) return;
+    if (!p) {
+      setupSlideEditor();
+      return;
+    }
     const set = (name, val) => {
       const el = form.querySelector(`[name="${name}"]`);
       if (el && !el.value) el.value = val || "";
@@ -1546,9 +2015,8 @@ document.addEventListener("change", (e) => {
     const hidden = form.querySelector("[data-slide-image]");
     if (hidden && !hidden.value && p.image) {
       hidden.value = p.image;
-      const preview = form.querySelector("[data-slide-preview]");
-      if (preview) preview.innerHTML = `<img src="${esc(resolveAdminAsset(p.image))}" alt="" />`;
     }
+    setupSlideEditor();
   }
 });
 
@@ -1708,11 +2176,31 @@ document.addEventListener("submit", (e) => {
     void (async () => {
       const f = new FormData(psFormEl);
       const id = psFormEl.dataset.id || StoreDB.uid("ps");
+      const source = f.get("source") || "category";
       let productIds = [];
-      try {
-        productIds = JSON.parse(f.get("productIds") || "[]");
-      } catch {
-        productIds = [];
+      let brand = "";
+      let category = "all";
+      let limit = Number(f.get("limit") || 8);
+      if (source === "manual") {
+        try {
+          productIds = JSON.parse(f.get("productIds") || "[]");
+        } catch {
+          productIds = [];
+        }
+        if (!Array.isArray(productIds) || !productIds.length) {
+          toast("أضف منتجاً واحداً على الأقل للوضع اليدوي");
+          return;
+        }
+      } else if (source === "brand") {
+        brand = String(f.get("brand") || "").trim();
+        limit = Number(f.get("limitBrand") || f.get("limit") || 8);
+        if (!brand) {
+          toast("اختر الماركة");
+          return;
+        }
+      } else {
+        category = f.get("category") || "all";
+        limit = Number(f.get("limit") || 8);
       }
       const item = {
         id,
@@ -1720,17 +2208,18 @@ document.addEventListener("submit", (e) => {
         active: f.get("active") === "1",
         eyebrow: f.get("eyebrow") || "",
         title: f.get("title"),
-        category: f.get("category") || "all",
-        limit: Number(f.get("limit") || 8),
+        category,
+        brand,
+        limit,
         productIds: Array.isArray(productIds) ? productIds : [],
-        autoplay: f.get("autoplay") === "1",
-        speedMs: Math.round(Number(f.get("speedSec") || 4.5) * 1000),
-        linkUrl: f.get("linkUrl") || "products.html",
+        autoplay: false,
+        speedMs: 4500,
+        linkUrl: f.get("linkUrl") || (brand ? `products.html?brand=${encodeURIComponent(brand)}` : "products.html"),
       };
       try {
         await StoreDB.saveProductSlider(item);
         closeModal();
-        toast("تم حفظ السلاider");
+        toast("تم حفظ السلايدر");
         render();
       } catch (err) {
         toast(err.message || "تعذر الحفظ");
@@ -1775,6 +2264,39 @@ document.addEventListener("submit", (e) => {
           toast(err.message || "تعذر رفع الشعار");
         }
       } else finish();
+    })();
+  }
+  const galleryForm = e.target.closest("[data-gallery-form]");
+  if (galleryForm) {
+    e.preventDefault();
+    void (async () => {
+      const f = new FormData(galleryForm);
+      const keys = ["wide", "tall", "bottomStart", "bottomEnd"];
+      const images = {};
+      try {
+        for (const key of keys) {
+          const file = galleryForm.querySelector(`input[name="file_${key}"]`)?.files?.[0];
+          if (file) {
+            const dataUrl = await readFileAsDataUrl(file);
+            images[key] = await StoreDB.uploadImage(dataUrl, "gallery");
+          } else {
+            images[key] = String(f.get(`keep_${key}`) || "");
+          }
+        }
+        const next = {
+          ...db().settings,
+          officeGallery: {
+            active: f.get("active") === "1",
+            title: String(f.get("title") || "من داخل مكتب بيست لابتوب").trim(),
+            images,
+          },
+        };
+        await StoreDB.saveSettings(next);
+        toast("تم حفظ معرض المكتب");
+        render();
+      } catch (err) {
+        toast(err.message || "تعذر الحفظ");
+      }
     })();
   }
   const userFormEl = e.target.closest("[data-user-form]");

@@ -11,10 +11,12 @@ const ICONS = {
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9.2 4.5h5.6l.7 1.2H20v1.6H4V5.7h4.5zm1.1 4.2h1.6V18h-1.6zm3.8 0h1.6V18h-1.6zM7.3 8.7h1.6V18H7.3z"/></svg>',
   check:
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9.2 16.2 4.8 11.8l1.4-1.4 3 3 8.6-8.6 1.4 1.4z"/></svg>',
-  bag: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 8V7a5 5 0 0 1 10 0v1h3v13H4V8zm2 0h6V7a3 3 0 0 0-6 0z"/></svg>',
+  bag: '<svg class="cart-ico" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 8V7a5 5 0 0 1 10 0v1h3v13H4V8zm2 0h6V7a3 3 0 0 0-6 0z"/></svg>',
   truck:
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 6h11v10H3zm12 3h4l3 4v3h-7zm-9 9.5A1.5 1.5 0 1 0 7.5 18 1.5 1.5 0 0 0 6 18.5zm11 0A1.5 1.5 0 1 0 18.5 18 1.5 1.5 0 0 0 17 18.5z"/></svg>',
   card: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 6h18v12H3zm2 4h14V8H5z"/></svg>',
+  whatsapp:
+    '<svg class="wa-ico" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12.04 2c-5.46 0-9.91 4.44-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.44 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.42a8.18 8.18 0 0 1 2.41 5.83c0 4.54-3.7 8.23-8.24 8.23-1.48 0-2.93-.39-4.19-1.15l-.3-.17-3.12.82.83-3.04-.2-.32a8.2 8.2 0 0 1-1.26-4.38c.01-4.54 3.7-8.24 8.25-8.24m4.52 10.4c-.25-.12-1.47-.72-1.7-.8-.22-.09-.39-.12-.55.13-.16.24-.64.79-.78.95-.14.16-.29.18-.54.06-.25-.12-1.05-.39-2-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.24-.02-.37.11-.49.11-.11.25-.29.37-.43.12-.14.16-.24.25-.41.08-.16.04-.31-.02-.43-.06-.12-.55-1.33-.76-1.82-.2-.48-.4-.41-.55-.42h-.47c-.16 0-.43.06-.65.31-.22.24-.86.84-.86 2.05s.88 2.37 1 2.54c.12.16 1.75 2.67 4.24 3.74 2.49 1.07 2.49.71 2.94.67.45-.04 1.47-.6 1.67-1.18.21-.58.21-1.07.14-1.18-.06-.1-.23-.17-.48-.29"/></svg>',
   searchEmpty:
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10 4a6 6 0 1 0 3.8 10.7L19 19.6 20.4 18l-5.2-5.2A6 6 0 0 0 10 4m0 2a4 4 0 1 1 0 8 4 4 0 0 1 0-8M4 20h16v2H4z"/></svg>',
 };
@@ -28,6 +30,89 @@ function resolveAsset(src) {
   if (!src) return "img/logo.jpg";
   if (src.startsWith("data:") || src.startsWith("http") || src.startsWith("/")) return src;
   return src;
+}
+
+function youtubeIdFromUrl(url) {
+  if (!url || typeof url !== "string") return "";
+  const raw = url.trim();
+  if (!raw) return "";
+  try {
+    const u = new URL(raw);
+    const host = u.hostname.replace(/^www\./, "").toLowerCase();
+    if (host === "youtu.be") return (u.pathname.split("/").filter(Boolean)[0] || "").split("?")[0];
+    if (host === "youtube.com" || host === "m.youtube.com" || host === "music.youtube.com" || host === "youtube-nocookie.com") {
+      if (u.pathname.startsWith("/embed/")) return u.pathname.split("/")[2] || "";
+      if (u.pathname.startsWith("/shorts/")) return u.pathname.split("/")[2] || "";
+      if (u.pathname.startsWith("/live/")) return u.pathname.split("/")[2] || "";
+      return u.searchParams.get("v") || "";
+    }
+  } catch {
+    /* not a valid URL */
+  }
+  return "";
+}
+
+function youtubeBackgroundEmbedUrl(id, { autoplay = true } = {}) {
+  const q = new URLSearchParams({
+    autoplay: autoplay ? "1" : "0",
+    mute: "1",
+    controls: "0",
+    modestbranding: "1",
+    playsinline: "1",
+    rel: "0",
+    loop: "1",
+    playlist: id,
+    iv_load_policy: "3",
+    disablekb: "1",
+    fs: "0",
+    cc_load_policy: "0",
+    showinfo: "0",
+    enablejsapi: "1",
+  });
+  try {
+    if (typeof location !== "undefined" && location.origin && location.origin !== "null") {
+      q.set("origin", location.origin);
+    }
+  } catch {
+    /* ignore */
+  }
+  return `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?${q.toString()}`;
+}
+
+function heroMediaPanelHtml(videoUrl, imageUrl) {
+  const yt = youtubeIdFromUrl(videoUrl);
+  if (yt) {
+    const src = youtubeBackgroundEmbedUrl(yt, { autoplay: false });
+    const poster = imageUrl ? resolveAsset(imageUrl) : "";
+    const posterStyle = poster ? ` style="--yt-poster:url('${poster}')"` : "";
+    return `<div class="slider-panel slider-panel-video slider-panel-youtube"${posterStyle} data-yt-id="${yt}"><iframe data-yt-src="${src}" title="" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="eager" tabindex="-1"></iframe><div class="yt-poster" aria-hidden="true"></div><div class="yt-chrome-mask" aria-hidden="true"></div></div>`;
+  }
+  if (videoUrl) {
+    return `<div class="slider-panel slider-panel-video"><video src="${resolveAsset(videoUrl)}" muted playsinline loop preload="metadata"></video></div>`;
+  }
+  return `<div class="slider-panel" style="background-image:url('${resolveAsset(imageUrl)}')"></div>`;
+}
+
+function youtubeCommand(iframe, func, args = []) {
+  if (!iframe?.contentWindow) return;
+  const payload = JSON.stringify({ event: "command", func, args });
+  try {
+    iframe.contentWindow.postMessage(payload, "https://www.youtube-nocookie.com");
+    iframe.contentWindow.postMessage(payload, "https://www.youtube.com");
+  } catch {
+    /* cross-origin guarded */
+  }
+}
+
+function ensureYoutubeFrame(iframe, ytId, shouldPlay) {
+  if (!iframe || !ytId) return;
+  const want = youtubeBackgroundEmbedUrl(ytId, { autoplay: shouldPlay });
+  iframe.dataset.ytSrc = want;
+  const current = iframe.getAttribute("src") || "";
+  // حمّل الإطار فقط عند الحاجة (أول تشغيل) حتى يشتغل autoplay
+  if (!current && shouldPlay) {
+    iframe.setAttribute("src", want);
+  }
 }
 
 function phoneDigits(phone) {
@@ -82,6 +167,57 @@ function orderWhatsAppUrl(order) {
   const num = storeWhatsAppNumber();
   if (!num) return "#";
   return `https://wa.me/${num}?text=${encodeURIComponent(buildOrderWhatsAppMessage(order))}`;
+}
+
+function productAbsoluteUrl(productId) {
+  try {
+    return new URL(`product.html?id=${encodeURIComponent(productId)}`, window.location.href).href;
+  } catch {
+    return `product.html?id=${encodeURIComponent(productId)}`;
+  }
+}
+
+function buildProductInquiryWhatsAppMessage(p) {
+  if (!p) return "";
+  const storeName = STORE.nameAr || STORE.name || "BEST LAPTOP";
+  const oos = !inStock(p);
+  return [
+    `السلام عليكم، أريد الاستفسار عن منتج من ${storeName}:`,
+    "",
+    `*${p.name}*`,
+    oos ? "*الحالة: غير متوفر حالياً*" : "*الحالة: متوفر*",
+    `الماركة: ${p.brand || "—"}`,
+    `السعر: ${money(p.price)}`,
+    p.oldPrice ? `قبل الخصم: ${money(p.oldPrice)}` : "",
+    p.tag ? `الوسم: ${p.tag}` : "",
+    "",
+    "*تفاصيل المنتج:*",
+    p.cpu ? `المعالج: ${p.cpu}` : "",
+    p.gpu ? `كرت الشاشة: ${p.gpu}${p.tgp ? ` · ${p.tgp}` : ""}` : "",
+    p.ram ? `الذاكرة: ${p.ram}` : "",
+    p.storage ? `التخزين: ${p.storage}` : "",
+    p.screen ? `الشاشة: ${p.screen}` : "",
+    p.cooling ? `التبريد: ${p.cooling}` : "",
+    p.specs ? `مواصفات: ${p.specs}` : "",
+    "",
+    oos ? "أرغب بمعرفة موعد التوفر أو بديل مناسب لهذا الجهاز." : "",
+    `*رابط المنتج:*`,
+    productAbsoluteUrl(p.id),
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function productInquiryWhatsAppUrl(p) {
+  const num = storeWhatsAppNumber();
+  if (!num || !p) return "#";
+  return `https://wa.me/${num}?text=${encodeURIComponent(buildProductInquiryWhatsAppMessage(p))}`;
+}
+
+function productInquiryWhatsAppButton(p, extraClass = "") {
+  const href = productInquiryWhatsAppUrl(p);
+  const cls = ["btn", "btn-whatsapp", extraClass].filter(Boolean).join(" ");
+  return `<a class="${cls}" href="${href}" target="_blank" rel="noopener">${ICONS.whatsapp}<span>استفسار واتساب</span></a>`;
 }
 
 function applyStoreBranding() {
@@ -311,10 +447,6 @@ function cartDetails() {
   }));
 }
 
-function cartCount() {
-  return getCart().reduce((sum, i) => sum + i.qty, 0);
-}
-
 function cartTotal() {
   return cartPricing().total;
 }
@@ -438,8 +570,12 @@ function getSliderProducts(cfg = {}) {
   if (ids.length) {
     return ids.map((id) => PRODUCTS.find((p) => p.id === id)).filter(Boolean);
   }
-  const cat = cfg.category || "all";
+  const brand = (cfg.brand || "").trim();
   const limit = Number(cfg.limit) || 8;
+  if (brand) {
+    return PRODUCTS.filter((p) => p.brand === brand).slice(0, limit);
+  }
+  const cat = cfg.category || "all";
   if (cat === "new") {
     return [...PRODUCTS]
       .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
@@ -455,6 +591,53 @@ function getSliderProducts(cfg = {}) {
     );
   }
   return list.slice(0, limit);
+}
+
+function prefersFineHover() {
+  return window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+}
+
+function bindAutoplayEngagePause(root, api) {
+  if (!root || root.dataset.engagePauseBound === "1") return;
+  root.dataset.engagePauseBound = "1";
+
+  const resumeIfIdle = () => {
+    if (api.isHover() || api.isPress()) return;
+    api.play();
+  };
+
+  root.addEventListener("mouseenter", () => {
+    if (!prefersFineHover()) return;
+    api.setHover(true);
+    api.pause();
+  });
+  root.addEventListener("mouseleave", () => {
+    if (!prefersFineHover()) return;
+    api.setHover(false);
+    resumeIfIdle();
+  });
+
+  root.addEventListener(
+    "pointerdown",
+    () => {
+      api.setPress(true);
+      api.pause();
+    },
+    { passive: true }
+  );
+
+  const releasePress = () => {
+    if (!api.isPress()) return;
+    api.setPress(false);
+    resumeIfIdle();
+  };
+  window.addEventListener("pointerup", releasePress);
+  window.addEventListener("pointercancel", releasePress);
+
+  root._engagePauseDestroy = () => {
+    window.removeEventListener("pointerup", releasePress);
+    window.removeEventListener("pointercancel", releasePress);
+  };
 }
 
 function productSliderSectionHtml(cfg) {
@@ -545,25 +728,11 @@ function initProductSlider(root, products, cfg) {
   function play() {
     clearInterval(root._productSliderTimer);
     root._productSliderTimer = null;
-    if (root._productSliderHover || root._productSliderPress) return;
-    const speed = Number(root._productSliderCfg?.speedMs) || 4500;
-    if (root._productSliderCfg?.autoplay === false) return;
-    root._productSliderTimer = setInterval(() => {
-      const max = maxOffset();
-      if (max <= 0) return;
-      if (offsetPx >= max - 1) offsetPx = 0;
-      else offsetPx = clampOffset(offsetPx + stepPx());
-      applyTransform(false);
-    }, speed);
   }
 
   function pauseAuto() {
     clearInterval(root._productSliderTimer);
     root._productSliderTimer = null;
-  }
-
-  function finePointerHover() {
-    return window.matchMedia("(hover: hover) and (pointer: fine)").matches;
   }
 
   root._productSliderShift = shiftBy;
@@ -574,30 +743,22 @@ function initProductSlider(root, products, cfg) {
     if (root._productSliderResize) window.removeEventListener("resize", root._productSliderResize);
   };
 
+  bindAutoplayEngagePause(root, {
+    isHover: () => !!root._productSliderHover,
+    isPress: () => !!root._productSliderPress,
+    setHover: (v) => {
+      root._productSliderHover = v;
+    },
+    setPress: (v) => {
+      root._productSliderPress = v;
+    },
+    pause: () => root._productSliderPause?.(),
+    play: () => root._productSliderPlay?.(),
+  });
+
   if (!root.dataset.productSliderBound) {
     root.dataset.productSliderBound = "1";
     root.tabIndex = 0;
-    root.addEventListener("mouseenter", () => {
-      if (!finePointerHover()) return;
-      root._productSliderHover = true;
-      root._productSliderPause();
-    });
-    root.addEventListener("mouseleave", () => {
-      root._productSliderHover = false;
-      root._productSliderPress = false;
-      root._productSliderPlay();
-    });
-    root.addEventListener("pointerdown", () => {
-      root._productSliderPress = true;
-      root._productSliderPause();
-    });
-    const releasePsPress = () => {
-      if (!root._productSliderPress) return;
-      root._productSliderPress = false;
-      root._productSliderPlay();
-    };
-    root.addEventListener("pointerup", releasePsPress);
-    root.addEventListener("pointercancel", releasePsPress);
     root.addEventListener("keydown", (e) => {
       if (e.key === "ArrowLeft") {
         shiftBy(-1);
@@ -622,26 +783,47 @@ function initProductSlider(root, products, cfg) {
 
     viewport.addEventListener("pointerdown", (e) => {
       if (e.pointerType === "mouse" && e.button !== 0) return;
-      if (e.target.closest("button, a, [data-add]")) return;
-      dragging = true;
+      if (e.target.closest("[data-add], [data-ps-prev], [data-ps-next]")) return;
+      dragging = false;
       dragMoved = false;
       dragStartX = e.clientX;
       dragStartOffset = offsetPx;
-      viewport.setPointerCapture(e.pointerId);
-      viewport.classList.add("is-dragging");
+      viewport._dragArmed = true;
+      viewport._dragPointerId = e.pointerId;
       root._productSliderPause();
     });
 
     viewport.addEventListener("pointermove", (e) => {
-      if (!dragging) return;
+      if (!viewport._dragArmed && !dragging) return;
+      if (viewport._dragPointerId != null && e.pointerId !== viewport._dragPointerId) return;
       const dx = e.clientX - dragStartX;
-      if (Math.abs(dx) > 4) dragMoved = true;
+      if (!dragging) {
+        if (Math.abs(dx) < 12) return;
+        dragging = true;
+        dragMoved = true;
+        viewport._dragArmed = false;
+        try {
+          viewport.setPointerCapture(e.pointerId);
+        } catch {
+          /* capture unsupported */
+        }
+        viewport.classList.add("is-dragging");
+      }
       offsetPx = clampOffset(dragStartOffset - dx);
       applyTransform(true);
     });
 
     const endDrag = (e) => {
-      if (!dragging) return;
+      if (viewport._dragPointerId != null && e.pointerId !== viewport._dragPointerId) return;
+      const wasDragging = dragging;
+      viewport._dragArmed = false;
+      viewport._dragPointerId = null;
+      if (!wasDragging) {
+        dragging = false;
+        viewport.classList.remove("is-dragging");
+        if (!root._productSliderHover && !root._productSliderPress) play();
+        return;
+      }
       dragging = false;
       try {
         viewport.releasePointerCapture(e.pointerId);
@@ -650,18 +832,19 @@ function initProductSlider(root, products, cfg) {
       }
       viewport.classList.remove("is-dragging");
       snapToNearest(false);
-      if (!root._productSliderHover) play();
+      if (!root._productSliderHover && !root._productSliderPress) play();
     };
     viewport.addEventListener("pointerup", endDrag);
     viewport.addEventListener("pointercancel", endDrag);
+    viewport.addEventListener("lostpointercapture", endDrag);
 
     viewport.addEventListener(
       "click",
       (e) => {
-        if (dragMoved) {
-          e.preventDefault();
-          e.stopPropagation();
-        }
+        if (!dragMoved) return;
+        e.preventDefault();
+        e.stopPropagation();
+        dragMoved = false;
       },
       true
     );
@@ -673,7 +856,48 @@ function initProductSlider(root, products, cfg) {
   }
 
   snapToNearest(true);
-  if (!root._productSliderHover) play();
+  if (!root._productSliderHover && !root._productSliderPress) play();
+}
+
+function renderOfficeGallery() {
+  const mount = document.querySelector("[data-office-gallery]");
+  if (!mount) return;
+
+  const g = STORE.officeGallery || {};
+  const images = g.images || {};
+  const slots = [
+    { key: "tall", area: "tall" },
+    { key: "wide", area: "wide" },
+    { key: "bottomStart", area: "b1" },
+    { key: "bottomEnd", area: "b2" },
+  ];
+  const hasAny = slots.some((s) => images[s.key]);
+  if (g.active === false || !hasAny) {
+    mount.hidden = true;
+    mount.innerHTML = "";
+    return;
+  }
+
+  const title = g.title || "من داخل مكتب بيست لابتوب";
+  const cells = slots
+    .map((s) => {
+      const src = images[s.key];
+      if (!src) {
+        return `<div class="office-gallery-cell office-gallery-cell--empty" style="grid-area:${s.area}" aria-hidden="true"></div>`;
+      }
+      return `<figure class="office-gallery-cell" style="grid-area:${s.area}">
+        <img src="${resolveAsset(src)}" alt="" loading="lazy" decoding="async" />
+      </figure>`;
+    })
+    .join("");
+
+  mount.hidden = false;
+  mount.innerHTML = `<div class="container">
+    <div class="office-gallery-head">
+      <h2 class="office-gallery-title">${title.replace(/</g, "&lt;")}</h2>
+    </div>
+    <div class="office-gallery-grid">${cells}</div>
+  </div>`;
 }
 
 function renderFeatured() {
@@ -687,11 +911,14 @@ function renderFeatured() {
   sliders = sliders.filter((s) => s.active !== false);
 
   const fp = JSON.stringify(
-    sliders.map((s) => [s.id, s.title, s.category, s.limit, ...(s.productIds || [])].join("|"))
+    sliders.map((s) => [s.id, s.title, s.category, s.brand || "", s.limit, ...(s.productIds || [])].join("|"))
   );
 
   if (mount._productSlidersFp !== fp) {
-    mount.querySelectorAll("[data-product-slider]").forEach((node) => node._productSliderCleanup?.());
+    mount.querySelectorAll("[data-product-slider]").forEach((node) => {
+      node._productSliderCleanup?.();
+      node._engagePauseDestroy?.();
+    });
     mount._productSlidersFp = fp;
 
     if (!sliders.length) {
@@ -725,15 +952,22 @@ function renderNewProductsSlider() {
   mount._newProductsFp = fp;
 
   if (!products.length) {
+    const oldEmpty = mount.querySelector("[data-product-slider]");
+    oldEmpty?._productSliderCleanup?.();
+    oldEmpty?._engagePauseDestroy?.();
     mount.innerHTML = "";
     return;
   }
+
+  const old = mount.querySelector("[data-product-slider]");
+  old?._productSliderCleanup?.();
+  old?._engagePauseDestroy?.();
 
   const cfg = {
     id: "new-arrivals",
     eyebrow: "وصل حديثاً",
     title: "أحدث المنتجات",
-    autoplay: true,
+    autoplay: false,
     speedMs: 4200,
     linkUrl: "products.html",
   };
@@ -1022,7 +1256,7 @@ function renderProductPage() {
       </label>`;
   el.innerHTML = `
     <button type="button" class="pdp-back btn btn-ghost" data-back-page aria-label="رجوع">
-      <span aria-hidden="true">→</span> رجوع
+      رجوع <span aria-hidden="true">→</span>
     </button>
     <div class="pdp-gallery" data-pdp-gallery>
       <div class="pdp-carousel">
@@ -1069,12 +1303,15 @@ function renderProductPage() {
       </div>`
       }
       <p class="muted">${STORE.warranty} · الاستلام من ${STORE.fullAddress}</p>
-      <div class="hero-cta" style="margin-top: 18px">
-        ${
-          oos
-            ? `<button class="btn btn-ghost" type="button" disabled>غير متوفر</button>`
-            : `<button class="btn btn-primary" data-add="${p.id}">أضف إلى السلة</button>`
-        }
+      <div class="pdp-cta">
+        <div class="pdp-cta-row">
+          ${
+            oos
+              ? `<span class="btn-oos" role="status" aria-live="polite"><span class="oos-dot" aria-hidden="true"></span>غير متوفر حالياً</span>`
+              : `<button class="btn btn-primary" data-add="${p.id}">${ICONS.bag}<span>أضف إلى السلة</span></button>`
+          }
+          ${productInquiryWhatsAppButton(p)}
+        </div>
         <a class="btn btn-ghost" href="products.html">كل المنتجات</a>
       </div>
       <table class="spec-table">
@@ -1311,9 +1548,6 @@ function catLabel(cat) {
 }
 
 function renderCart() {
-  document.querySelectorAll("[data-cart-count]").forEach((el) => {
-    el.textContent = cartCount();
-  });
   const list = document.querySelector("[data-cart-items]");
   const total = document.querySelector("[data-cart-total]");
   if (!list) return;
@@ -1342,6 +1576,7 @@ function renderCart() {
 }
 
 function openCart() {
+  closeMobileNav();
   document.querySelector("[data-overlay]")?.classList.add("open");
   document.querySelector("[data-drawer]")?.classList.add("open");
 }
@@ -1349,6 +1584,154 @@ function openCart() {
 function closeCart() {
   document.querySelector("[data-overlay]")?.classList.remove("open");
   document.querySelector("[data-drawer]")?.classList.remove("open");
+}
+
+function currentPageFile() {
+  return (location.pathname.split("/").pop() || "index.html").toLowerCase() || "index.html";
+}
+
+function navHrefActive(href) {
+  const dest = new URL(href, location.href);
+  const destFile = (dest.pathname.split("/").pop() || "index.html").toLowerCase();
+  const here = currentPageFile();
+  if (destFile !== here) return false;
+  if (destFile === "products.html") {
+    return (dest.searchParams.get("cat") || "") === (new URLSearchParams(location.search).get("cat") || "");
+  }
+  return true;
+}
+
+function closeMobileNav() {
+  document.body.classList.remove("nav-open");
+  document.querySelectorAll("[data-menu]").forEach((btn) => btn.setAttribute("aria-expanded", "false"));
+  const drawer = document.querySelector("[data-mobile-nav]");
+  if (drawer) drawer.setAttribute("aria-hidden", "true");
+}
+
+function openMobileNav() {
+  closeCart();
+  closeFiltersDrawer();
+  document.querySelector("[data-search-box]")?.classList.remove("open");
+  paintMobileNav();
+  document.body.classList.add("nav-open");
+  document.querySelectorAll("[data-menu]").forEach((btn) => btn.setAttribute("aria-expanded", "true"));
+  const drawer = document.querySelector("[data-mobile-nav]");
+  if (drawer) drawer.setAttribute("aria-hidden", "false");
+  drawer?.querySelector(".mobile-nav-close")?.focus();
+}
+
+function toggleMobileNav() {
+  if (document.body.classList.contains("nav-open")) closeMobileNav();
+  else openMobileNav();
+}
+
+function paintMobileNav() {
+  const drawer = document.querySelector("[data-mobile-nav]");
+  if (!drawer) return;
+  const s = typeof STORE !== "undefined" ? STORE : {};
+  const cats =
+    typeof CATEGORIES !== "undefined" && CATEGORIES.length
+      ? CATEGORIES
+      : [
+          { id: "gaming", title: "لابتوبات القيمنق", text: "شاشات عالية التردد وكروت RTX" },
+          { id: "production", title: "لابتوبات الإنتاج", text: "OLED ودقة ألوان للمونتاج" },
+          { id: "oled", title: "شاشات OLED", text: "تغطية لونية للمصممين" },
+          { id: "workstation", title: "محطات العمل", text: "ذاكرة واسعة ورندر ثقيل" },
+        ];
+  const pages = [
+    { href: "index.html", label: "الرئيسية" },
+    { href: "products.html", label: "المنتجات" },
+    { href: "contact.html", label: "التواصل" },
+    { href: "cart.html", label: "السلة" },
+  ];
+  const phone = s.phone || "";
+  const tel = phoneDigits(phone);
+  const wa = storeWhatsAppNumber();
+  const address = s.fullAddress || [s.city, s.address].filter(Boolean).join(" · ");
+  const logo = resolveAsset(s.logo || "img/logo.jpg");
+
+  drawer.innerHTML = `
+    <div class="mobile-nav-head">
+      <a class="logo" href="index.html" data-close-nav>
+        <img src="${logo}" alt="${s.name || "BEST LAPTOP"}" />
+        <span class="logo-text">
+          <strong>${s.name || "BEST LAPTOP"}</strong>
+          <small>${s.nameAr || "بيست لابتوب"}</small>
+        </span>
+      </a>
+      <button class="icon-btn mobile-nav-close" type="button" data-close-nav aria-label="إغلاق القائمة">×</button>
+    </div>
+    <div class="mobile-nav-body">
+      <form class="mobile-nav-search" action="products.html" method="get">
+        <input name="q" type="search" placeholder="ابحث عن لابتوب..." aria-label="بحث" />
+        <button class="btn btn-primary" type="submit">بحث</button>
+      </form>
+      <p class="mobile-nav-label">القائمة</p>
+      ${pages
+        .map(
+          (p) =>
+            `<a class="mobile-nav-link${navHrefActive(p.href) ? " active" : ""}" href="${p.href}">${p.label}</a>`
+        )
+        .join("")}
+      <p class="mobile-nav-label">الأقسام</p>
+      <div class="mobile-nav-cats">
+        ${cats
+          .map((c) => {
+            const href = `products.html?cat=${encodeURIComponent(c.id)}`;
+            return `<a class="mobile-nav-cat${navHrefActive(href) ? " active" : ""}" href="${href}"><strong>${c.title}</strong><small>${c.text || ""}</small></a>`;
+          })
+          .join("")}
+      </div>
+      <p class="mobile-nav-label">تواصل سريع</p>
+      <div class="mobile-nav-actions">
+        ${tel ? `<a class="mobile-nav-link" href="tel:${tel}">اتصال · ${phone}</a>` : ""}
+        ${wa ? `<a class="mobile-nav-link" href="https://wa.me/${wa}" target="_blank" rel="noopener">واتساب</a>` : ""}
+        <a class="mobile-nav-link" href="contact.html">موقع المعرض</a>
+      </div>
+    </div>
+    <div class="mobile-nav-foot">
+      <p class="mobile-nav-meta">${address || ""}${s.hours ? `<br>${s.hours}` : ""}</p>
+      <button class="btn btn-ghost mobile-nav-theme" data-theme-toggle type="button" aria-label="تبديل المظهر">فاتح</button>
+    </div>`;
+
+  if (typeof applyTheme === "function") applyTheme(currentTheme());
+}
+
+function setupMobileNav() {
+  document.querySelectorAll("[data-menu]").forEach((btn) => {
+    btn.setAttribute("aria-controls", "mobile-nav");
+    btn.setAttribute("aria-expanded", document.body.classList.contains("nav-open") ? "true" : "false");
+    if (!btn.querySelector(".menu-bars")) {
+      btn.innerHTML = '<span class="menu-bars" aria-hidden="true"></span>';
+    }
+    if (!btn.getAttribute("aria-label")) btn.setAttribute("aria-label", "فتح القائمة");
+  });
+
+  if (!document.querySelector("[data-mobile-nav-backdrop]")) {
+    const backdrop = document.createElement("div");
+    backdrop.className = "mobile-nav-backdrop";
+    backdrop.dataset.mobileNavBackdrop = "";
+    backdrop.dataset.closeNav = "";
+    document.body.appendChild(backdrop);
+  }
+  if (!document.querySelector("[data-mobile-nav]")) {
+    const drawer = document.createElement("aside");
+    drawer.className = "mobile-nav";
+    drawer.id = "mobile-nav";
+    drawer.dataset.mobileNav = "";
+    drawer.setAttribute("aria-hidden", "true");
+    drawer.setAttribute("aria-label", "قائمة الموقع");
+    document.body.appendChild(drawer);
+  }
+
+  paintMobileNav();
+
+  if (setupMobileNav._bound) return;
+  setupMobileNav._bound = true;
+
+  window.matchMedia("(max-width: 1020px)").addEventListener("change", (e) => {
+    if (!e.matches) closeMobileNav();
+  });
 }
 
 function showToast(msg) {
@@ -1656,7 +2039,7 @@ function renderOrderPage() {
       <h1>شكراً لك، ${order.customer.name}</h1>
       <p class="muted">رقم الطلب <strong>${order.id}</strong> — سنتواصل على ${order.customer.phone} لتأكيد التسليم.</p>
       <div class="order-wa-actions">
-        <a class="btn btn-whatsapp btn-lg" href="${orderWhatsAppUrl(order)}" target="_blank" rel="noopener">تأكيد الطلب عبر واتساب</a>
+        <a class="btn btn-whatsapp btn-lg" href="${orderWhatsAppUrl(order)}" target="_blank" rel="noopener">${ICONS.whatsapp}<span>تأكيد الطلب عبر واتساب</span></a>
         <p class="muted">يُفتح واتساب برسالة جاهزة فيها كل تفاصيل طلبك للمدير.</p>
       </div>
       <div class="shop-layout">
@@ -1737,12 +2120,7 @@ function renderSlider() {
     if (track) {
       track.innerHTML = [...slides]
         .reverse()
-        .map((s) => {
-          if (s.videoUrl) {
-            return `<div class="slider-panel slider-panel-video"><video src="${resolveAsset(s.videoUrl)}" autoplay muted loop playsinline></video></div>`;
-          }
-          return `<div class="slider-panel" style="background-image:url('${resolveAsset(s.image)}')"></div>`;
-        })
+        .map((s) => heroMediaPanelHtml(s.videoUrl, s.image))
         .join("");
     }
     const dotsEl = root.querySelector("[data-slide-dots]");
@@ -1794,8 +2172,85 @@ function renderSlider() {
         addBtn.hidden = true;
       }
     }
+    const waBtn = root.querySelector("[data-slide-wa]");
+    if (waBtn) {
+      const product = s.productId ? PRODUCTS.find((p) => p.id === s.productId) : null;
+      if (product) {
+        waBtn.href = productInquiryWhatsAppUrl(product);
+        waBtn.innerHTML = `${ICONS.whatsapp}<span>استفسار واتساب</span>`;
+        waBtn.hidden = false;
+      } else {
+        waBtn.hidden = true;
+        waBtn.removeAttribute("href");
+        waBtn.innerHTML = "";
+      }
+    }
     root.querySelectorAll("[data-dot]").forEach((dot, idx) => {
       dot.classList.toggle("on", idx === root._sliderIndex);
+    });
+    syncHeroMedia();
+  }
+
+  function syncHeroMedia() {
+    if (!track) return;
+    const list = root._sliderSlides || [];
+    [...track.children].forEach((panel, domIdx) => {
+      const slideIdx = list.length - 1 - domIdx;
+      const active = slideIdx === root._sliderIndex;
+      const iframe = panel.querySelector("iframe[data-yt-src]");
+      const video = panel.querySelector("video");
+      const ytId = panel.dataset.ytId || youtubeIdFromUrl(iframe?.dataset.ytSrc || "");
+
+      if (iframe && ytId) {
+        ensureYoutubeFrame(iframe, ytId, active);
+
+        if (!iframe.dataset.ytApiBound) {
+          iframe.dataset.ytApiBound = "1";
+          iframe.addEventListener("load", () => {
+            youtubeCommand(iframe, "mute");
+            const stillActive =
+              list.length - 1 - [...track.children].indexOf(panel) === root._sliderIndex;
+            if (stillActive) {
+              youtubeCommand(iframe, "playVideo");
+              panel.classList.add("is-yt-playing");
+            } else {
+              youtubeCommand(iframe, "pauseVideo");
+              panel.classList.remove("is-yt-playing");
+            }
+          });
+        }
+
+        if (active) {
+          // أول ظهور: حمّل مع autoplay حتى يشتغل حتى لو فشل postMessage
+          if (!iframe.getAttribute("src")) {
+            iframe.setAttribute("src", youtubeBackgroundEmbedUrl(ytId, { autoplay: true }));
+          } else {
+            youtubeCommand(iframe, "mute");
+            youtubeCommand(iframe, "playVideo");
+          }
+          window.clearTimeout(panel._ytRevealTimer);
+          panel._ytRevealTimer = window.setTimeout(() => panel.classList.add("is-yt-playing"), 200);
+        } else {
+          if (iframe.getAttribute("src")) {
+            youtubeCommand(iframe, "pauseVideo");
+          }
+          window.clearTimeout(panel._ytRevealTimer);
+          panel.classList.remove("is-yt-playing");
+        }
+      }
+
+      if (video) {
+        video.muted = true;
+        video.defaultMuted = true;
+        video.playsInline = true;
+        video.loop = true;
+        if (active) {
+          const playPromise = video.play();
+          if (playPromise?.catch) playPromise.catch(() => {});
+        } else {
+          video.pause();
+        }
+      }
     });
   }
 
@@ -1832,58 +2287,52 @@ function renderSlider() {
     root._sliderTimer = setInterval(() => go(root._sliderIndex + 1), 6500);
   }
 
-  function finePointerHover() {
-    return window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+  function pauseAuto() {
+    clearInterval(root._sliderTimer);
+    root._sliderTimer = null;
   }
 
   root._sliderGo = go;
   root._sliderPlay = play;
+  root._sliderPause = pauseAuto;
   root._sliderCleanup = () => clearInterval(root._sliderTimer);
+
+  bindAutoplayEngagePause(root, {
+    isHover: () => !!root._sliderHover,
+    isPress: () => !!root._sliderPress,
+    setHover: (v) => {
+      root._sliderHover = v;
+    },
+    setPress: (v) => {
+      root._sliderPress = v;
+    },
+    pause: () => root._sliderPause?.(),
+    play: () => root._sliderPlay?.(),
+  });
 
   if (!root.dataset.sliderBound) {
     root.dataset.sliderBound = "1";
-    root.addEventListener("mouseenter", () => {
-      if (!finePointerHover()) return;
-      root._sliderHover = true;
-      root._sliderPlay();
-    });
-    root.addEventListener("mouseleave", () => {
-      root._sliderHover = false;
-      root._sliderPress = false;
-      root._sliderPlay();
-    });
-    root.addEventListener("pointerdown", (e) => {
-      root._sliderPress = true;
-      root._sliderPlay();
-      if (e.target.closest("a, button, input, textarea, select")) return;
-      try {
-        root.setPointerCapture(e.pointerId);
-      } catch {
-        /* capture unsupported */
-      }
-    });
-    const releasePress = () => {
-      if (!root._sliderPress) return;
-      root._sliderPress = false;
-      root._sliderPlay();
-    };
-    root.addEventListener("pointerup", releasePress);
-    root.addEventListener("pointercancel", releasePress);
     root.addEventListener("click", (e) => {
       const api = e.currentTarget;
       if (e.target.closest("[data-prev]")) {
         api._sliderGo(api._sliderIndex - 1);
         api._sliderPlay();
+        return;
       }
       if (e.target.closest("[data-next]")) {
         api._sliderGo(api._sliderIndex + 1);
         api._sliderPlay();
+        return;
       }
       const dot = e.target.closest("[data-dot]");
       if (dot) {
         api._sliderGo(Number(dot.dataset.dot));
         api._sliderPlay();
+        return;
       }
+      if (e.target.closest("a, button, input, textarea, select, .slider-nav")) return;
+      const slideLink = api.querySelector("[data-slide-link]");
+      if (slideLink?.href) location.href = slideLink.href;
     });
     let touchX = 0;
     root.addEventListener(
@@ -1970,7 +2419,13 @@ document.addEventListener("click", (e) => {
   if (e.target.closest("[data-close-cart]")) closeCart();
   if (e.target.closest("[data-checkout]")) checkout();
   if (e.target.closest("[data-menu]")) {
-    document.body.classList.toggle("nav-open");
+    toggleMobileNav();
+  }
+  if (e.target.closest("[data-close-nav]")) {
+    closeMobileNav();
+  }
+  if (e.target.closest("[data-mobile-nav] a")) {
+    closeMobileNav();
   }
   if (e.target.closest("[data-filter-reset]")) {
     document.querySelectorAll("[data-price-min], [data-price-max], [data-search]").forEach((el) => {
@@ -2067,6 +2522,7 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     closeImageZoom();
     closeCartPrompt();
+    closeMobileNav();
     return;
   }
   const zoom = document.getElementById("pdp-zoom-layer");
@@ -2094,6 +2550,7 @@ async function bootStorefront() {
   renderSlider();
   renderNewProductsSlider();
   renderFeatured();
+  renderOfficeGallery();
   renderCatalog();
   renderProductPage();
   setupCheckoutForm();
@@ -2103,6 +2560,7 @@ async function bootStorefront() {
   renderOrderPage();
   applyStoreBranding();
   setupHeaderSearch();
+  setupMobileNav();
   initTouchPanStrips();
 }
 
@@ -2113,12 +2571,14 @@ window.addEventListener("store:updated", () => {
   renderShopFilters();
   renderNewProductsSlider();
   renderFeatured();
+  renderOfficeGallery();
   renderCatalog();
   renderProductPage();
   renderSlider();
   renderCartPage();
   renderCheckout();
   setupCheckoutForm();
+  setupMobileNav();
   initTouchPanStrips();
 });
 

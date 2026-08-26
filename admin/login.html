@@ -17,16 +17,34 @@
   </head>
   <body class="admin-login-body">
     <main class="login-wrap">
+      <button class="icon-btn login-theme-btn" type="button" data-theme-toggle aria-label="تبديل المظهر">فاتح</button>
       <form class="login-card" data-login>
-        <img src="../img/logo.jpg" alt="BEST LAPTOP" />
-        <p class="eyebrow">لوحة التحكم</p>
-        <h1>تسجيل الدخول</h1>
-        <label>اسم المستخدم<input name="username" required autocomplete="username" /></label>
-        <label>كلمة المرور<input name="password" type="password" required autocomplete="current-password" /></label>
+        <div class="login-brand">
+          <img src="../img/logo.jpg" alt="BEST LAPTOP" />
+          <div>
+            <strong>BEST LAPTOP</strong>
+            <small>بيست لابتوب</small>
+          </div>
+        </div>
+        <div class="login-head">
+          <p class="eyebrow">لوحة التحكم</p>
+          <h1>تسجيل الدخول</h1>
+          <p class="muted login-lead">أدخل بياناتك للوصول إلى إدارة المتجر والطلبات.</p>
+        </div>
+        <label>
+          اسم المستخدم
+          <input name="username" required autocomplete="username" placeholder="اكتب اسم المستخدم" />
+        </label>
+        <label class="login-pass-label">
+          كلمة المرور
+          <span class="login-pass-field">
+            <input name="password" type="password" required autocomplete="current-password" placeholder="••••••••" data-login-pass />
+            <button class="login-pass-toggle" type="button" data-toggle-pass aria-label="إظهار كلمة المرور" aria-pressed="false">إظهار</button>
+          </span>
+        </label>
         <p class="login-error" data-login-error hidden>بيانات الدخول غير صحيحة.</p>
         <button class="btn btn-primary btn-lg" type="submit">دخول</button>
-        <p class="muted demo-hint">اسم المستخدم: admin</p>
-        <a class="muted" href="../index.html">العودة للمتجر</a>
+        <a class="login-back" href="../index.html">← العودة للمتجر</a>
       </form>
     </main>
     <script src="../js/data.js?v=46"></script>
@@ -35,6 +53,16 @@
     <script src="../js/theme.js"></script>
     <script>
       if (StoreDB.session()) location.replace("index.html");
+      document.querySelector("[data-toggle-pass]")?.addEventListener("click", (e) => {
+        const btn = e.currentTarget;
+        const input = document.querySelector("[data-login-pass]");
+        if (!input) return;
+        const show = input.type === "password";
+        input.type = show ? "text" : "password";
+        btn.textContent = show ? "إخفاء" : "إظهار";
+        btn.setAttribute("aria-pressed", String(show));
+        btn.setAttribute("aria-label", show ? "إخفاء كلمة المرور" : "إظهار كلمة المرور");
+      });
       document.querySelector("[data-login]").addEventListener("submit", (e) => {
         e.preventDefault();
         const err = document.querySelector("[data-login-error]");

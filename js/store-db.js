@@ -14,8 +14,24 @@ const StoreDB = (() => {
 
   let cache = null;
 
+  function migrateAuthStorage() {
+    try {
+      const t = sessionStorage.getItem(TOKEN_KEY);
+      const u = sessionStorage.getItem(USER_KEY);
+      if (t && !localStorage.getItem(TOKEN_KEY)) {
+        localStorage.setItem(TOKEN_KEY, t);
+        if (u) localStorage.setItem(USER_KEY, u);
+      }
+      sessionStorage.removeItem(TOKEN_KEY);
+      sessionStorage.removeItem(USER_KEY);
+    } catch {
+      /* ignore */
+    }
+  }
+  migrateAuthStorage();
+
   function token() {
-    return sessionStorage.getItem(TOKEN_KEY);
+    return localStorage.getItem(TOKEN_KEY);
   }
 
   function authHeaders(json = true) {
@@ -64,6 +80,7 @@ const StoreDB = (() => {
         logo: cache.settings.logo || STORE.logo,
         notice: cache.settings.notice || "",
         featured: cache.settings.featured || STORE.featured,
+        officeGallery: cache.settings.officeGallery || STORE.officeGallery,
         city: cache.settings.city,
         address: cache.settings.address,
         fullAddress: cache.settings.fullAddress,
@@ -96,15 +113,15 @@ const StoreDB = (() => {
       if (body.error === "Admin accounts missing") throw new Error("لا يوجد حساب أدمن في قاعدة البيانات.");
       throw new Error(body.error || "Login failed");
     }
-    sessionStorage.setItem(TOKEN_KEY, body.token);
-    sessionStorage.setItem(USER_KEY, JSON.stringify(body.user));
+    localStorage.setItem(TOKEN_KEY, body.token);
+    localStorage.setItem(USER_KEY, JSON.stringify(body.user));
     await refresh();
     return body.user;
   }
 
   function session() {
     try {
-      return JSON.parse(sessionStorage.getItem(USER_KEY) || "null");
+      return JSON.parse(localStorage.getItem(USER_KEY) || "null");
     } catch {
       return null;
     }
@@ -113,8 +130,8 @@ const StoreDB = (() => {
   function logout() {
     const t = token();
     if (t) StoreAPI.fetchApi("/api/auth/logout", { method: "POST", headers: authHeaders(false) }).catch(() => {});
-    sessionStorage.removeItem(TOKEN_KEY);
-    sessionStorage.removeItem(USER_KEY);
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
     cache = null;
   }
 
@@ -261,7 +278,7 @@ const StoreDB = (() => {
     });
     const current = session();
     if (current?.id === id) {
-      sessionStorage.setItem(USER_KEY, JSON.stringify({ ...current, ...updated }));
+      localStorage.setItem(USER_KEY, JSON.stringify({ ...current, ...updated }));
     }
     await refresh();
     return updated;

@@ -95,6 +95,7 @@ const StoreAPI = (() => {
         if (next && next !== version) {
           await fetchStore();
           if (typeof renderFeatured === "function") renderFeatured();
+          if (typeof renderOfficeGallery === "function") renderOfficeGallery();
           if (typeof renderHeaderBrands === "function") renderHeaderBrands();
           if (typeof renderShopFilters === "function") renderShopFilters();
           if (typeof renderCatalog === "function") renderCatalog();
