@@ -894,15 +894,6 @@ function catalogEmptyState() {
             </div>
           </div>
         </div>
-        <aside class="catalog-empty-aside">
-          <h3>اقتراحات سريعة</h3>
-          <ul class="catalog-empty-tips">
-            <li>اختر «كل الفئات» من القائمة الجانبية</li>
-            <li>أزل فلتر السعر أو الماركة</li>
-            <li>ابحث بكلمة أقصر مثل RTX أو MSI</li>
-          </ul>
-          <a class="btn btn-ghost btn-block" href="contact.html">تواصل معنا للمساعدة</a>
-        </aside>
       </div>
     </section>`;
 }

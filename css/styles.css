@@ -743,9 +743,6 @@ body.filters-open { overflow: hidden; }
 }
 .catalog-empty-card {
   width: 100%;
-  display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(240px, 0.8fr);
-  gap: 0;
   border: 1px solid var(--line);
   border-radius: calc(var(--radius) + 6px);
   background:
@@ -754,13 +751,17 @@ body.filters-open { overflow: hidden; }
   box-shadow: var(--shadow);
   overflow: hidden;
   min-height: inherit;
+  display: grid;
+  place-items: center;
 }
 .catalog-empty-main {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   gap: 24px;
   align-items: center;
-  padding: 36px 32px;
+  padding: 40px 36px;
+  width: 100%;
+  max-width: 720px;
 }
 .catalog-empty-visual {
   position: relative;
@@ -837,45 +838,6 @@ body.filters-open { overflow: hidden; }
   min-height: 48px;
   margin-top: 0;
 }
-.catalog-empty-aside {
-  padding: 32px 28px;
-  background: var(--bg);
-  border-inline-start: 1px solid var(--line);
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.catalog-empty-aside h3 {
-  margin: 0;
-  font-size: 1rem;
-  color: var(--muted);
-}
-.catalog-empty-tips {
-  margin: 0;
-  padding: 0 18px 0 0;
-  list-style: none;
-  display: grid;
-  gap: 10px;
-  flex: 1;
-}
-.catalog-empty-tips li {
-  position: relative;
-  padding-inline-start: 18px;
-  color: var(--muted);
-  line-height: 1.55;
-  font-size: 0.95rem;
-}
-.catalog-empty-tips li::before {
-  content: "";
-  position: absolute;
-  inset-inline-start: 0;
-  top: 0.55em;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--accent);
-  opacity: 0.85;
-}
 [data-theme="light"] .catalog-empty-card {
   background:
     radial-gradient(ellipse 80% 60% at 15% 20%, rgba(11, 154, 102, 0.07), transparent 55%),
@@ -883,25 +845,17 @@ body.filters-open { overflow: hidden; }
 }
 
 @media (max-width: 960px) {
-  .catalog-empty-card {
-    grid-template-columns: 1fr;
-  }
   .catalog-empty-main {
     grid-template-columns: 1fr;
     justify-items: center;
     text-align: center;
-    padding: 28px 22px 22px;
+    padding: 28px 22px;
   }
   .catalog-empty-body {
     align-items: center;
   }
   .catalog-empty-chips {
     justify-content: center;
-  }
-  .catalog-empty-aside {
-    border-inline-start: none;
-    border-top: 1px solid var(--line);
-    padding: 22px;
   }
   .catalog-empty-actions .btn-lg {
     flex: 1 1 140px;
