@@ -7,6 +7,7 @@ const db = require("./db");
 
 const ROOT = path.join(__dirname, "..");
 const PORT = Number(process.env.PORT || 8765);
+const HOST = process.env.HOST || (process.env.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1");
 const UPLOADS = path.join(ROOT, "uploads");
 
 const MIME = {
@@ -83,7 +84,7 @@ async function handleApi(req, res, pathname) {
   const method = req.method.toUpperCase();
 
   if (pathname === "/api/health" && method === "GET") {
-    return send(res, 200, { ok: true, version: db.getVersion() });
+    return send(res, 200, { ...db.getHealth(), version: db.getVersion() });
   }
 
   if (pathname === "/api/store" && method === "GET") {
@@ -113,7 +114,12 @@ async function handleApi(req, res, pathname) {
   if (pathname === "/api/auth/login" && method === "POST") {
     const body = await readBody(req);
     const session = db.login(body?.username || "", body?.password || "");
-    if (!session) return send(res, 401, { error: "Invalid credentials" });
+    if (!session) {
+      const health = db.getHealth();
+      if (!health.db) return send(res, 503, { error: "Database unavailable" });
+      if (!health.hasAdmin) return send(res, 503, { error: "Admin accounts missing" });
+      return send(res, 401, { error: "Invalid credentials" });
+    }
     return send(res, 200, session);
   }
 
@@ -443,6 +449,16 @@ const server = http.createServer(async (req, res) => {
   const parsed = url.parse(req.url);
   const pathname = decodeURIComponent(parsed.pathname || "/");
 
+  if (req.method === "OPTIONS" && pathname.startsWith("/api/")) {
+    res.writeHead(204, {
+      "Access-Control-Allow-Origin": req.headers.origin || "*",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+    });
+    res.end();
+    return;
+  }
+
   if (pathname.startsWith("/api/")) {
     try {
       await handleApi(req, res, pathname);
@@ -456,8 +472,9 @@ const server = http.createServer(async (req, res) => {
   serveStatic(req, res, pathname);
 });
 
-server.listen(PORT, "127.0.0.1", () => {
-  console.log(`BEST LAPTOP server http://127.0.0.1:${PORT}/`);
-  console.log(`Admin panel http://127.0.0.1:${PORT}/admin/login.html`);
-  console.log(`Database ${path.join(__dirname, "data", "store.db")}`);
+server.listen(PORT, HOST, () => {
+  console.log(`BEST LAPTOP server http://${HOST}:${PORT}/`);
+  console.log(`Admin panel http://${HOST}:${PORT}/admin/login.html`);
+  const health = db.getHealth();
+  console.log(`Database ${health.db ? "connected" : "FAILED"} · users=${health.users}`);
 });

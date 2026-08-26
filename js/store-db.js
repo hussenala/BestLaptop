@@ -86,19 +86,33 @@ const StoreDB = (() => {
   }
 
   async function login(username, password) {
-    const data = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
-    }).then(async (res) => {
-      const body = await res.json();
-      if (!res.ok) throw new Error(body.error || "Login failed");
-      return body;
-    });
-    sessionStorage.setItem(TOKEN_KEY, data.token);
-    sessionStorage.setItem(USER_KEY, JSON.stringify(data.user));
+    let res;
+    try {
+      res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+    } catch {
+      throw new Error("تعذر الاتصال بخادم قاعدة البيانات. شغّل الموقع كتطبيق Node.js على Hostinger.");
+    }
+    const text = await res.text();
+    let body = {};
+    try {
+      body = text ? JSON.parse(text) : {};
+    } catch {
+      throw new Error("مسار /api غير متصل بقاعدة البيانات. في hPanel اختر Node.js واجعل ملف التشغيل app.js أو server/server.js.");
+    }
+    if (!res.ok) {
+      if (body.error === "Invalid credentials") throw new Error("Invalid credentials");
+      if (body.error === "Database unavailable") throw new Error("قاعدة البيانات غير متصلة على السيرفر.");
+      if (body.error === "Admin accounts missing") throw new Error("لا يوجد حساب أدمن في قاعدة البيانات.");
+      throw new Error(body.error || "Login failed");
+    }
+    sessionStorage.setItem(TOKEN_KEY, body.token);
+    sessionStorage.setItem(USER_KEY, JSON.stringify(body.user));
     await refresh();
-    return data.user;
+    return body.user;
   }
 
   function session() {

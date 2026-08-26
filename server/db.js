@@ -1,10 +1,18 @@
 const crypto = require("crypto");
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
-const { DatabaseSync } = require("node:sqlite");
 const { getSeedData } = require("./seed-data");
 
-const DB_PATH = path.join(__dirname, "data", "store.db");
+let DatabaseSync;
+try {
+  ({ DatabaseSync } = require("node:sqlite"));
+} catch (err) {
+  console.error("SQLite requires Node.js 22.5+. Set that version in Hostinger hPanel.");
+  throw err;
+}
+
+let DB_PATH = process.env.STORE_DB_PATH || path.join(__dirname, "data", "store.db");
 const AUTH_SECRET = process.env.STORE_SECRET || "bestlaptop-local-secret";
 
 const ORDER_STATUSES = [
@@ -18,10 +26,6 @@ const ORDER_STATUSES = [
 
 let db;
 
-function ensureDir() {
-  fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
-}
-
 function hashPassword(password) {
   const salt = crypto.randomBytes(16).toString("hex");
   const hash = crypto.scryptSync(password, salt, 64).toString("hex");
@@ -29,10 +33,43 @@ function hashPassword(password) {
 }
 
 function verifyPassword(password, stored) {
-  const [salt, hash] = stored.split(":");
-  if (!salt || !hash) return false;
-  const next = crypto.scryptSync(password, salt, 64).toString("hex");
-  return crypto.timingSafeEqual(Buffer.from(hash, "hex"), Buffer.from(next, "hex"));
+  try {
+    const [salt, hash] = String(stored || "").split(":");
+    if (!salt || !hash) return false;
+    const next = crypto.scryptSync(String(password || ""), salt, 64).toString("hex");
+    const a = Buffer.from(hash, "hex");
+    const b = Buffer.from(next, "hex");
+    if (!a.length || a.length !== b.length) return false;
+    return crypto.timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
+}
+
+function openDatabase() {
+  const candidates = [
+    process.env.STORE_DB_PATH,
+    path.join(__dirname, "data", "store.db"),
+    path.join(process.cwd(), "server", "data", "store.db"),
+    path.join(os.tmpdir(), "bestlaptop-store.db"),
+  ].filter(Boolean);
+
+  const unique = [...new Set(candidates)];
+  let lastErr;
+  for (const file of unique) {
+    try {
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      const database = new DatabaseSync(file);
+      database.exec("PRAGMA foreign_keys = ON;");
+      DB_PATH = file;
+      console.log(`SQLite connected: ${file}`);
+      return database;
+    } catch (err) {
+      lastErr = err;
+      console.error(`SQLite could not open ${file}: ${err.message}`);
+    }
+  }
+  throw lastErr || new Error("Could not open SQLite database");
 }
 
 function uid(prefix) {
@@ -140,10 +177,52 @@ function uniqueCustomers(orders) {
   return [...map.values()];
 }
 
+function ensureAdminUsers() {
+  const n = db.prepare("SELECT COUNT(*) AS n FROM users").get()?.n || 0;
+  if (n > 0) return;
+  console.warn("Users table empty — restoring default admin accounts");
+  const seed = getSeedData();
+  const ins = db.prepare("INSERT OR IGNORE INTO users (id,name,username,password_hash,role) VALUES (?,?,?,?,?)");
+  seed.users.forEach((u) => ins.run(u.id, u.name, u.username, hashPassword(u.password), u.role));
+}
+
+function applyEnvAdminCredentials() {
+  const username = String(process.env.STORE_ADMIN_USER || "").trim();
+  const password = String(process.env.STORE_ADMIN_PASSWORD || "");
+  if (!username || !password) return;
+  const existing = db.prepare("SELECT id FROM users WHERE username=?").get(username);
+  if (existing) {
+    db.prepare("UPDATE users SET password_hash=? WHERE username=?").run(hashPassword(password), username);
+    console.log(`Admin password updated from environment for ${username}`);
+    return;
+  }
+  db.prepare("INSERT INTO users (id,name,username,password_hash,role) VALUES (?,?,?,?,?)").run(
+    "u-admin",
+    username,
+    username,
+    hashPassword(password),
+    "admin"
+  );
+  console.log(`Admin user created from environment: ${username}`);
+}
+
+function getHealth() {
+  try {
+    const users = db.prepare("SELECT COUNT(*) AS n FROM users").get()?.n || 0;
+    return {
+      ok: true,
+      db: true,
+      engine: "sqlite",
+      users,
+      hasAdmin: users > 0,
+    };
+  } catch {
+    return { ok: false, db: false, engine: "sqlite", users: 0, hasAdmin: false };
+  }
+}
+
 function initDb() {
-  ensureDir();
-  db = new DatabaseSync(DB_PATH);
-  db.exec("PRAGMA foreign_keys = ON;");
+  db = openDatabase();
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
@@ -248,6 +327,8 @@ function initDb() {
 
   const seeded = db.prepare("SELECT value FROM meta WHERE key = 'seeded'").get();
   if (!seeded) seedDatabase();
+  ensureAdminUsers();
+  applyEnvAdminCredentials();
   migrateCheckoutOptions();
   bumpVersion();
 }
@@ -900,8 +981,14 @@ function deleteUser(id) {
 }
 
 function login(username, password) {
-  const user = db.prepare("SELECT * FROM users WHERE username=?").get(username.trim());
-  if (!user || !verifyPassword(password, user.password_hash)) return null;
+  const name = String(username || "").trim();
+  const pass = String(password || "");
+  if (!name || !pass) return null;
+  let user = db.prepare("SELECT * FROM users WHERE username=?").get(name);
+  if (!user) {
+    user = db.prepare("SELECT * FROM users WHERE lower(username) = lower(?)").get(name);
+  }
+  if (!user || !verifyPassword(pass, user.password_hash)) return null;
   const token = crypto.randomBytes(32).toString("hex");
   const expires = Date.now() + 1000 * 60 * 60 * 12;
   db.prepare("INSERT INTO sessions (token,user_id,expires_at) VALUES (?,?,?)").run(token, user.id, expires);
@@ -979,6 +1066,7 @@ module.exports = {
   initDb,
   AUTH_SECRET,
   ORDER_STATUSES,
+  getHealth,
   uid,
   bumpVersion,
   getVersion,

@@ -29,9 +29,9 @@
         <a class="muted" href="../index.html">العودة للمتجر</a>
       </form>
     </main>
-    <script src="../js/data.js?v=20"></script>
-    <script src="../js/api-client.js?v=20"></script>
-    <script src="../js/store-db.js?v=20"></script>
+    <script src="../js/data.js?v=45"></script>
+    <script src="../js/api-client.js?v=45"></script>
+    <script src="../js/store-db.js?v=45"></script>
     <script src="../js/theme.js"></script>
     <script>
       if (StoreDB.session()) location.replace("index.html");
@@ -40,10 +40,15 @@
         const err = document.querySelector("[data-login-error]");
         const btn = e.target.querySelector("button[type=submit]");
         btn.disabled = true;
+        err.hidden = true;
         StoreDB.login(e.target.username.value, e.target.password.value)
           .then(() => location.replace("index.html"))
-          .catch(() => {
+          .catch((error) => {
             err.hidden = false;
+            err.textContent =
+              error.message === "Invalid credentials"
+                ? "بيانات الدخول غير صحيحة."
+                : error.message || "تعذر تسجيل الدخول.";
             btn.disabled = false;
           });
       });
