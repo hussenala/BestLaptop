@@ -54,7 +54,7 @@ const StoreDB = (() => {
       }
       throw new Error("Unauthorized");
     }
-    if (!res.ok) throw new Error(body.error || "Request failed");
+    if (!res.ok) throw new Error(body.path ? `${body.error || "Request failed"} (${body.path})` : body.error || "Request failed");
     return body;
   }
 
@@ -113,14 +113,15 @@ const StoreDB = (() => {
     } catch (err) {
       throw new Error(
         err.message ||
-          "تعذر الاتصال بالخادم. على Hostinger تأكد أن Node.js يعمل وملف التشغيل app.js أو server/server.js."
+          "تعذر الاتصال بالخادم. على الاستضافة تأكد من رفع api/index.php وتفعيل PHP مع SQLite."
       );
     }
     if (!res.ok) {
+      const msg = body.path ? `${body.error || "Request failed"} (${body.path})` : body.error || "Request failed";
       if (body.error === "Invalid credentials") throw new Error("Invalid credentials");
       if (body.error === "Database unavailable") throw new Error("قاعدة البيانات غير متصلة على السيرفر.");
       if (body.error === "Admin accounts missing") throw new Error("لا يوجد حساب أدمن في قاعدة البيانات.");
-      throw new Error(body.error || "تعذر تسجيل الدخول.");
+      throw new Error(msg);
     }
     localStorage.setItem(TOKEN_KEY, body.token);
     localStorage.setItem(USER_KEY, JSON.stringify(body.user));

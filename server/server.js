@@ -425,7 +425,7 @@ async function handleApi(req, res, pathname) {
     }
   }
 
-  send(res, 404, { error: "API route not found" });
+  send(res, 404, { error: "API route not found", path: pathname });
 }
 
 function serveStatic(req, res, pathname) {

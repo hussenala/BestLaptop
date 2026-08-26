@@ -49,8 +49,8 @@
         <a class="login-back" href="../index.html">العودة للمتجر ←</a>
       </form>
     </main>
-    <script src="../js/api-client.js?v=47"></script>
-    <script src="../js/store-db.js?v=47"></script>
+    <script src="../js/api-client.js?v=48"></script>
+    <script src="../js/store-db.js?v=48"></script>
     <script src="../js/theme.js"></script>
     <script>
       const form = document.querySelector("[data-login]");
@@ -97,7 +97,7 @@
           const { res, body } = await StoreAPI.fetchApi("/api/health", { cache: "no-store" });
           if (!res.ok || !body?.db) {
             warn.hidden = false;
-            warn.textContent = "تعذر الاتصال بقاعدة البيانات. تحقق من Node.js على Hostinger وملف التشغيل app.js أو server/server.js.";
+            warn.textContent = "تعذر الاتصال بقاعدة البيانات. تحقق من تفعيل PHP و SQLite على الاستضافة وملف api/index.php.";
           } else if (!body.hasAdmin) {
             warn.hidden = false;
             warn.textContent = "لا يوجد حساب أدمن في قاعدة البيانات. أعد نشر الموقع أو عيّن STORE_ADMIN_USER و STORE_ADMIN_PASSWORD.";
@@ -105,7 +105,7 @@
         } catch {
           warn.hidden = false;
           warn.textContent =
-            "تعذر الوصول لواجهة /api. تأكد أن Node.js يعمل على Hostinger وليس وضع HTML الثابت فقط.";
+            "تعذر الوصول لواجهة /api. تأكد من رفع api/index.php و .htaccess وتفعيل PDO SQLite في hPanel.";
         } finally {
           form.classList.remove("is-checking");
         }
