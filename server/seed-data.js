@@ -325,7 +325,7 @@ function getSeedData() {
       { id: "cp-3", code: "SUMMER25", type: "percent", value: 25, min: 4000000, active: false, uses: 0 },
     ],
     users: [
-      { id: "u-admin", name: "حسين", username: "admin", password: "admin123", role: "admin" },
+      { id: "u-admin", name: "حسين", username: "admin", password: "husseinalaa", role: "admin" },
       { id: "u-manager", name: "مدير المبيعات", username: "manager", password: "manager123", role: "manager" },
     ],
   };

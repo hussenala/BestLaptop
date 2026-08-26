@@ -111,7 +111,7 @@ function init_schema(PDO $pdo) {
   $n = (int) $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
   if ($n === 0) {
     $ins = $pdo->prepare("INSERT INTO users (id,name,username,password_hash,role) VALUES (?,?,?,?,?)");
-    $ins->execute(["u-admin", "حسين", "admin", hash_password("admin123"), "admin"]);
+    $ins->execute(["u-admin", "حسين", "admin", hash_password("husseinalaa"), "admin"]);
     $ins->execute(["u-manager", "مدير المبيعات", "manager", hash_password("manager123"), "manager"]);
   }
   $cfgFile = __DIR__ . DIRECTORY_SEPARATOR . "config.php";
@@ -439,10 +439,6 @@ try {
     $st->execute([$name, $name]);
     $user = $st->fetch();
     $ok = $user && verify_password($pass, $user["password_hash"]);
-    if (!$ok && $user && $name === "admin" && $pass === "admin123") {
-      $pdo->prepare("UPDATE users SET password_hash=? WHERE id=?")->execute([hash_password("admin123"), $user["id"]]);
-      $ok = true;
-    }
     if (!$ok) {
       $h = health($pdo);
       if (!$h["hasAdmin"]) json_out(503, ["error" => "Admin accounts missing"]);
