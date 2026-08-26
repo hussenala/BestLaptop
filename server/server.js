@@ -445,7 +445,7 @@ function serveStatic(req, res, pathname) {
 
 db.initDb();
 
-const server = http.createServer(async (req, res) => {
+function requestHandler(req, res) {
   const parsed = url.parse(req.url);
   const pathname = decodeURIComponent(parsed.pathname || "/");
 
@@ -460,21 +460,27 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (pathname.startsWith("/api/")) {
-    try {
-      await handleApi(req, res, pathname);
-    } catch (err) {
+    handleApi(req, res, pathname).catch((err) => {
       console.error(err);
       send(res, 500, { error: "Server error" });
-    }
+    });
     return;
   }
 
   serveStatic(req, res, pathname);
-});
+}
 
-server.listen(PORT, HOST, () => {
-  console.log(`BEST LAPTOP server http://${HOST}:${PORT}/`);
-  console.log(`Admin panel http://${HOST}:${PORT}/admin/login.html`);
-  const health = db.getHealth();
-  console.log(`Database ${health.db ? "connected" : "FAILED"} · users=${health.users}`);
-});
+function start(listenHost = HOST, listenPort = PORT) {
+  const server = http.createServer(requestHandler);
+  server.listen(listenPort, listenHost, () => {
+    console.log(`BEST LAPTOP server http://${listenHost}:${listenPort}/`);
+    console.log(`Admin panel http://${listenHost}:${listenPort}/admin/login.html`);
+    const health = db.getHealth();
+    console.log(`Database ${health.db ? "connected" : "FAILED"} · users=${health.users}`);
+  });
+  return server;
+}
+
+if (require.main === module) start();
+
+module.exports = { requestHandler, start };

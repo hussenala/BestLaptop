@@ -34,9 +34,19 @@ function hashPassword(password) {
 
 function verifyPassword(password, stored) {
   try {
-    const [salt, hash] = String(stored || "").split(":");
+    const value = String(stored || "");
+    const pass = String(password || "");
+    if (value.startsWith("pbkdf2:")) {
+      const [, salt, hash] = value.split(":");
+      if (!salt || !hash) return false;
+      const next = crypto.pbkdf2Sync(pass, salt, 120000, 64, "sha256").toString("hex");
+      const a = Buffer.from(hash, "hex");
+      const b = Buffer.from(next, "hex");
+      return a.length === b.length && crypto.timingSafeEqual(a, b);
+    }
+    const [salt, hash] = value.split(":");
     if (!salt || !hash) return false;
-    const next = crypto.scryptSync(String(password || ""), salt, 64).toString("hex");
+    const next = crypto.scryptSync(pass, salt, 64).toString("hex");
     const a = Buffer.from(hash, "hex");
     const b = Buffer.from(next, "hex");
     if (!a.length || a.length !== b.length) return false;

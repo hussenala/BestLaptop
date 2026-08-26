@@ -27,11 +27,10 @@ const StoreDB = (() => {
   }
 
   async function api(path, options = {}) {
-    const res = await fetch(path, {
+    const { res, body } = await StoreAPI.fetchApi(path, {
       ...options,
       headers: { ...authHeaders(options.body != null), ...(options.headers || {}) },
     });
-    const data = await res.json().catch(() => ({}));
     if (res.status === 401) {
       logout();
       if (location.pathname.includes("/admin/") && !location.pathname.includes("login")) {
@@ -39,8 +38,8 @@ const StoreDB = (() => {
       }
       throw new Error("Unauthorized");
     }
-    if (!res.ok) throw new Error(data.error || "Request failed");
-    return data;
+    if (!res.ok) throw new Error(body.error || "Request failed");
+    return body;
   }
 
   async function refresh() {
@@ -86,23 +85,11 @@ const StoreDB = (() => {
   }
 
   async function login(username, password) {
-    let res;
-    try {
-      res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
-    } catch {
-      throw new Error("تعذر الاتصال بخادم قاعدة البيانات. شغّل الموقع كتطبيق Node.js على Hostinger.");
-    }
-    const text = await res.text();
-    let body = {};
-    try {
-      body = text ? JSON.parse(text) : {};
-    } catch {
-      throw new Error("مسار /api غير متصل بقاعدة البيانات. في hPanel اختر Node.js واجعل ملف التشغيل app.js أو server/server.js.");
-    }
+    const { res, body } = await StoreAPI.fetchApi("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
     if (!res.ok) {
       if (body.error === "Invalid credentials") throw new Error("Invalid credentials");
       if (body.error === "Database unavailable") throw new Error("قاعدة البيانات غير متصلة على السيرفر.");
@@ -125,7 +112,7 @@ const StoreDB = (() => {
 
   function logout() {
     const t = token();
-    if (t) fetch("/api/auth/logout", { method: "POST", headers: authHeaders(false) }).catch(() => {});
+    if (t) StoreAPI.fetchApi("/api/auth/logout", { method: "POST", headers: authHeaders(false) }).catch(() => {});
     sessionStorage.removeItem(TOKEN_KEY);
     sessionStorage.removeItem(USER_KEY);
     cache = null;
