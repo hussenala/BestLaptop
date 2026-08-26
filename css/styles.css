@@ -94,6 +94,7 @@ button, input, select, textarea { font-family: inherit; }
   gap: 12px;
   align-items: center;
   min-height: 78px;
+  position: relative;
 }
 
 .logo {
@@ -181,6 +182,7 @@ button, input, select, textarea { font-family: inherit; }
   color: var(--muted);
   font-weight: 700;
   font-size: 14px;
+  white-space: nowrap;
 }
 .nav-links a:hover,
 .nav-links a.active {
@@ -425,13 +427,24 @@ button, input, select, textarea { font-family: inherit; }
 }
 .header-brands-track {
   display: flex;
+  flex-wrap: nowrap;
   gap: 8px;
   align-items: center;
   padding: 10px 0;
   overflow-x: auto;
+  overflow-y: hidden;
   scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x;
 }
 .header-brands-track::-webkit-scrollbar { display: none; }
+.header-brands-track.is-panning,
+.cat-grid.is-panning,
+.pdp-thumbs.is-panning {
+  cursor: grabbing;
+  scroll-behavior: auto;
+}
 .header-brand-link {
   flex: 0 0 auto;
   padding: 6px 14px;
@@ -987,7 +1000,11 @@ body.filters-open { overflow: hidden; }
     grid-template-columns: 1fr;
     grid-template-rows: auto auto;
   }
-  .product-slider-viewport { grid-row: 1; grid-column: 1; }
+  .product-slider-viewport {
+    grid-row: 1;
+    grid-column: 1;
+    touch-action: pan-x;
+  }
   .product-slider-btn { display: none; }
   .product-slider-track .product-card {
     flex: 0 0 82vw;
@@ -1201,26 +1218,6 @@ body.filters-open { overflow: hidden; }
   padding: 6px 10px;
   z-index: 2;
 }
-.site-rail {
-  position: fixed;
-  top: 38%;
-  inset-inline-start: 10px;
-  z-index: 45;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.site-rail a {
-  background: var(--bg-card);
-  border: 1px solid var(--line);
-  color: var(--text);
-  border-radius: 12px;
-  padding: 8px 10px;
-  font-size: 12px;
-  font-weight: 800;
-  box-shadow: var(--shadow);
-}
-.site-rail a:hover { border-color: var(--accent); color: var(--accent); }
 .cart-row {
   display: grid;
   grid-template-columns: 96px 1fr auto;
@@ -1280,21 +1277,8 @@ body.filters-open { overflow: hidden; }
   .grid, .cat-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
-@media (max-width: 900px) {
-  .hero-inner, .trust, .contact-grid, .footer-grid, .grid, .cat-grid, .pdp, .shop-layout {
-    grid-template-columns: 1fr 1fr;
-  }
-  .hero-slider, .hero-inner { min-height: 0; }
-}
-
-@media (max-width: 760px) {
+@media (max-width: 1020px) {
   .menu-btn { display: inline-flex; align-items: center; }
-  .nav { display: flex; }
-  .header-search.open {
-    flex-basis: 100%;
-    order: 4;
-    width: 100%;
-  }
   .nav-links {
     display: none;
     position: absolute;
@@ -1307,6 +1291,22 @@ body.filters-open { overflow: hidden; }
     align-items: stretch;
   }
   body.nav-open .nav-links { display: flex; }
+}
+
+@media (max-width: 900px) {
+  .hero-inner, .trust, .contact-grid, .footer-grid, .grid, .cat-grid, .pdp, .shop-layout {
+    grid-template-columns: 1fr 1fr;
+  }
+  .hero-slider, .hero-inner { min-height: 0; }
+}
+
+@media (max-width: 760px) {
+  .nav { display: flex; }
+  .header-search.open {
+    flex-basis: 100%;
+    order: 4;
+    width: 100%;
+  }
   .hero-inner, .trust, .contact-grid, .footer-grid, .grid, .cat-grid, .pdp, .shop-layout {
     grid-template-columns: 1fr;
   }
@@ -1325,6 +1325,23 @@ body.filters-open { overflow: hidden; }
   }
   .checkout-mobile-submit { display: flex; }
   form.shop-layout .order-summary .btn-lg { display: none; }
+  .cat-grid {
+    display: flex;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x;
+    gap: 12px;
+    padding-bottom: 4px;
+  }
+  .cat-grid::-webkit-scrollbar { display: none; }
+  .cat-mini {
+    flex: 0 0 min(78vw, 300px);
+    scroll-snap-align: start;
+  }
 }
 
 .lead-tight { margin: 6px 0 22px; }
@@ -1638,7 +1655,18 @@ body.filters-open { overflow: hidden; }
 .pdp-thumb.on { border-color: var(--accent); }
 .pdp-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 @media (max-width: 768px) {
-  .pdp-thumbs { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; }
+  .pdp-thumbs {
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex-wrap: nowrap;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x;
+  }
+  .pdp-thumbs::-webkit-scrollbar { display: none; }
+  .pdp-thumb { flex: 0 0 auto; }
 }
 
 .pdp-zoom-hint { font-size: 0.85rem; margin-top: 8px; }

@@ -128,7 +128,7 @@ function applyStoreBranding() {
       <li>${s.phone}</li>
       <li>${s.email}</li>
       <li>${s.hours}</li>
-      <li><a href="contact.html">نموذج التواصل</a></li>
+      <li><a href="contact.html">صفحة التواصل</a></li>
       <li><a href="admin/login.html">لوحة التحكم</a></li>
     `;
   }
@@ -145,24 +145,13 @@ function applyStoreBranding() {
       <p><strong>البريد:</strong> ${s.email}</p>
       <p><strong>ساعات العمل:</strong> ${s.hours}</p>
       <p><strong>الضمان:</strong> ${s.warranty}</p>
-      <a class="btn btn-ghost" href="products.html" style="margin-top: 18px">العودة للمنتجات</a>
+      <a class="btn btn-ghost" href="products.html" style="margin-top: 18px">العودة لصفحة المنتجات</a>
     `;
   }
 
   const warrantyBlurb = document.querySelector("[data-store-warranty-blurb]");
   if (warrantyBlurb) {
     warrantyBlurb.textContent = `كفالة حقيقية وصيانة في مكتب ${s.city}: ${s.address}.`;
-  }
-
-  const rail = document.querySelector(".site-rail");
-  if (rail) {
-    const wa = storeWhatsAppNumber();
-    rail.innerHTML = `
-      <a href="https://wa.me/${wa}" target="_blank" rel="noopener">واتساب</a>
-      <a href="tel:+${wa}">اتصال</a>
-      <a href="cart.html">السلة</a>
-      <a href="contact.html">المكتب</a>
-    `;
   }
 }
 
@@ -555,6 +544,8 @@ function initProductSlider(root, products, cfg) {
 
   function play() {
     clearInterval(root._productSliderTimer);
+    root._productSliderTimer = null;
+    if (root._productSliderHover || root._productSliderPress) return;
     const speed = Number(root._productSliderCfg?.speedMs) || 4500;
     if (root._productSliderCfg?.autoplay === false) return;
     root._productSliderTimer = setInterval(() => {
@@ -566,10 +557,13 @@ function initProductSlider(root, products, cfg) {
     }, speed);
   }
 
-  let hovered = false;
-
   function pauseAuto() {
     clearInterval(root._productSliderTimer);
+    root._productSliderTimer = null;
+  }
+
+  function finePointerHover() {
+    return window.matchMedia("(hover: hover) and (pointer: fine)").matches;
   }
 
   root._productSliderShift = shiftBy;
@@ -584,13 +578,26 @@ function initProductSlider(root, products, cfg) {
     root.dataset.productSliderBound = "1";
     root.tabIndex = 0;
     root.addEventListener("mouseenter", () => {
-      hovered = true;
-      pauseAuto();
+      if (!finePointerHover()) return;
+      root._productSliderHover = true;
+      root._productSliderPause();
     });
     root.addEventListener("mouseleave", () => {
-      hovered = false;
-      play();
+      root._productSliderHover = false;
+      root._productSliderPress = false;
+      root._productSliderPlay();
     });
+    root.addEventListener("pointerdown", () => {
+      root._productSliderPress = true;
+      root._productSliderPause();
+    });
+    const releasePsPress = () => {
+      if (!root._productSliderPress) return;
+      root._productSliderPress = false;
+      root._productSliderPlay();
+    };
+    root.addEventListener("pointerup", releasePsPress);
+    root.addEventListener("pointercancel", releasePsPress);
     root.addEventListener("keydown", (e) => {
       if (e.key === "ArrowLeft") {
         shiftBy(-1);
@@ -605,11 +612,11 @@ function initProductSlider(root, products, cfg) {
       const api = e.currentTarget;
       if (e.target.closest("[data-ps-prev]")) {
         api._productSliderShift(-1);
-        if (!hovered) api._productSliderPlay();
+        if (!api._productSliderHover) api._productSliderPlay();
       }
       if (e.target.closest("[data-ps-next]")) {
         api._productSliderShift(1);
-        if (!hovered) api._productSliderPlay();
+        if (!api._productSliderHover) api._productSliderPlay();
       }
     });
 
@@ -622,7 +629,7 @@ function initProductSlider(root, products, cfg) {
       dragStartOffset = offsetPx;
       viewport.setPointerCapture(e.pointerId);
       viewport.classList.add("is-dragging");
-      pauseAuto();
+      root._productSliderPause();
     });
 
     viewport.addEventListener("pointermove", (e) => {
@@ -643,7 +650,7 @@ function initProductSlider(root, products, cfg) {
       }
       viewport.classList.remove("is-dragging");
       snapToNearest(false);
-      if (!hovered) play();
+      if (!root._productSliderHover) play();
     };
     viewport.addEventListener("pointerup", endDrag);
     viewport.addEventListener("pointercancel", endDrag);
@@ -666,7 +673,7 @@ function initProductSlider(root, products, cfg) {
   }
 
   snapToNearest(true);
-  if (!hovered) play();
+  if (!root._productSliderHover) play();
 }
 
 function renderFeatured() {
@@ -739,6 +746,60 @@ function renderNewProductsSlider() {
   initProductSlider(root, products, cfg);
 }
 
+function allowPhonePan() {
+  return window.matchMedia("(pointer: coarse), (max-width: 1020px)").matches;
+}
+
+function bindTouchPan(el) {
+  if (!el || el.dataset.touchPanBound === "1") return;
+  el.dataset.touchPanBound = "1";
+  let active = false;
+  let lastX = 0;
+  let moved = false;
+
+  el.addEventListener("pointerdown", (e) => {
+    if (e.pointerType === "mouse") return;
+    if (!allowPhonePan()) return;
+    active = true;
+    moved = false;
+    lastX = e.clientX;
+    el.classList.add("is-panning");
+    try {
+      el.setPointerCapture(e.pointerId);
+    } catch {
+      /* capture unsupported */
+    }
+  });
+  el.addEventListener("pointermove", (e) => {
+    if (!active) return;
+    const dx = e.clientX - lastX;
+    if (Math.abs(dx) > 4) moved = true;
+    lastX = e.clientX;
+    const rtl = getComputedStyle(el).direction === "rtl";
+    el.scrollLeft += rtl ? dx : -dx;
+  });
+  const stop = () => {
+    if (!active) return;
+    active = false;
+    el.classList.remove("is-panning");
+  };
+  el.addEventListener("pointerup", stop);
+  el.addEventListener("pointercancel", stop);
+  el.addEventListener(
+    "click",
+    (e) => {
+      if (!moved) return;
+      e.preventDefault();
+      e.stopPropagation();
+    },
+    true
+  );
+}
+
+function initTouchPanStrips() {
+  document.querySelectorAll("[data-header-brands], .cat-grid, .pdp-thumbs").forEach(bindTouchPan);
+}
+
 function getStoreBrands() {
   if (typeof BRANDS !== "undefined" && BRANDS.length) return BRANDS;
   return [...new Set(PRODUCTS.map((p) => p.brand).filter(Boolean))].map((name) => ({ name }));
@@ -754,6 +815,7 @@ function renderHeaderBrands() {
         `<a href="products.html?brand=${encodeURIComponent(b.name)}" class="header-brand-link">${b.name}</a>`
     )
     .join("");
+  bindTouchPan(el);
 }
 
 function catalogPriceBounds() {
@@ -1628,19 +1690,6 @@ function renderOrderPage() {
   `;
 }
 
-function renderSiteRail() {
-  if (document.querySelector(".site-rail")) return;
-  document.body.insertAdjacentHTML(
-    "beforeend",
-    `<aside class="site-rail" aria-label="تواصل سريع">
-      <a href="https://wa.me/${storeWhatsAppNumber()}" target="_blank" rel="noopener">واتساب</a>
-      <a href="tel:+${storeWhatsAppNumber()}">اتصال</a>
-      <a href="cart.html">السلة</a>
-      <a href="contact.html">المكتب</a>
-    </aside>`
-  );
-}
-
 function goSearch(value) {
   const q = (value || "").trim();
   const url = q ? `products.html?q=${encodeURIComponent(q)}` : "products.html";
@@ -1777,7 +1826,14 @@ function renderSlider() {
 
   function play() {
     clearInterval(root._sliderTimer);
+    root._sliderTimer = null;
+    if (root._sliderHover || root._sliderPress) return;
+    if (!root._sliderSlides || root._sliderSlides.length < 2) return;
     root._sliderTimer = setInterval(() => go(root._sliderIndex + 1), 6500);
+  }
+
+  function finePointerHover() {
+    return window.matchMedia("(hover: hover) and (pointer: fine)").matches;
   }
 
   root._sliderGo = go;
@@ -1786,6 +1842,33 @@ function renderSlider() {
 
   if (!root.dataset.sliderBound) {
     root.dataset.sliderBound = "1";
+    root.addEventListener("mouseenter", () => {
+      if (!finePointerHover()) return;
+      root._sliderHover = true;
+      root._sliderPlay();
+    });
+    root.addEventListener("mouseleave", () => {
+      root._sliderHover = false;
+      root._sliderPress = false;
+      root._sliderPlay();
+    });
+    root.addEventListener("pointerdown", (e) => {
+      root._sliderPress = true;
+      root._sliderPlay();
+      if (e.target.closest("a, button, input, textarea, select")) return;
+      try {
+        root.setPointerCapture(e.pointerId);
+      } catch {
+        /* capture unsupported */
+      }
+    });
+    const releasePress = () => {
+      if (!root._sliderPress) return;
+      root._sliderPress = false;
+      root._sliderPlay();
+    };
+    root.addEventListener("pointerup", releasePress);
+    root.addEventListener("pointercancel", releasePress);
     root.addEventListener("click", (e) => {
       const api = e.currentTarget;
       if (e.target.closest("[data-prev]")) {
@@ -2018,9 +2101,9 @@ async function bootStorefront() {
   renderCartPage();
   renderCheckout();
   renderOrderPage();
-  renderSiteRail();
   applyStoreBranding();
   setupHeaderSearch();
+  initTouchPanStrips();
 }
 
 window.addEventListener("store:updated", () => {
@@ -2036,6 +2119,7 @@ window.addEventListener("store:updated", () => {
   renderCartPage();
   renderCheckout();
   setupCheckoutForm();
+  initTouchPanStrips();
 });
 
 bootStorefront();
