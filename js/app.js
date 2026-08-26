@@ -1006,7 +1006,7 @@ function renderProductPage() {
     el.innerHTML = `<p class="empty">الجهاز غير موجود. <a href="products.html">العودة للمتجر</a></p>`;
     return;
   }
-  document.title = `${p.name} | ${STORE.nameAr || "بيست لابتوب"}`;
+  document.title = `${p.name} واي كمباني`;
   const off = discount(p);
   const oos = !inStock(p);
   const images = (Array.isArray(p.images) && p.images.length ? p.images : [p.image]).filter(Boolean);
