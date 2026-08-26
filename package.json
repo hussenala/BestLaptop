@@ -1,14 +1,15 @@
-{
-  "name": "bestlaptop",
-  "private": true,
-  "main": "app.js",
-  "engines": {
-    "node": ">=22.5.0"
-  },
-  "scripts": {
-    "start": "node app.js"
-  },
-  "dependencies": {
-    "express": "^4.21.2"
-  }
-}
+{
+  "name": "bestlaptop",
+  "private": true,
+  "main": "server/server.js",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "start": "node server/server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
+
