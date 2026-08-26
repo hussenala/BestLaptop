@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet" />
     <link rel="icon" href="../img/logo.jpg" type="image/jpeg" />
     <link rel="stylesheet" href="../css/styles.css?v=56" />
-    <link rel="stylesheet" href="css/admin.css?v=43" />
+    <link rel="stylesheet" href="css/admin.css?v=45" />
     <script>
       document.documentElement.dataset.theme =
         localStorage.getItem("bestlaptop-theme") === "light" ? "light" : "dark";
@@ -44,17 +44,22 @@
             <button class="btn btn-ghost" type="button" data-logout>خروج</button>
           </div>
         </header>
-        <div class="admin-content" data-admin-view></div>
+        <div class="admin-content" data-admin-view>
+          <div class="admin-boot" data-admin-boot>
+            <p>جاري تحميل لوحة التحكم…</p>
+          </div>
+        </div>
       </div>
     </div>
+    <button type="button" class="admin-nav-backdrop" data-sidebar-backdrop hidden aria-label="إغلاق القائمة"></button>
     <div class="admin-modal" data-modal hidden>
       <div class="admin-modal-card" data-modal-card></div>
     </div>
     <div class="toast" data-toast></div>
-    <script src="../js/data.js?v=46"></script>
-    <script src="../js/api-client.js?v=46"></script>
-    <script src="../js/store-db.js?v=46"></script>
+    <script src="../js/data.js?v=47"></script>
+    <script src="../js/api-client.js?v=47"></script>
+    <script src="../js/store-db.js?v=47"></script>
     <script src="../js/theme.js"></script>
-    <script src="js/admin.js?v=44"></script>
+    <script src="js/admin.js?v=45"></script>
   </body>
 </html>

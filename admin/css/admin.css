@@ -253,7 +253,34 @@
 }
 .admin-user { text-align: start; }
 .admin-user small { display: block; color: var(--muted); }
-.admin-content { padding: 22px; }
+.admin-content { padding: 22px; min-height: 280px; }
+.admin-boot,
+.admin-boot-error {
+  display: grid;
+  place-items: center;
+  gap: 10px;
+  min-height: 240px;
+  text-align: center;
+}
+.admin-boot p {
+  color: var(--muted);
+  font-weight: 800;
+}
+.admin-boot-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.admin-nav-backdrop {
+  position: fixed;
+  inset: 0;
+  border: 0;
+  background: var(--overlay);
+  z-index: 35;
+  cursor: pointer;
+}
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);

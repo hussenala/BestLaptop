@@ -312,7 +312,51 @@ function parseRoute() {
 }
 
 function db() {
-  return StoreDB.load();
+  return (
+    StoreDB.load() || {
+      products: [],
+      categories: [],
+      brands: [],
+      orders: [],
+      customers: [],
+      coupons: [],
+      slides: [],
+      productSliders: [],
+      settings: {},
+      users: [],
+    }
+  );
+}
+
+let bootReady = false;
+
+function setBootLoading(on) {
+  const view = document.querySelector("[data-admin-view]");
+  if (!view) return;
+  let boot = document.querySelector("[data-admin-boot]");
+  if (on) {
+    if (!boot) {
+      view.innerHTML = `<div class="admin-boot" data-admin-boot><p>جاري تحميل لوحة التحكم…</p></div>`;
+    } else {
+      boot.hidden = false;
+    }
+    return;
+  }
+  if (boot) boot.hidden = true;
+}
+
+function showBootError(message) {
+  setBootLoading(false);
+  const view = document.querySelector("[data-admin-view]");
+  if (!view) return;
+  view.innerHTML = `<article class="panel admin-boot-error">
+    <h2>تعذر تحميل لوحة التحكم</h2>
+    <p class="muted">${esc(message || "تحقق من اتصال قاعدة البيانات والخادم.")}</p>
+    <div class="admin-boot-actions">
+      <button class="btn btn-primary" type="button" data-retry-boot>إعادة المحاولة</button>
+      <a class="btn btn-ghost" href="login.html">العودة لتسجيل الدخول</a>
+    </div>
+  </article>`;
 }
 
 function session() {
@@ -1570,48 +1614,54 @@ const PAGES = {
 };
 
 function render(opts = {}) {
-  const user = session();
-  if (!user) return;
-  const route = parseRoute();
-  if (route.page === "product-editor" && !StoreDB.can(user.role, "products")) {
-    location.hash = "#/dashboard";
-    return;
-  }
-  let id = route.page === "product-editor" ? "products" : route.page;
-  if (!StoreDB.can(user.role, id)) {
-    location.hash = "#/dashboard";
-    id = "dashboard";
-  }
-  document.querySelector("[data-user-name]").textContent = user.name;
-  document.querySelector("[data-user-role]").textContent = user.role === "admin" ? "أدمن" : "مدير";
-  const s = db().settings;
-  const logo = document.querySelector("[data-admin-logo]");
-  if (logo && s.logo) logo.src = resolveAdminAsset(s.logo);
-  renderNav(user);
-
-  if (route.page === "product-editor") {
-    document.body.classList.add("admin-product-editor");
-    document.querySelector("[data-page-kicker]").textContent = "المنتجات";
-    document.querySelector("[data-page-title]").textContent = route.mode === "new" ? "إضافة منتج" : "تعديل منتج";
-    document.querySelector("[data-admin-view]").innerHTML = renderProductEditor(route.mode === "edit" ? route.id : null);
-    paintImagePreviews(getProductImages());
-    setupProductEditor();
-    return;
-  }
-  document.body.classList.remove("admin-product-editor");
-
-  document.querySelector("[data-page-kicker]").textContent = TITLES[id][0];
-  document.querySelector("[data-page-title]").textContent = TITLES[id][1];
-  document.querySelector("[data-admin-view]").innerHTML = PAGES[id]();
-  if (id === "slider") setupSlideDragDrop();
-  if (id === "featured") setupPsDragDrop();
-  if (opts.focus) {
-    const field = document.querySelector(opts.focus);
-    if (field) {
-      field.focus();
-      const pos = Number(opts.pos || field.value.length);
-      if (field.setSelectionRange) field.setSelectionRange(pos, pos);
+  if (!bootReady) return;
+  try {
+    const user = session();
+    if (!user) return;
+    const route = parseRoute();
+    if (route.page === "product-editor" && !StoreDB.can(user.role, "products")) {
+      location.hash = "#/dashboard";
+      return;
     }
+    let id = route.page === "product-editor" ? "products" : route.page;
+    if (!StoreDB.can(user.role, id)) {
+      location.hash = "#/dashboard";
+      id = "dashboard";
+    }
+    document.querySelector("[data-user-name]").textContent = user.name;
+    document.querySelector("[data-user-role]").textContent = user.role === "admin" ? "أدمن" : "مدير";
+    const s = db().settings || {};
+    const logo = document.querySelector("[data-admin-logo]");
+    if (logo && s.logo) logo.src = resolveAdminAsset(s.logo);
+    renderNav(user);
+
+    if (route.page === "product-editor") {
+      document.body.classList.add("admin-product-editor");
+      document.querySelector("[data-page-kicker]").textContent = "المنتجات";
+      document.querySelector("[data-page-title]").textContent = route.mode === "new" ? "إضافة منتج" : "تعديل منتج";
+      document.querySelector("[data-admin-view]").innerHTML = renderProductEditor(route.mode === "edit" ? route.id : null);
+      paintImagePreviews(getProductImages());
+      setupProductEditor();
+      return;
+    }
+    document.body.classList.remove("admin-product-editor");
+
+    document.querySelector("[data-page-kicker]").textContent = TITLES[id][0];
+    document.querySelector("[data-page-title]").textContent = TITLES[id][1];
+    document.querySelector("[data-admin-view]").innerHTML = PAGES[id]();
+    if (id === "slider") setupSlideDragDrop();
+    if (id === "featured") setupPsDragDrop();
+    if (opts.focus) {
+      const field = document.querySelector(opts.focus);
+      if (field) {
+        field.focus();
+        const pos = Number(opts.pos || field.value.length);
+        if (field.setSelectionRange) field.setSelectionRange(pos, pos);
+      }
+    }
+  } catch (err) {
+    console.error(err);
+    showBootError(err.message || "حدث خطأ أثناء عرض الصفحة.");
   }
 }
 
@@ -1620,7 +1670,22 @@ document.addEventListener("click", (e) => {
     StoreDB.logout();
     location.replace("login.html");
   }
-  if (e.target.closest("[data-sidebar-toggle]")) document.querySelector(".admin-app").classList.toggle("nav-open");
+  if (e.target.closest("[data-retry-boot]")) {
+    bootReady = false;
+    bootAdmin();
+  }
+  if (e.target.closest("[data-sidebar-toggle]")) {
+    document.querySelector(".admin-app").classList.toggle("nav-open");
+    syncNavBackdrop();
+  }
+  if (e.target.closest("[data-sidebar-backdrop]")) {
+    document.querySelector(".admin-app")?.classList.remove("nav-open");
+    syncNavBackdrop();
+  }
+  if (e.target.closest(".admin-nav a")) {
+    document.querySelector(".admin-app")?.classList.remove("nav-open");
+    syncNavBackdrop();
+  }
   if (e.target.closest("[data-close-modal]") || e.target.matches("[data-modal]")) closeModal();
   const delP = e.target.closest("[data-del-product]");
   if (delP) {
@@ -2329,14 +2394,31 @@ document.addEventListener("submit", (e) => {
 });
 
 async function bootAdmin() {
+  setBootLoading(true);
   try {
+    const user = await StoreDB.verifySession();
+    if (!user) {
+      location.replace("login.html");
+      return;
+    }
     await StoreDB.refresh();
-  } catch {
-    location.replace("login.html");
+  } catch (err) {
+    showBootError(err.message || "تعذر الاتصال بقاعدة البيانات.");
     return;
   }
+  bootReady = true;
+  setBootLoading(false);
+  if (!location.hash) location.hash = "#/dashboard";
   render();
 }
 
-window.addEventListener("hashchange", () => render());
+function syncNavBackdrop() {
+  const open = document.querySelector(".admin-app")?.classList.contains("nav-open");
+  const backdrop = document.querySelector("[data-sidebar-backdrop]");
+  if (backdrop) backdrop.hidden = !open;
+}
+
+window.addEventListener("hashchange", () => {
+  if (bootReady) render();
+});
 bootAdmin();
