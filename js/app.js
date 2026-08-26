@@ -285,10 +285,6 @@ function applyStoreBranding() {
     `;
   }
 
-  const warrantyBlurb = document.querySelector("[data-store-warranty-blurb]");
-  if (warrantyBlurb) {
-    warrantyBlurb.textContent = `كفالة حقيقية وصيانة في مكتب ${s.city}: ${s.address}.`;
-  }
 }
 
 function inStock(p) {
