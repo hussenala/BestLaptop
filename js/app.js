@@ -2093,12 +2093,18 @@ function slidePayload(slide) {
   };
 }
 
+function heroSlidesSource() {
+  const fromApi = typeof StoreAPI !== "undefined" && StoreAPI.isStoreReady?.();
+  if (typeof SLIDES !== "undefined" && (fromApi || SLIDES.length)) {
+    return SLIDES.filter((s) => s.active !== false).map((s) => slidePayload(s));
+  }
+  return PRODUCTS.filter((p) => p.slide).map((s) => (s.title ? slidePayload(s) : s));
+}
+
 function renderSlider() {
   const root = document.querySelector("[data-slider]");
   if (!root) return;
-  const slides = (typeof SLIDES !== "undefined" && SLIDES.length ? SLIDES : PRODUCTS.filter((p) => p.slide)).map((s) =>
-    s.title ? slidePayload(s) : s
-  );
+  const slides = heroSlidesSource();
   if (!slides.length) {
     root.hidden = true;
     if (root._sliderCleanup) root._sliderCleanup();

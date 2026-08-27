@@ -54,7 +54,7 @@ const StoreDB = (() => {
       }
       throw new Error("Unauthorized");
     }
-    if (!res.ok) throw new Error(body.error || "Request failed");
+    if (!res.ok) throw new Error(body.path ? `${body.error || "Request failed"} (${body.path})` : body.error || "Request failed");
     return body;
   }
 
@@ -102,16 +102,23 @@ const StoreDB = (() => {
   }
 
   async function login(username, password) {
-    const { res, body } = await StoreAPI.fetchApi("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
-    });
+    let res;
+    let body = {};
+    try {
+      ({ res, body } = await StoreAPI.fetchApi("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: String(username || "").trim(), password }),
+      }));
+    } catch (err) {
+      throw new Error(err.message || "تعذر الاتصال بالخادم. تحقق من PHP و api/index.php على الاستضافة.");
+    }
     if (!res.ok) {
+      const msg = body.path ? `${body.error || "Request failed"} (${body.path})` : body.error || "Login failed";
       if (body.error === "Invalid credentials") throw new Error("Invalid credentials");
       if (body.error === "Database unavailable") throw new Error("قاعدة البيانات غير متصلة على السيرفر.");
       if (body.error === "Admin accounts missing") throw new Error("لا يوجد حساب أدمن في قاعدة البيانات.");
-      throw new Error(body.error || "Login failed");
+      throw new Error(msg);
     }
     localStorage.setItem(TOKEN_KEY, body.token);
     localStorage.setItem(USER_KEY, JSON.stringify(body.user));
@@ -124,6 +131,24 @@ const StoreDB = (() => {
       return JSON.parse(localStorage.getItem(USER_KEY) || "null");
     } catch {
       return null;
+    }
+  }
+
+  async function verifySession() {
+    if (!token()) return null;
+    try {
+      const { res, body } = await StoreAPI.fetchApi("/api/auth/me", {
+        headers: authHeaders(false),
+        cache: "no-store",
+      });
+      if (!res.ok || !body?.user) {
+        logout();
+        return null;
+      }
+      localStorage.setItem(USER_KEY, JSON.stringify(body.user));
+      return body.user;
+    } catch {
+      return session();
     }
   }
 
@@ -294,6 +319,7 @@ const StoreDB = (() => {
     refresh,
     load,
     login,
+    verifySession,
     session,
     logout,
     can,

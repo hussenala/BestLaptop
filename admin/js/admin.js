@@ -2330,8 +2330,14 @@ document.addEventListener("submit", (e) => {
 
 async function bootAdmin() {
   try {
+    const user = await StoreDB.verifySession();
+    if (!user) {
+      location.replace("login.html");
+      return;
+    }
     await StoreDB.refresh();
-  } catch {
+  } catch (err) {
+    alert(err.message || "تعذر تحميل لوحة التحكم. تحقق من api/index.php على الاستضافة.");
     location.replace("login.html");
     return;
   }

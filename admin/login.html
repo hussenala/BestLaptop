@@ -48,11 +48,15 @@
       </form>
     </main>
     <script src="../js/data.js?v=46"></script>
-    <script src="../js/api-client.js?v=46"></script>
-    <script src="../js/store-db.js?v=46"></script>
+    <script src="../js/api-client.js?v=49"></script>
+    <script src="../js/store-db.js?v=49"></script>
     <script src="../js/theme.js"></script>
     <script>
-      if (StoreDB.session()) location.replace("index.html");
+      if (StoreDB.session()) {
+        StoreDB.verifySession().then((user) => {
+          if (user) location.replace("index.html");
+        });
+      }
       document.querySelector("[data-toggle-pass]")?.addEventListener("click", (e) => {
         const btn = e.currentTarget;
         const input = document.querySelector("[data-login-pass]");

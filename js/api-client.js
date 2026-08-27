@@ -3,11 +3,19 @@ const StoreAPI = (() => {
   const API_MODE_KEY = "bestlaptop-api-mode";
   let version = "0";
   let pollTimer;
+  let storeReady = false;
+
+  function isProductionHost() {
+    const h = location.hostname;
+    return h === "way-company.com" || h === "www.way-company.com";
+  }
 
   function siteRoot() {
     const el = document.querySelector("script[src*='api-client.js']");
     if (el?.src) return new URL("../", el.src).href;
-    if (location.pathname.includes("/admin/")) return new URL("../", location.href.replace(/[^/]+$/, "")).href;
+    if (/^\/admin(\/|$)/.test(location.pathname)) {
+      return new URL("../", location.origin + location.pathname.replace(/[^/]+$/, "")).href;
+    }
     return new URL("./", location.href.replace(/[^/]*$/, "")).href;
   }
 
@@ -20,25 +28,34 @@ const StoreAPI = (() => {
     return `${apiUrl("api/index.php")}?r=${encodeURIComponent(route)}`;
   }
 
+  function formatApiError(body, fallback) {
+    if (!body?.error) return fallback;
+    return body.path ? `${body.error} (${body.path})` : body.error;
+  }
+
   function looksJson(text) {
     const t = String(text || "").trim();
     return t.startsWith("{") || t.startsWith("[");
   }
 
   async function fetchApi(path, options = {}) {
+    if (isProductionHost()) sessionStorage.setItem(API_MODE_KEY, "php");
     const mode = sessionStorage.getItem(API_MODE_KEY);
-    const urls = mode === "php" ? [phpApiUrl(path), apiUrl(path)] : [apiUrl(path), phpApiUrl(path)];
+    const preferPhp = isProductionHost() || mode === "php";
+    const urls = preferPhp ? [phpApiUrl(path), apiUrl(path)] : [apiUrl(path), phpApiUrl(path)];
     let lastMessage = "تعذر الاتصال بواجهة المتجر.";
     for (const url of urls) {
       try {
         const res = await fetch(url, options);
         const text = await res.text();
         if (!looksJson(text)) {
-          lastMessage = "مسار /api غير متصل بقاعدة البيانات.";
+          lastMessage =
+            "مسار /api غير متصل. على Hostinger: أوقف Node.js إن كان مفعّلاً، وفعّل PDO SQLite، وارفع api/index.php و .htaccess.";
           continue;
         }
         const body = JSON.parse(text);
-        sessionStorage.setItem(API_MODE_KEY, url.includes("index.php") ? "php" : "node");
+        sessionStorage.setItem(API_MODE_KEY, url.includes("index.php") ? "php" : preferPhp ? "php" : "node");
+        if (!res.ok) lastMessage = formatApiError(body, lastMessage);
         return { res, body };
       } catch (err) {
         lastMessage = err.message || lastMessage;
@@ -51,23 +68,27 @@ const StoreAPI = (() => {
     if (!payload) return;
     version = payload.version || version;
     localStorage.setItem(VERSION_KEY, version);
-    if (typeof PRODUCTS !== "undefined" && payload.products?.length) {
+    storeReady = true;
+    if (typeof PRODUCTS !== "undefined" && Array.isArray(payload.products)) {
       PRODUCTS.splice(0, PRODUCTS.length, ...payload.products);
     }
-    if (typeof CATEGORIES !== "undefined" && payload.categories?.length) {
+    if (typeof CATEGORIES !== "undefined" && Array.isArray(payload.categories)) {
       CATEGORIES.splice(0, CATEGORIES.length, ...payload.categories);
     }
-    if (typeof SLIDES !== "undefined" && payload.slides) {
+    if (typeof SLIDES !== "undefined" && Array.isArray(payload.slides)) {
       SLIDES.splice(0, SLIDES.length, ...payload.slides);
     }
-    if (typeof PRODUCT_SLIDERS !== "undefined" && payload.productSliders) {
+    if (typeof PRODUCT_SLIDERS !== "undefined" && Array.isArray(payload.productSliders)) {
       PRODUCT_SLIDERS.splice(0, PRODUCT_SLIDERS.length, ...payload.productSliders);
     }
-    if (typeof BRANDS !== "undefined" && payload.brands) {
+    if (typeof BRANDS !== "undefined" && Array.isArray(payload.brands)) {
       BRANDS.splice(0, BRANDS.length, ...payload.brands);
     }
     if (typeof STORE !== "undefined" && payload.store) {
       Object.assign(STORE, payload.store);
+    }
+    if (typeof STORE !== "undefined" && payload.settings?.officeGallery) {
+      STORE.officeGallery = payload.settings.officeGallery;
     }
     window.dispatchEvent(new CustomEvent("store:updated", { detail: payload }));
   }
@@ -135,5 +156,5 @@ const StoreAPI = (() => {
     if (e.key === VERSION_KEY && e.newValue !== version) fetchStore();
   });
 
-  return { bootstrap, fetchStore, createOrder, getOrder, notifyChange, applyStore, apiUrl, fetchApi };
+  return { bootstrap, fetchStore, createOrder, getOrder, notifyChange, applyStore, apiUrl, fetchApi, isStoreReady: () => storeReady };
 })();

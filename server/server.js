@@ -7,7 +7,7 @@ const db = require("./db");
 
 const ROOT = path.join(__dirname, "..");
 const PORT = Number(process.env.PORT || 8765);
-const HOST = process.env.HOST || (process.env.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1");
+const HOST = process.env.HOST || (process.env.PORT ? "0.0.0.0" : "127.0.0.1");
 const UPLOADS = path.join(ROOT, "uploads");
 
 const MIME = {
@@ -82,6 +82,7 @@ function saveUpload(dataUrl, folder = "products") {
 
 async function handleApi(req, res, pathname) {
   const method = req.method.toUpperCase();
+  if (pathname.length > 1 && pathname.endsWith("/")) pathname = pathname.slice(0, -1);
 
   if (pathname === "/api/health" && method === "GET") {
     return send(res, 200, { ...db.getHealth(), version: db.getVersion() });
