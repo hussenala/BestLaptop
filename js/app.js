@@ -318,17 +318,60 @@ function discount(p) {
 
 function getCart() {
   try {
-    return JSON.parse(localStorage.getItem(CART_KEY)) || [];
+    const raw = localStorage.getItem(CART_KEY);
+    const items = raw ? JSON.parse(raw) : [];
+    return Array.isArray(items) ? items : [];
   } catch {
     return [];
   }
 }
 
 function setCart(items) {
-  localStorage.setItem(CART_KEY, JSON.stringify(items));
+  try {
+    localStorage.setItem(CART_KEY, JSON.stringify(items));
+  } catch {
+    showToast("تعذر حفظ السلة. تحقق من إعدادات المتصفح أو التخزين.");
+    return;
+  }
   renderCart();
   renderCartPage();
   renderCheckout();
+}
+
+function snapshotFromProduct(p) {
+  return {
+    name: p.name,
+    price: p.price,
+    oldPrice: p.oldPrice ?? null,
+    image: p.image,
+    brand: p.brand,
+    cpu: p.cpu,
+    gpu: p.gpu,
+    ram: p.ram,
+    storage: p.storage,
+    stock: p.stock,
+  };
+}
+
+function resolveCartProduct(item) {
+  const live = PRODUCTS.find((p) => p.id === item.id);
+  if (live) return live;
+  if (item.name && item.price != null) {
+    return {
+      id: item.id,
+      name: item.name,
+      price: item.price,
+      oldPrice: item.oldPrice,
+      image: item.image || "img/logo.jpg",
+      brand: item.brand || "",
+      cpu: item.cpu || "",
+      gpu: item.gpu || "",
+      ram: item.ram || "",
+      storage: item.storage || "",
+      stock: Number(item.stock) || 0,
+    };
+  }
+  return null;
 }
 
 function getShipMethod() {
@@ -355,9 +398,20 @@ function payOption(id) {
   return payments.find((p) => p.id === id) || payments[0] || { id: "cod", label: "الدفع عند الاستلام", hint: "" };
 }
 
-function addToCart(id, opts = {}) {
+async function addToCart(id, opts = {}) {
+  if (typeof StoreAPI !== "undefined" && !StoreAPI.isStoreReady?.()) {
+    try {
+      await StoreAPI.fetchStore();
+    } catch {
+      showToast("تعذر تحميل بيانات المتجر. حاول مرة أخرى.");
+      return;
+    }
+  }
   const product = PRODUCTS.find((p) => p.id === id);
-  if (!product) return;
+  if (!product) {
+    showToast("المنتج غير متوفر حالياً. حدّث الصفحة وحاول مجدداً.");
+    return;
+  }
   if (!inStock(product)) {
     showToast("هذا الجهاز غير متوفر حالياً");
     return;
@@ -370,9 +424,11 @@ function addToCart(id, opts = {}) {
     showToast("لا توجد كمية إضافية");
     return;
   }
-  if (existing) existing.qty = next;
-  else {
-    const line = { id, qty: 1 };
+  if (existing) {
+    existing.qty = next;
+    Object.assign(existing, snapshotFromProduct(product));
+  } else {
+    const line = { id, qty: 1, ...snapshotFromProduct(product) };
     if (arabization) line.arabization = true;
     cart.push(line);
   }
@@ -381,7 +437,13 @@ function addToCart(id, opts = {}) {
   showCartPrompt(product, arabization);
 }
 
-function ensureCartPrompt() {
+function cartPageUrl() {
+  try {
+    return new URL("cart.html", window.location.href).href;
+  } catch {
+    return "cart.html";
+  }
+}
   let el = document.getElementById("cart-prompt");
   if (el) return el;
   el = document.createElement("div");
@@ -395,7 +457,7 @@ function ensureCartPrompt() {
       <p class="muted" data-cart-prompt-name></p>
       <div class="cart-prompt-actions">
         <button class="btn btn-ghost" type="button" data-cart-continue>متابعة التسوق</button>
-        <a class="btn btn-primary" href="cart.html">الذهاب إلى السلة</a>
+        <a class="btn btn-primary" href="${cartPageUrl()}">الذهاب إلى السلة</a>
       </div>
     </div>`;
   document.body.append(el);
@@ -422,13 +484,15 @@ function closeCartPrompt() {
 
 function changeQty(lineKey, delta) {
   const { id, arabization } = parseCartLineKey(lineKey);
-  const product = PRODUCTS.find((p) => p.id === id);
   const cart = getCart()
     .map((i) => {
       if (i.id !== id || !!i.arabization !== arabization) return i;
+      const live = resolveCartProduct(i);
       let qty = i.qty + delta;
-      if (product && qty > product.stock) qty = product.stock;
-      return { ...i, qty };
+      if (live && qty > live.stock) qty = live.stock;
+      const next = { ...i, qty };
+      if (live) Object.assign(next, snapshotFromProduct(live));
+      return next;
     })
     .filter((i) => i.qty > 0);
   setCart(cart);
@@ -443,7 +507,7 @@ function removeFromCart(lineKey) {
 function cartDetails() {
   return getCart().map((item) => ({
     ...item,
-    product: PRODUCTS.find((p) => p.id === item.id),
+    product: resolveCartProduct(item),
   }));
 }
 
@@ -2412,8 +2476,7 @@ document.addEventListener("click", (e) => {
 
   const add = e.target.closest("[data-add]");
   if (add) {
-    const arabization = !!document.querySelector("[data-pdp-arabization]:checked");
-    addToCart(add.dataset.add, { arabization });
+    void addToCart(add.dataset.add, { arabization: !!document.querySelector("[data-pdp-arabization]:checked") });
   }
 
   const qty = e.target.closest("[data-qty]");
