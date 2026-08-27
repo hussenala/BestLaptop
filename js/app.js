@@ -444,6 +444,8 @@ function cartPageUrl() {
     return "cart.html";
   }
 }
+
+function ensureCartPrompt() {
   let el = document.getElementById("cart-prompt");
   if (el) return el;
   el = document.createElement("div");
