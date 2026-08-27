@@ -1,2 +1,2 @@
-// Compatibility entry if Hostinger is still set to app.js — prefer server/server.js.
+// Hostinger Node entry (optional) — no package.json required; runs server/server.js directly.
 require("./server/server").start();

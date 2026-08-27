@@ -841,6 +841,27 @@ try {
     }
   }
 
+  if ($path === "/admin/slides/reorder" && $method === "PATCH") {
+    require_auth($pdo);
+    $ids = read_json()["ids"] ?? [];
+    $i = 0;
+    foreach ($ids as $id) {
+      $pdo->prepare("UPDATE hero_slides SET sort_order=? WHERE id=?")->execute([$i++, $id]);
+    }
+    bump($pdo);
+    json_out(200, ["ok" => true]);
+  }
+  if ($path === "/admin/product-sliders/reorder" && $method === "PATCH") {
+    require_auth($pdo);
+    $ids = read_json()["ids"] ?? [];
+    $i = 0;
+    foreach ($ids as $id) {
+      $pdo->prepare("UPDATE product_sliders SET sort_order=? WHERE id=?")->execute([$i++, $id]);
+    }
+    bump($pdo);
+    json_out(200, ["ok" => true]);
+  }
+
   if ($path === "/admin/slides") {
     require_auth($pdo);
     if ($method === "GET") json_out(200, list_slides($pdo, false));
@@ -887,27 +908,6 @@ try {
       bump($pdo);
       json_out(200, ["ok" => true]);
     }
-  }
-
-  if ($path === "/admin/slides/reorder" && $method === "PATCH") {
-    require_auth($pdo);
-    $ids = read_json()["ids"] ?? [];
-    $i = 0;
-    foreach ($ids as $id) {
-      $pdo->prepare("UPDATE hero_slides SET sort_order=? WHERE id=?")->execute([$i++, $id]);
-    }
-    bump($pdo);
-    json_out(200, ["ok" => true]);
-  }
-  if ($path === "/admin/product-sliders/reorder" && $method === "PATCH") {
-    require_auth($pdo);
-    $ids = read_json()["ids"] ?? [];
-    $i = 0;
-    foreach ($ids as $id) {
-      $pdo->prepare("UPDATE product_sliders SET sort_order=? WHERE id=?")->execute([$i++, $id]);
-    }
-    bump($pdo);
-    json_out(200, ["ok" => true]);
   }
 
   json_out(404, ["error" => "API route not found", "path" => $path]);

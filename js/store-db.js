@@ -69,6 +69,7 @@ const StoreDB = (() => {
     if (!cache) return;
     if (typeof PRODUCTS !== "undefined") PRODUCTS.splice(0, PRODUCTS.length, ...cache.products);
     if (typeof CATEGORIES !== "undefined") CATEGORIES.splice(0, CATEGORIES.length, ...cache.categories);
+    if (typeof BRANDS !== "undefined" && cache.brands) BRANDS.splice(0, BRANDS.length, ...cache.brands);
     if (typeof SLIDES !== "undefined" && cache.slides) SLIDES.splice(0, SLIDES.length, ...cache.slides);
     if (typeof PRODUCT_SLIDERS !== "undefined" && cache.productSliders) {
       PRODUCT_SLIDERS.splice(0, PRODUCT_SLIDERS.length, ...cache.productSliders);

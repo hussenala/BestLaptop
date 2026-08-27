@@ -5,9 +5,13 @@ const StoreAPI = (() => {
   let pollTimer;
   let storeReady = false;
 
-  function isProductionHost() {
+  function isLocalDev() {
     const h = location.hostname;
-    return h === "way-company.com" || h === "www.way-company.com";
+    return h === "localhost" || h === "127.0.0.1" || h === "[::1]";
+  }
+
+  function isProductionHost() {
+    return !isLocalDev();
   }
 
   function siteRoot() {
@@ -55,7 +59,10 @@ const StoreAPI = (() => {
         }
         const body = JSON.parse(text);
         sessionStorage.setItem(API_MODE_KEY, url.includes("index.php") ? "php" : preferPhp ? "php" : "node");
-        if (!res.ok) lastMessage = formatApiError(body, lastMessage);
+        if (!res.ok) {
+          lastMessage = formatApiError(body, lastMessage);
+          if (body.error === "API route not found" && url !== urls[urls.length - 1]) continue;
+        }
         return { res, body };
       } catch (err) {
         lastMessage = err.message || lastMessage;
