@@ -54,7 +54,14 @@ const StoreDB = (() => {
       }
       throw new Error("Unauthorized");
     }
-    if (!res.ok) throw new Error(body.path ? `${body.error || "Request failed"} (${body.path})` : body.error || "Request failed");
+    if (!res.ok) {
+      const msg = body.detail
+        ? `${body.error || "Request failed"}: ${body.detail}`
+        : body.path
+          ? `${body.error || "Request failed"} (${body.path})`
+          : body.error || "Request failed";
+      throw new Error(msg);
+    }
     return body;
   }
 

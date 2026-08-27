@@ -124,6 +124,16 @@ function init_schema(PDO $pdo) {
   } catch (Throwable $e) {
     /* ignore migration errors */
   }
+  try {
+    $cols = $pdo->query("PRAGMA table_info(hero_slides)")->fetchAll();
+    $hasVideo = false;
+    foreach ($cols as $c) {
+      if (($c["name"] ?? "") === "video_url") $hasVideo = true;
+    }
+    if (!$hasVideo) $pdo->exec("ALTER TABLE hero_slides ADD COLUMN video_url TEXT");
+  } catch (Throwable $e) {
+    /* ignore migration errors */
+  }
   $n = (int) $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
   if ($n === 0) {
     $ins = $pdo->prepare("INSERT INTO users (id,name,username,password_hash,role) VALUES (?,?,?,?,?)");
@@ -405,7 +415,7 @@ function get_slide(PDO $pdo, $id) {
 function upsert_slide(PDO $pdo, array $s) {
   $id = $s["id"] ?? uid("sl");
   $pdo->prepare("INSERT INTO hero_slides (id,sort_order,active,title,headline,blurb,image,video_url,product_id,category,tag,gpu,tgp,cooling,screen,chip1,chip2)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ON CONFLICT(id) DO UPDATE SET sort_order=excluded.sort_order, active=excluded.active, title=excluded.title, headline=excluded.headline,
       blurb=excluded.blurb, image=excluded.image, video_url=excluded.video_url, product_id=excluded.product_id, category=excluded.category,
       tag=excluded.tag, gpu=excluded.gpu, tgp=excluded.tgp, cooling=excluded.cooling, screen=excluded.screen, chip1=excluded.chip1, chip2=excluded.chip2")
