@@ -333,22 +333,26 @@ function setCart(items) {
 
 function getShipMethod() {
   const saved = sessionStorage.getItem(SHIP_KEY);
-  const valid = STORE.shipping.some((s) => s.id === saved);
-  return valid ? saved : STORE.shipping[0]?.id || "baghdad";
+  const shipping = STORE.shipping || [];
+  const valid = shipping.some((s) => s.id === saved);
+  return valid ? saved : shipping[0]?.id || "baghdad";
 }
 
 function setShipMethod(id) {
-  if (STORE.shipping.some((s) => s.id === id)) {
+  const shipping = STORE.shipping || [];
+  if (shipping.some((s) => s.id === id)) {
     sessionStorage.setItem(SHIP_KEY, id);
   }
 }
 
 function shipOption(id) {
-  return STORE.shipping.find((s) => s.id === (id || getShipMethod())) || STORE.shipping[0];
+  const shipping = STORE.shipping || [];
+  return shipping.find((s) => s.id === (id || getShipMethod())) || shipping[0] || { id: "baghdad", label: "توصيل بغداد", fee: 10000, hint: "" };
 }
 
 function payOption(id) {
-  return STORE.payments.find((p) => p.id === id) || STORE.payments[0];
+  const payments = STORE.payments || [];
+  return payments.find((p) => p.id === id) || payments[0] || { id: "cod", label: "الدفع عند الاستلام", hint: "" };
 }
 
 function addToCart(id, opts = {}) {
@@ -455,7 +459,8 @@ function cartPricing(shipId) {
     if (!old || old <= i.product.price) return sum;
     return sum + (old - i.product.price) * i.qty;
   }, 0);
-  const shipping = items.length ? shipOption(shipId).fee : 0;
+  const ship = shipOption(shipId);
+  const shipping = items.length ? (ship?.fee ?? 0) : 0;
   return { items, subtotal, discount, shipping, total: subtotal + shipping };
 }
 
@@ -2577,6 +2582,7 @@ window.addEventListener("store:updated", () => {
   renderCatalog();
   renderProductPage();
   renderSlider();
+  renderCart();
   renderCartPage();
   renderCheckout();
   setupCheckoutForm();

@@ -148,6 +148,48 @@ function init_schema(PDO $pdo) {
     }
   }
   seed_default_slides($pdo);
+  migrate_checkout_options($pdo);
+}
+
+function default_cities() {
+  return [
+    "بغداد", "البصرة", "الموصل", "أربيل", "النجف", "كربلاء", "بابل", "الأنبار",
+    "ديالى", "واسط", "صلاح الدين", "كركوك", "ذي قار", "ميسان", "المثنى", "القادسية", "دهوك", "السليمانية",
+  ];
+}
+
+function default_shipping() {
+  return [
+    ["id" => "baghdad", "label" => "توصيل بغداد", "fee" => 10000, "hint" => "توصيل داخل بغداد خلال يوم عمل"],
+    ["id" => "governorate", "label" => "توصيل المحافظات", "fee" => 10000, "hint" => "توصيل خارج بغداد خلال 2–4 أيام"],
+  ];
+}
+
+function default_payments() {
+  return [
+    ["id" => "cod", "label" => "الدفع عند الاستلام", "hint" => "ادفع نقداً عند استلام الطلب"],
+    ["id" => "office", "label" => "الدفع في المعرض", "hint" => "ادفع في المعرض عند زيارتك"],
+  ];
+}
+
+function checkout_options(array $s) {
+  if (empty($s["cities"])) $s["cities"] = default_cities();
+  if (empty($s["shipping"])) $s["shipping"] = default_shipping();
+  if (empty($s["payments"])) $s["payments"] = default_payments();
+  return $s;
+}
+
+function migrate_checkout_options(PDO $pdo) {
+  $done = $pdo->query("SELECT value FROM meta WHERE key='checkout_opts_v2'")->fetchColumn();
+  if ($done) return;
+  $s = checkout_options(settings_raw($pdo));
+  save_settings($pdo, $s);
+  $pdo->exec("INSERT INTO meta (key,value) VALUES ('checkout_opts_v2','1') ON CONFLICT(key) DO UPDATE SET value=excluded.value");
+}
+
+function settings_raw(PDO $pdo) {
+  $row = $pdo->query("SELECT value FROM settings WHERE key='main'")->fetchColumn();
+  return $row ? (json_decode($row, true) ?: []) : [];
 }
 
 function seed_default_slides(PDO $pdo) {
@@ -233,8 +275,7 @@ function health(PDO $pdo) {
 }
 
 function settings(PDO $pdo) {
-  $row = $pdo->query("SELECT value FROM settings WHERE key='main'")->fetchColumn();
-  return $row ? (json_decode($row, true) ?: []) : [];
+  return checkout_options(settings_raw($pdo));
 }
 
 function save_settings(PDO $pdo, $s) {

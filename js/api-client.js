@@ -92,7 +92,11 @@ const StoreAPI = (() => {
       BRANDS.splice(0, BRANDS.length, ...payload.brands);
     }
     if (typeof STORE !== "undefined" && payload.store) {
-      Object.assign(STORE, payload.store);
+      const next = { ...payload.store };
+      if (!next.cities?.length && STORE.cities?.length) next.cities = STORE.cities;
+      if (!next.shipping?.length && STORE.shipping?.length) next.shipping = STORE.shipping;
+      if (!next.payments?.length && STORE.payments?.length) next.payments = STORE.payments;
+      Object.assign(STORE, next);
     }
     if (typeof STORE !== "undefined" && payload.settings?.officeGallery) {
       STORE.officeGallery = payload.settings.officeGallery;
