@@ -592,6 +592,16 @@ function setProductImages(list) {
   paintImagePreviews(list);
 }
 
+function setPrimaryProductImage(index) {
+  const list = getProductImages();
+  const i = Number(index);
+  if (i < 1 || i >= list.length) return;
+  const [item] = list.splice(i, 1);
+  list.unshift(item);
+  setProductImages(list);
+  setupProductEditor();
+}
+
 function paintImagePreviews(list) {
   const box = document.querySelector("[data-image-previews]");
   if (!box) return;
@@ -600,8 +610,9 @@ function paintImagePreviews(list) {
     ? list
         .map(
           (src, i) => `
-    <figure class="img-preview">
+    <figure class="img-preview${isEditor && i === 0 ? " is-primary" : ""}">
       ${isEditor && i === 0 ? '<span class="img-primary-badge">الصورة الرئيسية</span>' : ""}
+      ${isEditor && i !== 0 ? `<button type="button" class="img-set-primary" data-set-primary-img="${i}">★ رئيسية</button>` : ""}
       <img src="${esc(resolveAdminAsset(src))}" alt="" />
       <button type="button" class="img-rm" data-rm-img="${i}" aria-label="حذف">×</button>
     </figure>`
@@ -834,7 +845,7 @@ function renderProductEditor(productId = null) {
 
           <aside class="pe-aside">
             <section class="pe-aside-block">
-              ${peAsideBlock("4", "صور المنتج", "PNG أو JPG — الصورة الأولى هي الغلاف.", `
+              ${peAsideBlock("4", "صور المنتج", "PNG أو JPG — انقر «رئيسية» على أي صورة لتعيينها غلاف المنتج.", `
                 <label class="pe-upload">
                   <input type="file" accept="image/*" multiple data-product-files hidden />
                   <span class="pe-upload-icon" aria-hidden="true">↑</span>
@@ -2213,6 +2224,11 @@ document.addEventListener("click", (e) => {
     list.splice(Number(rmImg.dataset.rmImg), 1);
     setProductImages(list);
     setupProductEditor();
+    return;
+  }
+  const setPrimary = e.target.closest("[data-set-primary-img]");
+  if (setPrimary) {
+    setPrimaryProductImage(setPrimary.dataset.setPrimaryImg);
   }
 });
 
