@@ -429,8 +429,37 @@ async function handleApi(req, res, pathname) {
   send(res, 404, { error: "API route not found" });
 }
 
+const PAGE_ALIASES = {
+  "/products": "/products.html",
+  "/cart": "/cart.html",
+  "/checkout": "/checkout.html",
+  "/contact": "/contact.html",
+  "/order": "/order.html",
+  "/admin": "/admin/index.html",
+  "/admin/login": "/admin/login.html",
+};
+
 function serveStatic(req, res, pathname) {
-  let filePath = pathname === "/" ? "/index.html" : pathname;
+  const productMatch = pathname.match(/^\/product\/([^/]+)\/?$/);
+  if (productMatch) {
+    const query = url.parse(req.url).search || "";
+    const sep = query ? "&" : "?";
+    res.writeHead(302, { Location: `/product.html${query}${sep}id=${encodeURIComponent(productMatch[1])}` });
+    res.end();
+    return;
+  }
+
+  const adminPageMatch = pathname.match(/^\/admin\/([a-z0-9-]+)\/?$/);
+  if (adminPageMatch) {
+    const page = adminPageMatch[1];
+    if (page !== "login" && page !== "index") {
+      res.writeHead(302, { Location: `/admin/index.html#/${page}` });
+      res.end();
+      return;
+    }
+  }
+
+  let filePath = PAGE_ALIASES[pathname] || (pathname === "/" ? "/index.html" : pathname);
   filePath = filePath.split("?")[0];
   const abs = path.normalize(path.join(ROOT, filePath.replace(/^\//, "").replace(/\//g, path.sep)));
   if (!abs.startsWith(ROOT)) return send(res, 403, "Forbidden", "text/plain");

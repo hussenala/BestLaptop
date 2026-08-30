@@ -8,3 +8,12 @@ RewriteRule ^api/(.*)$ api/index.php?r=/$1 [QSA,L]
 # Admin panel (Apache/static fallback when Node is not fronting requests)
 RewriteRule ^admin/login/?$ admin/login.html [L]
 RewriteRule ^admin/?$ admin/index.html [L]
+RewriteRule ^admin/([a-z0-9-]+)/?$ admin/index.html#/$1 [L,NE]
+
+# Next.js-style URLs → static HTML pages
+RewriteRule ^products/?$ products.html [L]
+RewriteRule ^product/([^/]+)/?$ product.html?id=$1 [L,QSA]
+RewriteRule ^cart/?$ cart.html [L]
+RewriteRule ^checkout/?$ checkout.html [L]
+RewriteRule ^contact/?$ contact.html [L]
+RewriteRule ^order/?$ order.html [L]

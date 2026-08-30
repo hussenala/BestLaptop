@@ -369,25 +369,6 @@ function columnExists(table, col) {
 }
 
 function migrateSchema() {
-  if (!columnExists("products", "images_json")) {
-    db.exec("ALTER TABLE products ADD COLUMN images_json TEXT");
-    db.prepare("UPDATE products SET images_json = json_array(image) WHERE image IS NOT NULL AND image != ''").run();
-  }
-  if (!columnExists("products", "created_at")) {
-    db.exec("ALTER TABLE products ADD COLUMN created_at TEXT");
-    const rows = db.prepare("SELECT id FROM products ORDER BY name").all();
-    rows.forEach((r, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() - i * 2 - 1);
-      db.prepare("UPDATE products SET created_at = ? WHERE id = ?").run(d.toISOString(), r.id);
-    });
-  }
-  if (!columnExists("hero_slides", "video_url")) {
-    db.exec("ALTER TABLE hero_slides ADD COLUMN video_url TEXT");
-  }
-  if (!columnExists("product_sliders", "brand")) {
-    db.exec("ALTER TABLE product_sliders ADD COLUMN brand TEXT DEFAULT ''");
-  }
   db.exec(`
     CREATE TABLE IF NOT EXISTS product_sliders (
       id TEXT PRIMARY KEY,
@@ -422,6 +403,29 @@ function migrateSchema() {
       chip2 TEXT
     );
   `);
+  if (!columnExists("products", "images_json")) {
+    db.exec("ALTER TABLE products ADD COLUMN images_json TEXT");
+    db.prepare("UPDATE products SET images_json = json_array(image) WHERE image IS NOT NULL AND image != ''").run();
+  }
+  if (!columnExists("products", "created_at")) {
+    db.exec("ALTER TABLE products ADD COLUMN created_at TEXT");
+    const rows = db.prepare("SELECT id FROM products ORDER BY name").all();
+    rows.forEach((r, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - i * 2 - 1);
+      db.prepare("UPDATE products SET created_at = ? WHERE id = ?").run(d.toISOString(), r.id);
+    });
+  }
+  if (!columnExists("hero_slides", "video_url")) {
+    db.exec("ALTER TABLE hero_slides ADD COLUMN video_url TEXT");
+  }
+  if (!columnExists("product_sliders", "brand")) {
+    db.exec("ALTER TABLE product_sliders ADD COLUMN brand TEXT DEFAULT ''");
+  }
+
+  const isSeeded = !!db.prepare("SELECT value FROM meta WHERE key = 'seeded'").get();
+  if (!isSeeded) return;
+
   const slideCount = db.prepare("SELECT COUNT(*) as n FROM hero_slides").get()?.n || 0;
   if (!slideCount) {
     const products = db.prepare("SELECT * FROM products WHERE slide = 1 ORDER BY name").all();
@@ -535,7 +539,9 @@ function seedDatabase() {
     const insCat = db.prepare("INSERT INTO categories (id,title,text) VALUES (?,?,?)");
     seed.categories.forEach((c) => insCat.run(c.id, c.title, c.text));
 
-    const insBrand = db.prepare("INSERT INTO brands (id,name,country) VALUES (?,?,?)");
+    const insBrand = db.prepare(
+      "INSERT INTO brands (id,name,country) VALUES (?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name, country=excluded.country"
+    );
     seed.brands.forEach((b) => insBrand.run(b.id, b.name, b.country));
 
     const insProd = db.prepare(`

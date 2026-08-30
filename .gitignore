@@ -3,3 +3,7 @@ server/data/*.db
 server/data/*.db-*
 .env
 api/.env
+node_modules/
+.tools/
+.next/
+.tmp-preview/
