@@ -422,6 +422,15 @@ function migrateSchema() {
   if (!columnExists("hero_slides", "image_only")) {
     db.exec("ALTER TABLE hero_slides ADD COLUMN image_only INTEGER NOT NULL DEFAULT 0");
   }
+  if (!columnExists("hero_slides", "hide_specs")) {
+    db.exec("ALTER TABLE hero_slides ADD COLUMN hide_specs INTEGER NOT NULL DEFAULT 0");
+  }
+  if (!columnExists("hero_slides", "text_position")) {
+    db.exec("ALTER TABLE hero_slides ADD COLUMN text_position TEXT NOT NULL DEFAULT 'default'");
+  }
+  if (!columnExists("hero_slides", "show_add_to_cart")) {
+    db.exec("ALTER TABLE hero_slides ADD COLUMN show_add_to_cart INTEGER NOT NULL DEFAULT 1");
+  }
   if (!columnExists("product_sliders", "brand")) {
     db.exec("ALTER TABLE product_sliders ADD COLUMN brand TEXT DEFAULT ''");
   }
@@ -668,6 +677,7 @@ function getSettings() {
   if (!s.notice && s.city) s.notice = `${s.city} · ${s.address} · ${s.warranty}`;
   s.maintenanceMode = !!s.maintenanceMode;
   if (!s.maintenanceMessage) s.maintenanceMessage = "";
+  s.cartEnabled = s.cartEnabled !== false;
   if (!Array.isArray(s.homeLayout)) s.homeLayout = null;
   if (!s.officeGallery || typeof s.officeGallery !== "object") {
     s.officeGallery = defaultOfficeGallery();
@@ -813,7 +823,15 @@ function rowToSlide(row) {
     chip1: row.chip1 || "",
     chip2: row.chip2 || "",
     imageOnly: !!row.image_only,
+    hideSpecs: !!row.hide_specs,
+    textPosition: normalizeTextPosition(row.text_position),
+    showAddToCart: row.show_add_to_cart !== 0,
   };
+}
+
+function normalizeTextPosition(value) {
+  const v = String(value || "default").trim();
+  return v === "center" || v === "right" ? v : "default";
 }
 
 function slideToRow(s) {
@@ -836,6 +854,9 @@ function slideToRow(s) {
     chip1: s.chip1 || "",
     chip2: s.chip2 || "",
     image_only: s.imageOnly ? 1 : 0,
+    hide_specs: s.hideSpecs ? 1 : 0,
+    text_position: normalizeTextPosition(s.textPosition),
+    show_add_to_cart: s.showAddToCart !== false ? 1 : 0,
   };
 }
 
@@ -853,13 +874,14 @@ function getSlide(id) {
 
 function upsertSlide(s) {
   db.prepare(`
-    INSERT INTO hero_slides (id,sort_order,active,title,headline,blurb,image,video_url,product_id,category,tag,gpu,tgp,cooling,screen,chip1,chip2,image_only)
-    VALUES (@id,@sort_order,@active,@title,@headline,@blurb,@image,@video_url,@product_id,@category,@tag,@gpu,@tgp,@cooling,@screen,@chip1,@chip2,@image_only)
+    INSERT INTO hero_slides (id,sort_order,active,title,headline,blurb,image,video_url,product_id,category,tag,gpu,tgp,cooling,screen,chip1,chip2,image_only,hide_specs,text_position,show_add_to_cart)
+    VALUES (@id,@sort_order,@active,@title,@headline,@blurb,@image,@video_url,@product_id,@category,@tag,@gpu,@tgp,@cooling,@screen,@chip1,@chip2,@image_only,@hide_specs,@text_position,@show_add_to_cart)
     ON CONFLICT(id) DO UPDATE SET
       sort_order=excluded.sort_order, active=excluded.active, title=excluded.title, headline=excluded.headline,
       blurb=excluded.blurb, image=excluded.image, video_url=excluded.video_url, product_id=excluded.product_id, category=excluded.category,
       tag=excluded.tag, gpu=excluded.gpu, tgp=excluded.tgp, cooling=excluded.cooling, screen=excluded.screen,
-      chip1=excluded.chip1, chip2=excluded.chip2, image_only=excluded.image_only
+      chip1=excluded.chip1, chip2=excluded.chip2, image_only=excluded.image_only, hide_specs=excluded.hide_specs,
+      text_position=excluded.text_position, show_add_to_cart=excluded.show_add_to_cart
   `).run(slideToRow(s));
   bumpVersion();
   return getSlide(s.id);
@@ -1136,6 +1158,7 @@ function getPublicStore() {
       officeGallery: settings.officeGallery || defaultOfficeGallery(),
       maintenanceMode: !!settings.maintenanceMode,
       maintenanceMessage: settings.maintenanceMessage || "",
+      cartEnabled: settings.cartEnabled !== false,
     },
   };
 }

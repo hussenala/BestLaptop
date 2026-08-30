@@ -118,6 +118,9 @@ const StoreAPI = (() => {
       if ("homeLayout" in payload.settings) {
         STORE.homeLayout = payload.settings.homeLayout;
       }
+      if ("cartEnabled" in payload.settings) {
+        STORE.cartEnabled = payload.settings.cartEnabled !== false;
+      }
     }
     const officeGallery = payload.settings?.officeGallery || payload.store?.officeGallery;
     if (typeof STORE !== "undefined" && officeGallery) {

@@ -189,6 +189,7 @@ const STORE = {
   warranty: "ضمان سنتين حقيقي معتمد",
   maintenanceMode: false,
   maintenanceMessage: "",
+  cartEnabled: true,
   currency: "IQD",
   cities: [
     "بغداد",

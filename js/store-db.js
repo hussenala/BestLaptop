@@ -90,6 +90,7 @@ const StoreDB = (() => {
         featured: cache.settings.featured || STORE.featured,
         officeGallery: cache.settings.officeGallery || STORE.officeGallery,
         homeLayout: cache.settings.homeLayout ?? null,
+        cartEnabled: cache.settings.cartEnabled !== false,
         city: cache.settings.city,
         address: cache.settings.address,
         fullAddress: cache.settings.fullAddress,

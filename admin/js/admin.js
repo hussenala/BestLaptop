@@ -1013,6 +1013,23 @@ function renderInventory() {
       .join("")}</tbody></table></div>`;
 }
 
+function slideTextPositionLabel(value) {
+  if (value === "center") return "نص وسط";
+  if (value === "right") return "نص يمين";
+  return "";
+}
+
+function slideTextPositionOptions(current) {
+  const pos = current || "default";
+  return [
+    ["default", "تلقائي — نص ومواصفات"],
+    ["center", "في الوسط"],
+    ["right", "على يمين الشاشة"],
+  ]
+    .map(([value, label]) => `<option value="${value}" ${pos === value ? "selected" : ""}>${label}</option>`)
+    .join("");
+}
+
 function slideForm(s = {}) {
   const cats = db().categories.map((c) => `<option value="${esc(c.id)}" ${s.category === c.id ? "selected" : ""}>${esc(c.title)}</option>`).join("");
   const products = db().products.map((p) => `<option value="${esc(p.id)}" ${s.productId === p.id ? "selected" : ""}>${esc(p.name)}</option>`).join("");
@@ -1040,6 +1057,15 @@ function slideForm(s = {}) {
         <input type="checkbox" name="imageOnly" value="1" ${s.imageOnly ? "checked" : ""} />
         عرض الصورة فقط — إخفاء النص والمواصفات على الموقع
       </label>
+      <label class="span-2 check-row">
+        <input type="checkbox" name="hideSpecs" value="1" ${s.hideSpecs ? "checked" : ""} ${s.imageOnly ? "disabled" : ""} />
+        إخفاء بطاقة المواصفات فقط — الإبقاء على العنوان والأزرار
+      </label>
+      <label class="span-2 check-row">
+        <input type="checkbox" name="showAddToCart" value="1" ${s.showAddToCart !== false ? "checked" : ""} ${s.imageOnly ? "disabled" : ""} />
+        إظهار زر «أضف إلى السلة» في البنر — يظهر فقط عند ربط الشريحة بمنتج وتفعيل السلة
+      </label>
+      <label class="span-2">موضع النص<select name="textPosition" data-slide-text-position ${s.imageOnly ? "disabled" : ""}>${slideTextPositionOptions(s.textPosition)}</select><small class="field-hint">«في الوسط» يوسّط العنوان والأزرار على الشاشة. «على اليمين» يلصق النص بيمين السلايدر.</small></label>
       <div class="form-section span-2"><h3>الشارات والمواصفات</h3></div>
       <label>الوسم<input name="tag" value="${esc(s.tag || "")}" /></label>
       <label>الشارة 1<input name="chip1" value="${esc(s.chip1 || "")}" placeholder="ضمان سنتين" /></label>
@@ -1083,23 +1109,32 @@ function setupSlideEditor() {
     const image = imageRaw ? resolveAdminAsset(imageRaw) : "";
     const active = form.querySelector('[name="active"]')?.value !== "0";
     const imageOnly = form.querySelector('[name="imageOnly"]')?.checked;
+    const hideSpecs = !imageOnly && form.querySelector('[name="hideSpecs"]')?.checked;
+    const showAddToCart = !imageOnly && form.querySelector('[name="showAddToCart"]')?.checked !== false;
+    const textPosition = imageOnly ? "default" : form.querySelector('[name="textPosition"]')?.value || "default";
+    const textCenter = textPosition === "center";
+    const textRight = textPosition === "right";
     const stock = product ? Number(product.stock) || 0 : 0;
     const showPrice = !!(product && stock > 0);
-    const showAdd = !!product;
+    const showAdd = !!product && showAddToCart;
     const addLabel = product ? (stock > 0 ? "أضف إلى السلة" : "غير متوفر") : "";
 
     const mediaHtml = adminHeroMediaHtml(videoUrl, image);
 
     preview.innerHTML = `
-      <div class="slide-hero-mock${active ? "" : " is-inactive"}${imageOnly ? " is-image-only" : ""}">
+      <div class="slide-hero-mock${active ? "" : " is-inactive"}${imageOnly ? " is-image-only" : ""}${hideSpecs ? " is-no-specs" : ""}${textCenter ? " is-hero-text-center" : ""}${textRight ? " is-hero-text-right" : ""}">
         ${active ? "" : `<span class="slide-hero-inactive-badge">متوقفة — لن تظهر في الموقع حتى تُفعَّل</span>`}
         ${imageOnly ? `<span class="slide-hero-image-only-badge">صورة فقط — بدون نص</span>` : ""}
-        <section class="hero-slider${imageOnly ? " is-image-only" : ""}" aria-hidden="true">
+        ${hideSpecs ? `<span class="slide-hero-image-only-badge">بدون مواصفات</span>` : ""}
+        ${product && !showAddToCart ? `<span class="slide-hero-image-only-badge">بدون زر السلة</span>` : ""}
+        ${textCenter ? `<span class="slide-hero-image-only-badge">نص في الوسط</span>` : ""}
+        ${textRight ? `<span class="slide-hero-image-only-badge">نص على اليمين</span>` : ""}
+        <section class="hero-slider${imageOnly ? " is-image-only" : ""}${hideSpecs ? " is-no-specs" : ""}${textCenter ? " is-hero-text-center" : ""}${textRight ? " is-hero-text-right" : ""}" aria-hidden="true">
           <div class="slider-viewport">
             <div class="slider-track">${mediaHtml}</div>
             <div class="slider-shade"></div>
           </div>
-          <div class="hero-inner"${imageOnly ? " hidden" : ""}>
+          <div class="hero-inner"${imageOnly ? " hidden" : ""}${textCenter ? ' data-text-position="center"' : ""}${textRight ? ' data-text-position="right"' : ""}>
             <div>
               <div class="chips">
                 ${chip1 ? `<span class="chip">${esc(chip1)}</span>` : ""}
@@ -1114,7 +1149,7 @@ function setupSlideEditor() {
                 ${showAdd ? `<span class="btn btn-ghost">${esc(addLabel)}</span>` : ""}
               </div>
             </div>
-            <aside class="spec-card">
+            <aside class="spec-card"${hideSpecs ? " hidden" : ""}>
               <div><span>كرت الشاشة</span><b>${esc(gpu)}</b></div>
               <div><span>قدرة الكرت</span><b>${esc(tgp)}</b></div>
               <div><span>التبريد</span><b>${esc(cooling)}</b></div>
@@ -1128,6 +1163,22 @@ function setupSlideEditor() {
           </div>
         </section>
       </div>`;
+
+    const hideSpecsInput = form.querySelector('[name="hideSpecs"]');
+    if (hideSpecsInput) {
+      hideSpecsInput.disabled = !!imageOnly;
+      if (imageOnly) hideSpecsInput.checked = false;
+    }
+    const showAddInput = form.querySelector('[name="showAddToCart"]');
+    if (showAddInput) {
+      showAddInput.disabled = !!imageOnly;
+      if (imageOnly) showAddInput.checked = false;
+    }
+    const textPositionInput = form.querySelector('[name="textPosition"]');
+    if (textPositionInput) {
+      textPositionInput.disabled = !!imageOnly;
+      if (imageOnly) textPositionInput.value = "default";
+    }
   }
 
   if (!form.dataset.previewBound) {
@@ -1532,6 +1583,9 @@ function renderSliderAdmin() {
                     ${s.category ? `<span class="pill">${esc(s.category)}</span>` : ""}
                     ${s.productId ? `<span class="pill">منتج</span>` : ""}
                     ${s.imageOnly ? `<span class="pill">صورة فقط</span>` : ""}
+                    ${s.hideSpecs && !s.imageOnly ? `<span class="pill">بدون مواصفات</span>` : ""}
+                    ${s.productId && s.showAddToCart === false ? `<span class="pill">بدون زر السلة</span>` : ""}
+                    ${slideTextPositionLabel(s.textPosition) ? `<span class="pill">${esc(slideTextPositionLabel(s.textPosition))}</span>` : ""}
                     <span class="pill ${s.active === false ? "warn" : ""}">${s.active === false ? "متوقفة" : "نشطة"}</span>
                   </div>
                 </div>
@@ -1611,6 +1665,14 @@ function renderSettings() {
       <label class="span-2">رسالة الصيانة للزوار
         <textarea name="maintenanceMessage" rows="3" placeholder="نعمل على تحسين تجربتكم. سنعود قريباً.">${esc(s.maintenanceMessage || "")}</textarea>
       </label>
+    </section>
+    <section class="panel storefront-cart-panel span-2">
+      <h3>السلة والشراء</h3>
+      <label class="check-row">
+        <input type="checkbox" name="cartEnabled" value="1" ${s.cartEnabled !== false ? "checked" : ""} />
+        تفعيل السلة — إظهار «أضف إلى السلة» وصفحة السلة للزوار
+      </label>
+      <p class="muted">عند الإيقاف يظهر زر استفسار واتساب بدل السلة في بطاقات المنتجات وصفحة الجهاز.</p>
     </section>
     <h3 class="span-2 settings-section-title">هوية المتجر</h3>
     <label>اسم المتجر EN<input name="name" value="${esc(s.name)}" /></label>
@@ -2359,6 +2421,9 @@ document.addEventListener("submit", (e) => {
         chip1: f.get("chip1") || "",
         chip2: f.get("chip2") || "",
         imageOnly: f.get("imageOnly") === "1",
+        hideSpecs: f.get("imageOnly") !== "1" && f.get("hideSpecs") === "1",
+        showAddToCart: f.get("imageOnly") !== "1" && f.get("showAddToCart") === "1",
+        textPosition: f.get("imageOnly") === "1" ? "default" : f.get("textPosition") || "default",
       };
       try {
         await StoreDB.saveSlide(item);
@@ -2447,6 +2512,7 @@ document.addEventListener("submit", (e) => {
         notice: f.get("notice"),
         maintenanceMode: f.get("maintenanceMode") === "1",
         maintenanceMessage: String(f.get("maintenanceMessage") || "").trim(),
+        cartEnabled: f.get("cartEnabled") === "1",
       };
       const finish = async () => {
         try {

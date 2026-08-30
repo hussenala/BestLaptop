@@ -19,6 +19,10 @@ const ICONS = {
     '<svg class="wa-ico" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12.04 2c-5.46 0-9.91 4.44-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.44 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.42a8.18 8.18 0 0 1 2.41 5.83c0 4.54-3.7 8.23-8.24 8.23-1.48 0-2.93-.39-4.19-1.15l-.3-.17-3.12.82.83-3.04-.2-.32a8.2 8.2 0 0 1-1.26-4.38c.01-4.54 3.7-8.24 8.25-8.24m4.52 10.4c-.25-.12-1.47-.72-1.7-.8-.22-.09-.39-.12-.55.13-.16.24-.64.79-.78.95-.14.16-.29.18-.54.06-.25-.12-1.05-.39-2-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.24-.02-.37.11-.49.11-.11.25-.29.37-.43.12-.14.16-.24.25-.41.08-.16.04-.31-.02-.43-.06-.12-.55-1.33-.76-1.82-.2-.48-.4-.41-.55-.42h-.47c-.16 0-.43.06-.65.31-.22.24-.86.84-.86 2.05s.88 2.37 1 2.54c.12.16 1.75 2.67 4.24 3.74 2.49 1.07 2.49.71 2.94.67.45-.04 1.47-.6 1.67-1.18.21-.58.21-1.07.14-1.18-.06-.1-.23-.17-.48-.29"/></svg>',
   searchEmpty:
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10 4a6 6 0 1 0 3.8 10.7L19 19.6 20.4 18l-5.2-5.2A6 6 0 0 0 10 4m0 2a4 4 0 1 1 0 8 4 4 0 0 1 0-8M4 20h16v2H4z"/></svg>',
+  search:
+    '<svg class="search-toggle-ico search-ico-open" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10.5 3a7.5 7.5 0 1 0 4.74 13.38l4.26 4.26 1.06-1.06-4.26-4.26A7.47 7.47 0 0 0 10.5 3m0 2a5.5 5.5 0 1 1 0 11 5.5 5.5 0 0 1 0-11"/></svg>',
+  close:
+    '<svg class="search-close-ico" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12 19 6.4 17.6 5 12 10.6z"/></svg>',
 };
 
 function isMaintenanceMode() {
@@ -319,8 +323,24 @@ function productInquiryWhatsAppUrl(p) {
 
 function productInquiryWhatsAppButton(p, extraClass = "") {
   const href = productInquiryWhatsAppUrl(p);
-  const cls = ["btn", "btn-whatsapp", extraClass].filter(Boolean).join(" ");
+  const cls = ["btn", "btn-whatsapp", "btn-whatsapp-inquiry", extraClass].filter(Boolean).join(" ");
   return `<a class="${cls}" href="${href}" target="_blank" rel="noopener">${ICONS.whatsapp}<span>استفسار واتساب</span></a>`;
+}
+
+function isCartEnabled() {
+  return STORE?.cartEnabled !== false;
+}
+
+function applyStorefrontCartMode() {
+  const on = isCartEnabled();
+  document.documentElement.classList.toggle("cart-disabled", !on);
+  document.querySelectorAll(".btn-cart").forEach((el) => {
+    el.hidden = !on;
+  });
+  const drawer = document.querySelector("[data-drawer]");
+  const overlay = document.querySelector("[data-overlay][data-close-cart]");
+  if (drawer) drawer.hidden = !on;
+  if (overlay) overlay.hidden = !on;
 }
 
 function applyStoreBranding() {
@@ -502,6 +522,7 @@ function payOption(id) {
 }
 
 async function addToCart(id, opts = {}) {
+  if (!isCartEnabled()) return;
   if (typeof StoreAPI !== "undefined" && !StoreAPI.isStoreReady?.()) {
     try {
       await StoreAPI.fetchStore();
@@ -727,7 +748,9 @@ function productCard(p, opts = {}) {
           ${
             oos
               ? `<button class="btn btn-ghost" type="button" disabled>غير متوفر</button>`
-              : `<button class="btn btn-primary" data-add="${p.id}">للسلة</button>`
+              : isCartEnabled()
+                ? `<button class="btn btn-primary" data-add="${p.id}">للسلة</button>`
+                : productInquiryWhatsAppButton(p, "btn-compact")
           }
         </div>
       </div>
@@ -1569,13 +1592,15 @@ function renderProductPage() {
       }
       <p class="muted">${STORE.warranty} · الاستلام من ${STORE.fullAddress}</p>
       <div class="pdp-cta">
-        <div class="pdp-cta-row">
+        <div class="pdp-cta-row${isCartEnabled() ? "" : " is-wa-only"}">
           ${
             oos
               ? `<span class="btn-oos" role="status" aria-live="polite"><span class="oos-dot" aria-hidden="true"></span>غير متوفر حالياً</span>`
-              : `<button class="btn btn-primary" data-add="${p.id}">${ICONS.bag}<span>أضف إلى السلة</span></button>`
+              : isCartEnabled()
+                ? `<button class="btn btn-primary" data-add="${p.id}">${ICONS.bag}<span>أضف إلى السلة</span></button>`
+                : productInquiryWhatsAppButton(p, "btn-lg")
           }
-          ${productInquiryWhatsAppButton(p)}
+          ${!oos && isCartEnabled() ? productInquiryWhatsAppButton(p) : ""}
         </div>
         <a class="btn btn-ghost" href="/products">كل المنتجات</a>
       </div>
@@ -1886,6 +1911,7 @@ function openMobileNav() {
   closeCart();
   closeFiltersDrawer();
   document.querySelector("[data-search-box]")?.classList.remove("open");
+  document.body.classList.remove("search-open");
   paintMobileNav();
   document.body.classList.add("nav-open");
   document.querySelectorAll("[data-menu]").forEach((btn) => btn.setAttribute("aria-expanded", "true"));
@@ -1913,14 +1939,14 @@ function paintMobileNav() {
           { id: "workstation", title: "محطات العمل", text: "ذاكرة واسعة ورندر ثقيل" },
         ];
   const pages = typeof SitePages !== "undefined"
-    ? SitePages.MAIN_NAV.map((key) => ({ href: SitePages.href(key), label: SitePages.label(key), key })).concat([
-        { href: SitePages.href("cart"), label: SitePages.label("cart"), key: "cart" },
-      ])
+    ? SitePages.MAIN_NAV.map((key) => ({ href: SitePages.href(key), label: SitePages.label(key), key })).concat(
+        isCartEnabled() ? [{ href: SitePages.href("cart"), label: SitePages.label("cart"), key: "cart" }] : []
+      )
     : [
         { href: "/", label: "الرئيسية", key: "home" },
         { href: "/products", label: "المنتجات", key: "products" },
         { href: "/contact", label: "التواصل", key: "contact" },
-        { href: "/cart", label: "السلة", key: "cart" },
+        ...(isCartEnabled() ? [{ href: "/cart", label: "السلة", key: "cart" }] : []),
       ];
   const phone = s.phone || "";
   const tel = phoneDigits(phone);
@@ -2022,6 +2048,10 @@ function showToast(msg) {
 }
 
 function checkout() {
+  if (!isCartEnabled()) {
+    showToast("الشراء عبر السلة غير متاح حالياً — تواصل معنا عبر واتساب");
+    return;
+  }
   if (!getCart().length) {
     showToast("أضف جهازاً أولاً");
     return;
@@ -2032,6 +2062,17 @@ function checkout() {
 function renderCartPage() {
   const el = document.querySelector("[data-cart-page]");
   if (!el) return;
+  if (!isCartEnabled()) {
+    el.innerHTML = `
+      <div class="empty-cart">
+        <div class="empty-icon">${ICONS.whatsapp}</div>
+        <h2>الشراء عبر السلة متوقف</h2>
+        <p class="muted">يمكنك الاستفسار عن أي جهاز وطلبه مباشرة عبر واتساب.</p>
+        <a class="btn btn-whatsapp btn-whatsapp-inquiry btn-lg" href="https://wa.me/${storeWhatsAppNumber()}" target="_blank" rel="noopener">${ICONS.whatsapp}<span>تواصل عبر واتساب</span></a>
+        <a class="btn btn-ghost" href="/products" style="margin-top:10px">تصفح المنتجات</a>
+      </div>`;
+    return;
+  }
   const ship = getShipMethod();
   const pricing = cartPricing(ship);
   const steps = document.querySelector("[data-checkout-steps]");
@@ -2101,6 +2142,19 @@ function renderCheckout() {
   const summary = document.querySelector("[data-checkout-summary]");
   const steps = document.querySelector("[data-checkout-steps]");
   if (!form && !summary) return;
+  if (!isCartEnabled()) {
+    if (summary) {
+      summary.innerHTML = `
+        <div class="order-summary">
+          <h3>الشراء عبر السلة متوقف</h3>
+          <p class="muted">تواصل معنا عبر واتساب لطلب جهازك مباشرة.</p>
+          <a class="btn btn-whatsapp btn-whatsapp-inquiry btn-lg" href="https://wa.me/${storeWhatsAppNumber()}" target="_blank" rel="noopener">${ICONS.whatsapp}<span>تواصل عبر واتساب</span></a>
+        </div>`;
+    }
+    if (form) form.hidden = true;
+    return;
+  }
+  if (form) form.hidden = false;
   if (location.pathname.includes("/checkout") && new URLSearchParams(location.search).get("done") === "1") {
     location.replace("/order");
     return;
@@ -2383,6 +2437,27 @@ function heroSlidesSource() {
   return PRODUCTS.filter((p) => p.slide).map((s) => (s.title ? slidePayload(s) : s));
 }
 
+function normalizeHeroTextPosition(value) {
+  const v = String(value || "default").trim();
+  return v === "center" || v === "right" ? v : "default";
+}
+
+function applyHeroTextPosition(root, slide) {
+  const heroInner = root?.querySelector(".hero-inner");
+  if (!root || !heroInner) return;
+  root.classList.remove("is-hero-text-center", "is-hero-text-right");
+  heroInner.removeAttribute("data-text-position");
+  if (slide?.imageOnly) return;
+  const pos = normalizeHeroTextPosition(slide?.textPosition);
+  if (pos === "center") {
+    root.classList.add("is-hero-text-center");
+    heroInner.dataset.textPosition = "center";
+  } else if (pos === "right") {
+    root.classList.add("is-hero-text-right");
+    heroInner.dataset.textPosition = "right";
+  }
+}
+
 function renderSlider() {
   const root = document.querySelector("[data-slider]");
   if (!root) return;
@@ -2401,7 +2476,11 @@ function renderSlider() {
   root.hidden = false;
 
   const track = root.querySelector("[data-slide-track]");
-  const fp = JSON.stringify(slides.map((s) => [s.id, s.image, s.videoUrl, s.title, s.productId].join("|")));
+  const fp = JSON.stringify(
+    slides.map((s) =>
+      [s.id, s.image, s.videoUrl, s.title, s.productId, s.imageOnly, s.hideSpecs, s.textPosition || "default", s.showAddToCart !== false].join("|")
+    )
+  );
   const structureChanged = root._sliderFp !== fp;
 
   if (structureChanged) {
@@ -2433,8 +2512,12 @@ function renderSlider() {
   function paintContent() {
     const s = root._sliderSlides[root._sliderIndex];
     root.classList.toggle("is-image-only", !!s.imageOnly);
+    root.classList.toggle("is-no-specs", !!s.hideSpecs && !s.imageOnly);
+    applyHeroTextPosition(root, s);
     const heroInner = root.querySelector(".hero-inner");
     if (heroInner) heroInner.hidden = !!s.imageOnly;
+    const specCard = root.querySelector(".spec-card");
+    if (specCard) specCard.hidden = !!s.imageOnly || !!s.hideSpecs;
     const chips = root.querySelector(".chips");
     if (chips) {
       chips.innerHTML = [s.chip1, s.chip2].filter(Boolean).map((t) => `<span class="chip">${t}</span>`).join("");
@@ -2456,26 +2539,15 @@ function renderSlider() {
     if (link) link.href = s.productId ? productUrl(s.productId) : "/products";
     const addBtn = root.querySelector("[data-slide-add]");
     if (addBtn) {
-      if (s.productId) {
+      const showAdd = s.productId && isCartEnabled() && s.showAddToCart !== false;
+      if (showAdd) {
         addBtn.dataset.add = s.productId;
         addBtn.disabled = !inStock({ stock: s.stock });
         addBtn.textContent = inStock({ stock: s.stock }) ? "أضف إلى السلة" : "غير متوفر";
         addBtn.hidden = false;
       } else {
         addBtn.hidden = true;
-      }
-    }
-    const waBtn = root.querySelector("[data-slide-wa]");
-    if (waBtn) {
-      const product = s.productId ? PRODUCTS.find((p) => p.id === s.productId) : null;
-      if (product) {
-        waBtn.href = productInquiryWhatsAppUrl(product);
-        waBtn.innerHTML = `${ICONS.whatsapp}<span>استفسار واتساب</span>`;
-        waBtn.hidden = false;
-      } else {
-        waBtn.hidden = true;
-        waBtn.removeAttribute("href");
-        waBtn.innerHTML = "";
+        addBtn.removeAttribute("data-add");
       }
     }
     root.querySelectorAll("[data-dot]").forEach((dot, idx) => {
@@ -2770,9 +2842,61 @@ function setupHeaderSearch() {
   const toggle = document.querySelector("[data-search-toggle]");
   if (!box || !input || !toggle) return;
 
+  let panel = box.querySelector(".header-search-panel");
+  let closeBtn = box.querySelector("[data-search-close]");
+  let submitBtn = box.querySelector("[data-search-submit]");
+
+  if (!closeBtn) {
+    closeBtn = document.createElement("button");
+    closeBtn.type = "button";
+    closeBtn.className = "search-close";
+    closeBtn.dataset.searchClose = "";
+    closeBtn.setAttribute("aria-label", "إغلاق البحث");
+    closeBtn.innerHTML = ICONS.close;
+  }
+
+  if (!panel) {
+    panel = document.createElement("div");
+    panel.className = "header-search-panel";
+    panel.hidden = true;
+    submitBtn = document.createElement("button");
+    submitBtn.type = "button";
+    submitBtn.className = "search-submit";
+    submitBtn.dataset.searchSubmit = "";
+    submitBtn.textContent = "بحث";
+    panel.append(input, closeBtn, submitBtn);
+    box.appendChild(panel);
+  } else {
+    submitBtn = box.querySelector("[data-search-submit]");
+  }
+
+  if (!toggle.querySelector(".search-ico-open")) {
+    toggle.innerHTML = `${ICONS.search}<span class="search-label" hidden>بحث</span>`;
+    toggle.classList.add("has-icons");
+  }
+
+  const mobileSearchMq = window.matchMedia("(max-width: 1020px)");
+  const isMobileSearch = () => mobileSearchMq.matches;
+
+  function syncSearchToggle(open) {
+    toggle.setAttribute("aria-expanded", open ? "true" : "false");
+    toggle.setAttribute("aria-label", open ? (isMobileSearch() ? "إغلاق البحث" : "تنفيذ البحث") : "فتح البحث");
+    toggle.querySelector(".search-ico-open")?.toggleAttribute("hidden", open && !isMobileSearch());
+    toggle.querySelector(".search-label")?.toggleAttribute("hidden", !open || isMobileSearch());
+    panel.hidden = !open;
+    document.body.classList.toggle("search-open", open);
+  }
+
   function openSearch() {
     box.classList.add("open");
+    syncSearchToggle(true);
     requestAnimationFrame(() => input.focus());
+  }
+
+  function closeSearch() {
+    box.classList.remove("open");
+    syncSearchToggle(false);
+    input.blur();
   }
 
   toggle.addEventListener("click", (e) => {
@@ -2781,27 +2905,59 @@ function setupHeaderSearch() {
       openSearch();
       return;
     }
+    if (isMobileSearch()) {
+      closeSearch();
+      return;
+    }
     if (input.value.trim()) goSearch(input.value);
+    else input.focus();
+  });
+
+  closeBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    closeSearch();
+    toggle.focus();
+  });
+
+  submitBtn?.addEventListener("click", (e) => {
+    e.preventDefault();
+    if (input.value.trim()) goSearch(input.value);
+    else input.focus();
+  });
+
+  box.addEventListener("submit", (e) => {
+    if (!input.value.trim()) {
+      e.preventDefault();
+      closeSearch();
+    }
   });
 
   input.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      goSearch(input.value);
+      if (input.value.trim()) goSearch(input.value);
     }
     if (e.key === "Escape") {
-      box.classList.remove("open");
+      closeSearch();
       toggle.focus();
     }
   });
 
   document.addEventListener("click", (e) => {
-    if (!e.target.closest("[data-search-box]") && !input.value.trim()) {
-      box.classList.remove("open");
-    }
+    if (!box.classList.contains("open")) return;
+    if (!e.target.closest("[data-search-box]")) closeSearch();
   });
 
-  if (input.value.trim()) box.classList.add("open");
+  mobileSearchMq.addEventListener("change", () => {
+    if (box.classList.contains("open")) syncSearchToggle(true);
+  });
+
+  if (input.value.trim()) {
+    box.classList.add("open");
+    syncSearchToggle(true);
+  } else {
+    syncSearchToggle(false);
+  }
 }
 
 document.querySelector("[data-contact-form]")?.addEventListener("submit", (e) => {
@@ -2828,6 +2984,46 @@ document.querySelector("[data-checkout-form]")?.addEventListener("submit", (e) =
   placeOrder(e.target);
 });
 
+function initHomeEffects() {
+  if (document.body.dataset.page !== "home") return;
+  const root = document.querySelector("[data-home-root]");
+  if (!root) return;
+
+  requestAnimationFrame(() => {
+    document.body.classList.add("home-ready");
+  });
+
+  const targets = root.querySelectorAll("[data-home-block], [data-home-root] > .section");
+  targets.forEach((el) => {
+    if (el.dataset.homeBlock === "hero") return;
+    el.classList.add("home-reveal");
+    if (el.classList.contains("is-visible")) return;
+  });
+
+  if (!("IntersectionObserver" in window)) {
+    targets.forEach((el) => el.classList.add("is-visible"));
+    return;
+  }
+
+  if (!initHomeEffects._io) {
+    initHomeEffects._io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          entry.target.classList.add("is-visible");
+          initHomeEffects._io.unobserve(entry.target);
+        });
+      },
+      { threshold: 0.1, rootMargin: "0px 0px -32px 0px" }
+    );
+  }
+
+  targets.forEach((el) => {
+    if (el.dataset.homeBlock === "hero" || el.classList.contains("is-visible")) return;
+    initHomeEffects._io.observe(el);
+  });
+}
+
 async function bootStorefront() {
   if (typeof SitePages !== "undefined") SitePages.init();
   try {
@@ -2840,6 +3036,7 @@ async function bootStorefront() {
     return;
   }
   applyStoreBranding();
+  applyStorefrontCartMode();
   renderHeaderBrands();
   renderCategoryFilter();
   applyUrlFilters();
@@ -2849,6 +3046,7 @@ async function bootStorefront() {
   renderFeatured();
   renderOfficeGallery();
   applyHomeLayout();
+  initHomeEffects();
   renderCatalog();
   renderProductPage();
   setupCheckoutForm();
@@ -2869,6 +3067,7 @@ window.addEventListener("store:updated", () => {
   }
   if (typeof SitePages !== "undefined") SitePages.paintLinks();
   applyStoreBranding();
+  applyStorefrontCartMode();
   renderHeaderBrands();
   renderCategoryFilter();
   renderShopFilters();
@@ -2876,8 +3075,10 @@ window.addEventListener("store:updated", () => {
   renderFeatured();
   renderOfficeGallery();
   applyHomeLayout();
+  initHomeEffects();
   renderCatalog();
   renderProductPage();
+  setupMobileNav();
   renderSlider();
   renderCart();
   renderCartPage();

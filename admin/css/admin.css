@@ -902,6 +902,43 @@
 .slide-hero-mock .spec-card div {
   padding: 10px;
 }
+.slide-hero-mock.is-no-specs .hero-inner {
+  grid-template-columns: 1fr;
+}
+.slide-hero-mock.is-no-specs .spec-card {
+  display: none;
+}
+.slide-hero-mock.is-hero-text-center .hero-inner,
+.slide-hero-mock .hero-inner[data-text-position="center"] {
+  width: 100%;
+  max-width: none;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  text-align: center;
+}
+.slide-hero-mock.is-hero-text-center .hero-inner > div:first-child,
+.slide-hero-mock .hero-inner[data-text-position="center"] > div:first-child {
+  width: min(100%, 92%);
+  margin-inline: auto;
+}
+.slide-hero-mock.is-hero-text-center .chips,
+.slide-hero-mock.is-hero-text-center .hero-cta,
+.slide-hero-mock .hero-inner[data-text-position="center"] .chips,
+.slide-hero-mock .hero-inner[data-text-position="center"] .hero-cta {
+  justify-content: center;
+}
+.slide-hero-mock.is-hero-text-right .hero-inner,
+.slide-hero-mock .hero-inner[data-text-position="right"] {
+  width: 100%;
+  max-width: none;
+  justify-items: start;
+}
+.slide-hero-mock.is-hero-text-right .hero-inner > div:first-child,
+.slide-hero-mock .hero-inner[data-text-position="right"] > div:first-child {
+  justify-self: start;
+  text-align: start;
+  width: min(100%, 92%);
+}
 .slide-hero-mock .slider-nav {
   inset-inline: 12px;
   bottom: 10px;

@@ -156,6 +156,21 @@ function init_schema(PDO $pdo) {
       if (($c["name"] ?? "") === "image_only") $hasImageOnly = true;
     }
     if (!$hasImageOnly) $pdo->exec("ALTER TABLE hero_slides ADD COLUMN image_only INTEGER NOT NULL DEFAULT 0");
+    $hasHideSpecs = false;
+    foreach ($cols as $c) {
+      if (($c["name"] ?? "") === "hide_specs") $hasHideSpecs = true;
+    }
+    if (!$hasHideSpecs) $pdo->exec("ALTER TABLE hero_slides ADD COLUMN hide_specs INTEGER NOT NULL DEFAULT 0");
+    $hasTextPosition = false;
+    foreach ($cols as $c) {
+      if (($c["name"] ?? "") === "text_position") $hasTextPosition = true;
+    }
+    if (!$hasTextPosition) $pdo->exec("ALTER TABLE hero_slides ADD COLUMN text_position TEXT NOT NULL DEFAULT 'default'");
+    $hasShowAddToCart = false;
+    foreach ($cols as $c) {
+      if (($c["name"] ?? "") === "show_add_to_cart") $hasShowAddToCart = true;
+    }
+    if (!$hasShowAddToCart) $pdo->exec("ALTER TABLE hero_slides ADD COLUMN show_add_to_cart INTEGER NOT NULL DEFAULT 1");
   } catch (Throwable $e) {
     /* ignore migration errors */
   }
@@ -217,11 +232,17 @@ function checkout_options(array $s) {
   $s["maintenanceMode"] = !empty($s["maintenanceMode"]);
   if (empty($s["maintenanceMessage"])) $s["maintenanceMessage"] = "";
   if (!isset($s["homeLayout"]) || !is_array($s["homeLayout"])) $s["homeLayout"] = null;
+  $s["cartEnabled"] = !isset($s["cartEnabled"]) || !empty($s["cartEnabled"]);
   return $s;
 }
 
 function is_maintenance_mode(PDO $pdo) {
   return !empty(settings_raw($pdo)["maintenanceMode"]);
+}
+
+function normalize_text_position($value) {
+  $v = trim((string) ($value ?? "default"));
+  return in_array($v, ["center", "right"], true) ? $v : "default";
 }
 
 function normalize_gallery_image($value) {
@@ -517,6 +538,9 @@ function list_slides(PDO $pdo, $activeOnly = false) {
       "tgp" => $row["tgp"] ?? "", "cooling" => $row["cooling"] ?? "", "screen" => $row["screen"] ?? "",
       "chip1" => $row["chip1"] ?? "", "chip2" => $row["chip2"] ?? "",
       "imageOnly" => !empty($row["image_only"]),
+      "hideSpecs" => !empty($row["hide_specs"]),
+      "textPosition" => normalize_text_position($row["text_position"] ?? "default"),
+      "showAddToCart" => !isset($row["show_add_to_cart"]) || !empty($row["show_add_to_cart"]),
     ];
   }
   return $out;
@@ -547,12 +571,12 @@ function get_slide(PDO $pdo, $id) {
 
 function upsert_slide(PDO $pdo, array $s) {
   $id = $s["id"] ?? uid("sl");
-  $pdo->prepare("INSERT INTO hero_slides (id,sort_order,active,title,headline,blurb,image,video_url,product_id,category,tag,gpu,tgp,cooling,screen,chip1,chip2,image_only)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+  $pdo->prepare("INSERT INTO hero_slides (id,sort_order,active,title,headline,blurb,image,video_url,product_id,category,tag,gpu,tgp,cooling,screen,chip1,chip2,image_only,hide_specs,text_position,show_add_to_cart)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ON CONFLICT(id) DO UPDATE SET sort_order=excluded.sort_order, active=excluded.active, title=excluded.title, headline=excluded.headline,
       blurb=excluded.blurb, image=excluded.image, video_url=excluded.video_url, product_id=excluded.product_id, category=excluded.category,
       tag=excluded.tag, gpu=excluded.gpu, tgp=excluded.tgp, cooling=excluded.cooling, screen=excluded.screen, chip1=excluded.chip1, chip2=excluded.chip2,
-      image_only=excluded.image_only")
+      image_only=excluded.image_only, hide_specs=excluded.hide_specs, text_position=excluded.text_position, show_add_to_cart=excluded.show_add_to_cart")
     ->execute([
       $id,
       (int) ($s["sortOrder"] ?? 0),
@@ -572,6 +596,9 @@ function upsert_slide(PDO $pdo, array $s) {
       $s["chip1"] ?? "",
       $s["chip2"] ?? "",
       !empty($s["imageOnly"]) ? 1 : 0,
+      !empty($s["hideSpecs"]) ? 1 : 0,
+      normalize_text_position($s["textPosition"] ?? "default"),
+      !isset($s["showAddToCart"]) || !empty($s["showAddToCart"]) ? 1 : 0,
     ]);
   bump($pdo);
   return get_slide($pdo, $id);
@@ -699,6 +726,7 @@ function public_store(PDO $pdo) {
       "officeGallery" => normalize_office_gallery($s["officeGallery"] ?? null),
       "maintenanceMode" => !empty($s["maintenanceMode"]),
       "maintenanceMessage" => $s["maintenanceMessage"] ?? "",
+      "cartEnabled" => !isset($s["cartEnabled"]) || !empty($s["cartEnabled"]),
     ],
   ];
 }

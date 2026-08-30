@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet" />
     <link rel="icon" href="/img/logo.jpg" type="image/jpeg" />
-    <link rel="stylesheet" href="/css/styles.css?v=60" />
+    <link rel="stylesheet" href="/css/styles.css?v=70" />
     <script>
       document.documentElement.dataset.theme =
         localStorage.getItem("bestlaptop-theme") === "light" ? "light" : "dark";
@@ -56,6 +56,12 @@
 
     <main data-home-root>
       <section class="hero-slider" data-slider data-home-block="hero">
+        <div class="home-hero-fx" aria-hidden="true">
+          <span class="home-orb home-orb-a"></span>
+          <span class="home-orb home-orb-b"></span>
+          <span class="home-orb home-orb-c"></span>
+          <span class="home-grid-glow"></span>
+        </div>
         <div class="slider-viewport">
           <div class="slider-track" data-slide-track></div>
           <div class="slider-shade" aria-hidden="true"></div>
@@ -72,8 +78,7 @@
             <div class="slide-price" data-slide-price></div>
             <div class="hero-cta">
               <a class="btn btn-primary" data-slide-link href="/product">تصفح المواصفات واطلبه الآن</a>
-              <button class="btn btn-ghost" data-slide-add data-add>أضف إلى السلة</button>
-              <a class="btn btn-whatsapp" data-slide-wa href="#" target="_blank" rel="noopener" hidden></a>
+              <button class="btn btn-ghost" data-slide-add data-add hidden>أضف إلى السلة</button>
             </div>
           </div>
           <aside class="spec-card">
@@ -168,6 +173,6 @@
     <script src="/js/theme.js"></script>
     <script src="/js/home-layout.js?v=1"></script>
     <script src="/js/routes.js?v=3"></script>
-    <script src="/js/app.js?v=73"></script>
+    <script src="/js/app.js?v=82"></script>
   </body>
 </html>
