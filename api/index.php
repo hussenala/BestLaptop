@@ -179,6 +179,7 @@ function init_schema(PDO $pdo) {
   }
   seed_default_slides($pdo);
   migrate_checkout_options($pdo);
+  migrate_office_gallery($pdo);
 }
 
 function default_cities() {
@@ -211,17 +212,21 @@ function checkout_options(array $s) {
 }
 
 function normalize_office_gallery($gallery) {
-  $defaults = [
-    "active" => true,
-    "title" => "من داخل مكتب بيست لابتوب",
-    "images" => ["wide" => "", "tall" => "", "bottomStart" => "", "bottomEnd" => ""],
-  ];
+  $defaults = default_office_gallery();
   if (!is_array($gallery)) return $defaults;
   $images = is_array($gallery["images"] ?? null) ? $gallery["images"] : [];
   return [
     "active" => ($gallery["active"] ?? true) !== false,
     "title" => trim((string) ($gallery["title"] ?? $defaults["title"])) ?: $defaults["title"],
     "images" => array_merge($defaults["images"], array_intersect_key($images, $defaults["images"])),
+  ];
+}
+
+function default_office_gallery() {
+  return [
+    "active" => true,
+    "title" => "من داخل مكتب بيست لابتوب",
+    "images" => ["wide" => "", "tall" => "", "bottomStart" => "", "bottomEnd" => ""],
   ];
 }
 
@@ -241,6 +246,34 @@ function migrate_checkout_options(PDO $pdo) {
   $s = checkout_options(settings_raw($pdo));
   save_settings($pdo, $s);
   $pdo->exec("INSERT INTO meta (key,value) VALUES ('checkout_opts_v2','1') ON CONFLICT(key) DO UPDATE SET value=excluded.value");
+}
+
+function migrate_office_gallery(PDO $pdo) {
+  $done = $pdo->query("SELECT value FROM meta WHERE key='office_gallery_v1'")->fetchColumn();
+  if ($done) return;
+  $raw = settings_raw($pdo);
+  if (empty($raw["officeGallery"]) || !is_array($raw["officeGallery"])) {
+    $raw["officeGallery"] = default_office_gallery();
+  }
+  save_settings($pdo, checkout_options($raw));
+  $pdo->exec("INSERT INTO meta (key,value) VALUES ('office_gallery_v1','1') ON CONFLICT(key) DO UPDATE SET value=excluded.value");
+}
+
+function ensure_upload_dir($folder) {
+  $allowed = ["logo", "slides", "gallery", "products"];
+  if (!in_array($folder, $allowed, true)) $folder = "products";
+  $root = dirname(__DIR__) . DIRECTORY_SEPARATOR . "uploads";
+  $dir = $root . DIRECTORY_SEPARATOR . $folder;
+  if (!is_dir($root) && !@mkdir($root, 0775, true) && !is_dir($root)) {
+    return [null, "Set permissions 775 on uploads/"];
+  }
+  if (!is_dir($dir) && !@mkdir($dir, 0775, true) && !is_dir($dir)) {
+    return [null, "Set permissions 775 on uploads/$folder/"];
+  }
+  if (!is_writable($dir)) {
+    return [null, "Set permissions 775 on uploads/$folder/"];
+  }
+  return [$dir, null];
 }
 
 function settings_raw(PDO $pdo) {
@@ -329,6 +362,7 @@ function health(PDO $pdo) {
   $users = (int) $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
   $products = (int) $pdo->query("SELECT COUNT(*) FROM products")->fetchColumn();
   $uploads = dirname(__DIR__) . DIRECTORY_SEPARATOR . "uploads";
+  [$galleryDir, $galleryError] = ensure_upload_dir("gallery");
   return [
     "ok" => true,
     "db" => true,
@@ -339,6 +373,8 @@ function health(PDO $pdo) {
     "products" => $products,
     "dbWritable" => db_writable(),
     "uploadsWritable" => is_dir($uploads) ? is_writable($uploads) : @mkdir($uploads, 0775, true),
+    "galleryUploadWritable" => $galleryDir !== null,
+    "galleryUploadHint" => $galleryError,
   ];
 }
 
@@ -871,16 +907,29 @@ try {
     $bin = base64_decode($mm[2], true);
     if ($bin === false || strlen($bin) > 8 * 1024 * 1024) json_out(400, ["error" => "Image too large (max 8MB)"]);
     $folder = in_array($body["folder"] ?? "", ["logo", "slides", "gallery"], true) ? $body["folder"] : "products";
-    $dir = dirname(__DIR__) . DIRECTORY_SEPARATOR . "uploads" . DIRECTORY_SEPARATOR . $folder;
-    if (!is_dir($dir) && !@mkdir($dir, 0775, true) && !is_dir($dir)) {
-      json_out(500, ["error" => "Upload folder not writable", "detail" => "Set permissions 775 on uploads/$folder/"]);
-    }
-    if (!is_writable($dir)) {
-      json_out(500, ["error" => "Upload folder not writable", "detail" => "Set permissions 775 on uploads/$folder/"]);
+    [$dir, $uploadError] = ensure_upload_dir($folder);
+    if (!$dir) {
+      json_out(500, ["error" => "Upload folder not writable", "detail" => $uploadError]);
     }
     $name = (int) (microtime(true) * 1000) . "-" . bin2hex(random_bytes(4)) . "." . $ext;
-    file_put_contents($dir . DIRECTORY_SEPARATOR . $name, $bin);
+    if (file_put_contents($dir . DIRECTORY_SEPARATOR . $name, $bin) === false) {
+      json_out(500, ["error" => "Upload failed", "detail" => "Could not write file to uploads/$folder/"]);
+    }
     json_out(201, ["url" => "/uploads/$folder/$name"]);
+  }
+
+  if ($path === "/admin/office-gallery" && in_array($method, ["GET", "PATCH"], true)) {
+    require_auth($pdo);
+    if ($method === "GET") {
+      json_out(200, normalize_office_gallery(settings_raw($pdo)["officeGallery"] ?? null));
+    }
+    if ($method === "PATCH") {
+      $body = read_json();
+      $current = settings_raw($pdo);
+      $merged = merge_settings($current, ["officeGallery" => is_array($body) ? $body : []]);
+      save_settings($pdo, $merged);
+      json_out(200, $merged["officeGallery"]);
+    }
   }
 
   if ($path === "/admin/inventory" && $method === "PATCH") {

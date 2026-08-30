@@ -299,6 +299,11 @@ const StoreDB = (() => {
     await refresh();
   }
 
+  async function saveOfficeGallery(officeGallery) {
+    await api("/api/admin/office-gallery", { method: "PATCH", body: JSON.stringify(officeGallery) });
+    await refresh();
+  }
+
   async function createUser(user) {
     await api("/api/admin/users", { method: "POST", body: JSON.stringify(user) });
     await refresh();
@@ -350,6 +355,7 @@ const StoreDB = (() => {
     deleteOrder,
     updateStock,
     saveSettings,
+    saveOfficeGallery,
     createUser,
     updateUser,
     deleteUser,

@@ -379,6 +379,32 @@ async function handleApi(req, res, pathname) {
     return send(res, 200, db.upsertProduct(p));
   }
 
+  if (pathname === "/api/admin/office-gallery") {
+    const user = requireAuth(req, res);
+    if (!user) return;
+    if (method === "GET") {
+      const settings = db.getSettings();
+      return send(res, 200, settings.officeGallery || { active: true, title: "من داخل مكتب بيست لابتوب", images: {} });
+    }
+    if (method === "PATCH") {
+      const body = await readBody(req);
+      const current = db.getSettings();
+      const merged = {
+        ...current,
+        officeGallery: {
+          ...(current.officeGallery || {}),
+          ...(body || {}),
+          images: {
+            ...((current.officeGallery && current.officeGallery.images) || {}),
+            ...((body && body.images) || {}),
+          },
+        },
+      };
+      db.saveSettings(merged);
+      return send(res, 200, merged.officeGallery);
+    }
+  }
+
   if (pathname === "/api/admin/settings") {
     const user = requireAuth(req, res, ["admin"]);
     if (!user) return;

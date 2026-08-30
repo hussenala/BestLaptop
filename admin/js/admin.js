@@ -318,7 +318,7 @@ function db() {
 function session() {
   const s = StoreDB.session();
   if (!s) {
-    location.replace("login.html");
+    location.replace("/admin/login");
     return null;
   }
   return s;
@@ -1478,7 +1478,11 @@ function renderGalleryAdmin() {
     { key: "bottomStart", label: "سفلى يمين", hint: "تحت العريضة باتجاه اليمين" },
     { key: "bottomEnd", label: "سفلى يسار", hint: "تحت العريضة باتجاه اليسار" },
   ];
+  const uploadHint = window.__galleryUploadHint
+    ? `<p class="muted span-2" style="margin-bottom:12px;padding:12px;border-radius:10px;border:1px solid rgba(234,179,8,.45);background:rgba(234,179,8,.08)">${esc(window.__galleryUploadHint)}</p>`
+    : "";
   return `<form class="panel admin-form gallery-admin-form" data-gallery-form>
+    ${uploadHint}
     <label class="span-2 check-row"><input type="checkbox" name="active" value="1" ${g.active !== false ? "checked" : ""} /> تفعيل قسم المعرض على الرئيسية</label>
     <label class="span-2">عنوان القسم<input name="title" value="${esc(g.title || "من داخل مكتب بيست لابتوب")}" /></label>
     <div class="span-2 gallery-slots">
@@ -2283,13 +2287,10 @@ document.addEventListener("submit", (e) => {
             images[key] = String(f.get(`keep_${key}`) || "");
           }
         }
-        await StoreDB.saveSettings({
-          ...db().settings,
-          officeGallery: {
-            active: f.get("active") === "1",
-            title: String(f.get("title") || "من داخل مكتب بيست لابتوب").trim(),
-            images,
-          },
+        await StoreDB.saveOfficeGallery({
+          active: f.get("active") === "1",
+          title: String(f.get("title") || "من داخل مكتب بيست لابتوب").trim(),
+          images,
         });
         toast("تم حفظ معرض المكتب");
         render();
@@ -2331,13 +2332,22 @@ async function bootAdmin() {
   try {
     const user = await StoreDB.verifySession();
     if (!user) {
-      location.replace("login.html");
+      location.replace("/admin/login");
       return;
     }
     await StoreDB.refresh();
+    try {
+      const { res, body } = await StoreAPI.fetchApi("/api/health", { cache: "no-store" });
+      if (res.ok && body.galleryUploadWritable === false) {
+        window.__galleryUploadHint =
+          body.galleryUploadHint || "مجلد رفع صور المعرض غير قابل للكتابة — اضبط صلاحيات uploads/gallery على 775 من الاستضافة.";
+      }
+    } catch {
+      /* ignore health probe */
+    }
   } catch (err) {
     alert(err.message || "تعذر تحميل لوحة التحكم. تحقق من api/index.php على الاستضافة.");
-    location.replace("login.html");
+    location.replace("/admin/login");
     return;
   }
   render();
