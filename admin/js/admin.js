@@ -15,6 +15,17 @@ const ICO = {
   shield: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2 4 6v6c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V6z"/></svg>',
 };
 
+function conditionBadgeHtml(condition) {
+  if (typeof productConditionBadge === "function") return productConditionBadge(condition);
+  return "";
+}
+
+function conditionOptionsHtml(selected = "new") {
+  if (typeof productConditionOptions === "function") return productConditionOptions(selected);
+  const value = typeof normalizeProductCondition === "function" ? normalizeProductCondition(selected) : "new";
+  return `<option value="new" ${value === "new" ? "selected" : ""}>New — جديد</option>`;
+}
+
 const NAV = [
   { id: "dashboard", label: "الإحصائيات", icon: ICO.dash },
   { id: "products", label: "المنتجات", icon: ICO.box },
@@ -253,7 +264,11 @@ function updateServerBuildBadge(healthBody) {
     } else if (stale) {
       alertEl.hidden = false;
       alertEl.innerHTML =
-        '<strong>تنبيه:</strong> ملفات السيرفر أقدم من لوحة التحكم. ارفع آخر نسخة من الملفات ثم امسح الكاش.';
+        '<strong>تنبيه:</strong> ملفات السيرفر أقدم من لوحة التحكم (سيرفر b' +
+        serverBuild +
+        " / لوحة b" +
+        localBuild +
+        '). ارفع <code>api/index.php</code> و <code>admin/js/admin.js</code> و <code>admin/css/admin.css</code> و <code>js/product-condition.js</code> ثم امسح كاش LiteSpeed.';
     } else {
       alertEl.hidden = true;
       alertEl.textContent = "";
@@ -526,10 +541,10 @@ function ordersTable(list, editable = true) {
 
 function resolveAdminAsset(src) {
   if (!src) return "";
-  if (src.startsWith("data:") || src.startsWith("http://") || src.startsWith("https://")) return src;
-  if (src.startsWith("/")) return src;
-  if (src.startsWith("uploads/")) return `/${src}`;
-  return `../${src}`;
+  const raw = String(src).trim();
+  if (raw.startsWith("data:") || raw.startsWith("http://") || raw.startsWith("https://")) return raw;
+  if (raw.startsWith("/")) return raw;
+  return `/${raw.replace(/^\.?\//, "")}`;
 }
 
 function youtubeIdFromUrl(url) {
@@ -715,7 +730,7 @@ function paintImagePreviews(list) {
           (src, i) => `
     <article class="pe-image-row${isEditor && i === 0 ? " is-primary" : ""}">
       <div class="pe-image-thumb">
-        <img src="${esc(resolveAdminAsset(src))}" alt="" />
+        <img src="${esc(resolveAdminAsset(src))}" alt="" loading="lazy" onerror="this.src='/img/logo.jpg'" />
         <span class="img-order-badge">${i + 1}</span>
       </div>
       <div class="pe-image-meta">
@@ -740,6 +755,7 @@ function syncProductEditorPreview() {
   const form = document.querySelector("[data-product-form]");
   const preview = document.querySelector("[data-product-live-preview]");
   if (!form || !preview) return;
+  try {
   const name = form.querySelector('[name="name"]')?.value || "اسم المنتج";
   const tag = form.querySelector('[name="tag"]')?.value || "جديد";
   const brand = form.querySelector('[name="brand"]')?.value || "—";
@@ -748,14 +764,14 @@ function syncProductEditorPreview() {
   const oldPrice = parseMoneyInput(form.querySelector('[name="oldPrice"]')?.value);
   const stock = Number(form.querySelector('[name="stock"]')?.value) || 0;
   const images = getProductImages();
-  const img = images[0] ? resolveAdminAsset(images[0]) : "../img/logo.jpg";
+  const img = images[0] ? resolveAdminAsset(images[0]) : "/img/logo.jpg";
   const specs = form.querySelector('[name="specs"]')?.value || productEditorSpecsPreview(form);
   const off = oldPrice > price ? Math.round(((oldPrice - price) / oldPrice) * 100) : 0;
 
   preview.innerHTML = `
     <article class="product-card preview-card ${stock <= 0 ? "is-oos" : ""}">
       <div class="pc-media">
-        <img src="${esc(img)}" alt="" />
+        <img src="${esc(img)}" alt="" loading="lazy" onerror="this.src='/img/logo.jpg'" />
         <span class="badge">${esc(tag)}</span>
         ${off ? `<span class="badge badge-sale">-${off}%</span>` : ""}
         ${stock <= 0 ? `<span class="oos-ribbon">غير متوفر</span>` : ""}
@@ -763,7 +779,7 @@ function syncProductEditorPreview() {
       <div class="card-body">
         <div class="pc-meta-row">
           <p class="pc-meta">${esc(brand)}</p>
-          ${productConditionBadge(condition)}
+          ${conditionBadgeHtml(condition)}
         </div>
         <h3>${esc(name)}</h3>
         <p class="muted pc-specs">${esc(specs)}</p>
@@ -774,6 +790,10 @@ function syncProductEditorPreview() {
         }
       </div>
     </article>`;
+  } catch (err) {
+    console.error("syncProductEditorPreview", err);
+    preview.innerHTML = `<p class="muted">تعذر تحديث المعاينة</p>`;
+  }
 }
 
 function renderDashboard() {
@@ -915,7 +935,7 @@ function renderProductEditor(productId = null) {
     ${peField("العلامة التجارية", `<select name="brand">${brands}</select>`)}
     ${peField(
       "حالة المنتج",
-      `<select name="productCondition" data-product-condition>${productConditionOptions(p.condition || "new")}</select>`
+      `<select name="productCondition" data-product-condition>${conditionOptionsHtml(p.condition || "new")}</select>`
     )}
     ${peField("التصنيف", `<select name="category">${cats}</select>`)}
     ${peField("وسم البطاقة", `<input name="tag" value="${esc(p.tag || "")}" placeholder="الأكثر مبيعاً · جديد" />`)}
@@ -1038,7 +1058,7 @@ function renderProducts() {
               (p) => `
             <tr>
               <td><img src="${esc(p.image)}" alt="" /></td>
-              <td><b>${esc(p.name)}</b><div class="muted">${esc(p.cpu)} · ${esc(p.gpu)}</div><div class="product-row-meta">${productConditionBadge(p.condition)}</div></td>
+              <td><b>${esc(p.name)}</b><div class="muted">${esc(p.cpu)} · ${esc(p.gpu)}</div><div class="product-row-meta">${conditionBadgeHtml(p.condition)}</div></td>
               <td>${esc(p.category)}</td>
               <td>${money(p.price)}</td>
               <td><span class="pill ${p.stock ? "" : "danger"}">${p.stock}</span></td>

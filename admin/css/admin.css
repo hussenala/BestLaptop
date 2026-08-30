@@ -1529,17 +1529,110 @@
   border: 1px solid var(--line);
   border-radius: 14px;
 }
-.pe-preview-wrap .preview-card {
+.pe-preview-wrap .preview-card,
+.pe-preview-wrap .product-card {
   pointer-events: none;
-  border: none;
+  background: var(--bg-card);
+  border: 1px solid var(--line);
   border-radius: 12px;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
   box-shadow: none;
+}
+.pe-preview-wrap .pc-media {
+  position: relative;
+  display: block;
 }
 .pe-preview-wrap .pc-media img {
   height: 160px;
   width: 100%;
   object-fit: cover;
+  display: block;
+}
+.pe-preview-wrap .badge {
+  position: absolute;
+  top: 8px;
+  inset-inline-start: 8px;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.pe-preview-wrap .badge-sale {
+  inset-inline-start: auto;
+  inset-inline-end: 8px;
+  background: #e53935;
+  color: #fff;
+}
+.pe-preview-wrap .card-body {
+  padding: 12px;
+  display: grid;
+  gap: 6px;
+}
+.pe-preview-wrap .pc-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.pe-preview-wrap .pc-meta {
+  margin: 0;
+  font-size: 12px;
+  color: var(--gold, var(--accent));
+  font-weight: 700;
+}
+.pe-preview-wrap .pc-condition {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+}
+.pe-preview-wrap .pc-condition.cond-new {
+  color: #34d399;
+  border-color: rgba(52, 211, 153, 0.35);
+  background: rgba(52, 211, 153, 0.1);
+}
+.pe-preview-wrap .pc-condition.cond-refurbished {
+  color: #60a5fa;
+  border-color: rgba(96, 165, 250, 0.35);
+  background: rgba(96, 165, 250, 0.1);
+}
+.pe-preview-wrap .pc-condition.cond-open-box {
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.35);
+  background: rgba(251, 191, 36, 0.1);
+}
+.pe-preview-wrap h3 {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.35;
+}
+.pe-preview-wrap .pc-specs {
+  margin: 0;
+  font-size: 0.84rem;
+}
+.pe-preview-wrap .price b {
+  font-size: 1rem;
+}
+.pe-preview-wrap .price .old {
+  margin-inline-start: 8px;
+  color: var(--muted);
+  text-decoration: line-through;
+  font-size: 0.85rem;
+}
+.pe-preview-wrap .oos-ribbon {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.9rem;
 }
 
 .pe-footer {
