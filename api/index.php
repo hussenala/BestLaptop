@@ -1,7 +1,10 @@
 <?php
 require_once __DIR__ . DIRECTORY_SEPARATOR . "load-env.php";
 header("Content-Type: application/json; charset=utf-8");
-header("Cache-Control: no-store");
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Pragma: no-cache");
+header("Expires: 0");
+header("X-LiteSpeed-Cache-Control: no-cache");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
 header("Access-Control-Allow-Methods: GET,POST,PUT,PATCH,DELETE,OPTIONS");
 if (!empty($_SERVER["HTTP_ORIGIN"])) {
@@ -420,7 +423,7 @@ function version(PDO $pdo) {
 }
 
 function app_build() {
-  return 93;
+  return 95;
 }
 
 function health(PDO $pdo) {
@@ -437,6 +440,7 @@ function health(PDO $pdo) {
     "users" => $users,
     "hasAdmin" => $users > 0,
     "version" => version($pdo),
+    "storeVersion" => version($pdo),
     "products" => $products,
     "dbWritable" => db_writable(),
     "uploadsWritable" => is_dir($uploads) ? is_writable($uploads) : @mkdir($uploads, 0775, true),
@@ -1034,7 +1038,7 @@ try {
       $body = read_json();
       $merged = merge_settings(settings_raw($pdo), is_array($body) ? $body : []);
       save_settings($pdo, $merged);
-      json_out(200, $merged);
+      json_out(200, ["settings" => $merged, "version" => version($pdo)]);
     }
   }
 

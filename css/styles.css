@@ -262,12 +262,12 @@ button, input, select, textarea { font-family: inherit; }
   display: flex;
   align-items: center;
   flex: 0 0 auto;
-  width: 42px;
-  height: 42px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--line);
+  width: auto;
+  height: auto;
+  background: transparent;
+  border: 0;
   border-radius: 999px;
-  overflow: hidden;
+  overflow: visible;
   transition:
     width 0.32s cubic-bezier(0.4, 0, 0.2, 1),
     flex 0.32s cubic-bezier(0.4, 0, 0.2, 1),
@@ -279,7 +279,8 @@ button, input, select, textarea { font-family: inherit; }
   flex: 0 0 auto;
   width: min(420px, 62vw);
   height: 44px;
-  border-color: color-mix(in srgb, var(--accent) 42%, var(--line));
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--accent) 42%, var(--line));
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent),
     0 12px 28px color-mix(in srgb, var(--accent) 12%, transparent);
@@ -308,21 +309,35 @@ button, input, select, textarea { font-family: inherit; }
   flex-shrink: 0;
   width: 42px;
   height: 42px;
-  border: 0;
-  background: var(--accent);
-  color: var(--on-accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, var(--line));
+  border-radius: 50%;
+  background:
+    radial-gradient(
+      120% 120% at 30% 18%,
+      color-mix(in srgb, var(--accent) 22%, var(--bg-elevated)) 0%,
+      var(--bg-elevated) 58%
+    );
+  color: var(--accent);
   font-weight: 800;
-  font-size: 13px;
+  font-size: 0;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0;
   gap: 0;
-  transition: background 0.2s ease, transform 0.2s ease, color 0.2s ease, width 0.28s ease, padding 0.28s ease;
-}
-.search-toggle.has-icons:not([aria-expanded="true"]) {
-  font-size: 0;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 14%, transparent),
+    0 6px 16px color-mix(in srgb, var(--accent) 12%, transparent);
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease,
+    color 0.2s ease,
+    width 0.28s ease,
+    padding 0.28s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    border-radius 0.2s ease;
 }
 .search-toggle .search-toggle-ico {
   width: 20px;
@@ -334,20 +349,31 @@ button, input, select, textarea { font-family: inherit; }
   font-weight: 800;
   letter-spacing: 0.01em;
   white-space: nowrap;
+  display: none;
 }
-.header-search.open .search-toggle {
+.search-toggle.is-open .search-ico-open {
+  display: none !important;
+}
+.search-toggle.is-open .search-label {
+  display: inline !important;
+}
+.header-search.open .search-toggle.is-open {
   width: auto;
   min-width: 64px;
   padding: 0 14px;
+  border-radius: 0;
+  border-color: transparent;
   background: var(--accent);
   color: var(--on-accent);
-}
-.header-search.open .search-toggle.has-icons {
   font-size: 13px;
+  box-shadow: none;
 }
 .search-toggle:hover,
 .search-toggle:focus-visible {
   transform: scale(1.04);
+}
+.search-toggle:active {
+  transform: scale(0.96);
 }
 .search-close {
   flex-shrink: 0;
@@ -2079,9 +2105,22 @@ body.nav-open .mobile-nav,
     border-color: transparent;
     background: var(--accent);
     color: var(--on-accent);
+    font-size: 0;
     box-shadow:
       0 0 0 3px color-mix(in srgb, var(--accent) 24%, transparent),
       0 10px 22px color-mix(in srgb, var(--accent) 30%, transparent);
+  }
+  .header-search.open .search-toggle.is-open {
+    width: 44px;
+    min-width: 44px;
+    padding: 0;
+    font-size: 0;
+  }
+  .header-search.open .search-toggle .search-label {
+    display: none !important;
+  }
+  .header-search.open .search-toggle .search-ico-open {
+    display: block !important;
   }
   .header-search.open .search-toggle:active {
     transform: scale(0.94);

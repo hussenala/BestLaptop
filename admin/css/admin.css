@@ -237,6 +237,19 @@
 }
 .admin-user { text-align: start; }
 .admin-user small { display: block; color: var(--muted); }
+.admin-build-badge {
+  font-size: 0.72rem;
+  color: var(--muted);
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.admin-build-badge.is-stale {
+  color: #b45309;
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.12);
+}
 .admin-content { padding: 22px; }
 .kpi-grid {
   display: grid;

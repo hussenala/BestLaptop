@@ -10,6 +10,8 @@ RewriteEngine On
 RewriteBase /
 
 RewriteRule ^api/index\.php$ - [L]
+RewriteCond %{HTTP:Authorization} .
+RewriteRule ^api/ - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteRule ^api/(.*)$ api/index.php?r=/$1 [QSA,L]
 

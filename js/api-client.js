@@ -89,7 +89,7 @@ const StoreAPI = (() => {
 
   function applyStore(payload) {
     if (!payload) return;
-    version = payload.version || version;
+    version = String(payload.version || version || "0");
     localStorage.setItem(VERSION_KEY, version);
     storeReady = true;
     if (typeof PRODUCTS !== "undefined" && Array.isArray(payload.products)) {
@@ -159,17 +159,31 @@ const StoreAPI = (() => {
     }
   }
 
+  function publishStorefront(nextVersion) {
+    const v = nextVersion ? String(nextVersion) : String(Date.now());
+    localStorage.setItem(VERSION_KEY, v);
+    version = v;
+    try {
+      const channel = new BroadcastChannel("bestlaptop-store-sync");
+      channel.postMessage({ version: v });
+      channel.close();
+    } catch {
+      /* ignore */
+    }
+  }
+
   function startPolling() {
     clearInterval(pollTimer);
-    pollTimer = setInterval(checkForUpdates, 5000);
+    const pollMs = isProductionHost() ? 3000 : 5000;
+    pollTimer = setInterval(checkForUpdates, pollMs);
   }
 
   async function checkForUpdates() {
     try {
       const { res, body } = await fetchApi("/api/health", { cache: "no-store" });
       if (!res.ok) return;
-      const next = body.version;
-      if (next && next !== version) {
+      const next = body.storeVersion || body.version;
+      if (next && String(next) !== String(version)) {
         await fetchStore();
         if (typeof renderFeatured === "function") renderFeatured();
         if (typeof renderOfficeGallery === "function") renderOfficeGallery();
@@ -204,18 +218,31 @@ const StoreAPI = (() => {
   }
 
   function notifyChange(nextVersion) {
-    const v = nextVersion ? String(nextVersion) : String(Date.now());
-    localStorage.setItem(VERSION_KEY, v);
-    if (nextVersion) version = v;
+    publishStorefront(nextVersion);
+  }
+
+  try {
+    const syncChannel = new BroadcastChannel("bestlaptop-store-sync");
+    syncChannel.onmessage = () => {
+      fetchStore().catch(() => {});
+    };
+  } catch {
+    /* ignore */
   }
 
   window.addEventListener("storage", (e) => {
-    if (e.key === VERSION_KEY && e.newValue !== version) fetchStore();
+    if (e.key === VERSION_KEY && e.newValue && String(e.newValue) !== String(version)) {
+      fetchStore().catch(() => {});
+    }
+  });
+
+  window.addEventListener("focus", () => {
+    if (storeReady) checkForUpdates();
   });
 
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible" && storeReady) checkForUpdates();
   });
 
-  return { bootstrap, fetchStore, createOrder, getOrder, notifyChange, applyStore, apiUrl, fetchApi, isStoreReady: () => storeReady };
+  return { bootstrap, fetchStore, createOrder, getOrder, notifyChange, publishStorefront, applyStore, apiUrl, fetchApi, isStoreReady: () => storeReady };
 })();

@@ -216,6 +216,27 @@ function toast(msg) {
   toast._t = setTimeout(() => el.classList.remove("show"), 2000);
 }
 
+function publishToast(msg) {
+  toast(`${msg} — سيظهر على المتجر خلال ثوانٍ`);
+}
+
+function updateServerBuildBadge(healthBody) {
+  const el = document.querySelector("[data-server-build]");
+  if (!el || !healthBody) return;
+  const localBuild = Number(document.querySelector('meta[name="bl-build"]')?.content || 0);
+  const serverBuild = Number(healthBody.build || 0);
+  const storeVersion = healthBody.storeVersion || healthBody.version || "—";
+  const stale = serverBuild && localBuild && serverBuild < localBuild;
+  el.hidden = false;
+  el.classList.toggle("is-stale", stale);
+  el.textContent = stale
+    ? `السيرفر قديم (b${serverBuild}) — ارفع الملفات`
+    : `سيرفر b${serverBuild || "?"} | بيانات v${storeVersion}`;
+  el.title = stale
+    ? "ملفات السيرفر أقدم من نسخة لوحة التحكم — ارفع HTML و CSS و JS و api/index.php"
+    : "رقم build من /api/health ورقم بيانات المتجر الحالية";
+}
+
 function productDeleteConfirmModal(p) {
   if (!p) return "";
   const cat = db().categories.find((c) => c.id === p.category);
@@ -1959,7 +1980,7 @@ document.addEventListener("click", (e) => {
       try {
         const next = { ...db().settings, homeLayout: collectHomeLayoutFromDom() };
         await StoreDB.saveSettings(next);
-        toast("تم حفظ ترتيب الصفحة الرئيسية");
+        publishToast("تم حفظ ترتيب الصفحة الرئيسية");
         render();
       } catch (err) {
         toast(err.message || "تعذر الحفظ");
@@ -2537,7 +2558,7 @@ document.addEventListener("submit", (e) => {
       const finish = async () => {
         try {
           await StoreDB.saveSettings(next);
-          toast("تم حفظ إعدادات المتجر");
+          publishToast("تم حفظ إعدادات المتجر");
           render();
         } catch (err) {
           toast(err.message || "تعذر الحفظ");
@@ -2622,9 +2643,12 @@ async function bootAdmin() {
     await StoreDB.refresh();
     try {
       const { res, body } = await StoreAPI.fetchApi("/api/health", { cache: "no-store" });
-      if (res.ok && body.galleryUploadWritable === false) {
-        window.__galleryUploadHint =
-          body.galleryUploadHint || "مجلد رفع صور المعرض غير قابل للكتابة — اضبط صلاحيات uploads/gallery على 775 من الاستضافة.";
+      if (res.ok) {
+        updateServerBuildBadge(body);
+        if (body.galleryUploadWritable === false) {
+          window.__galleryUploadHint =
+            body.galleryUploadHint || "مجلد رفع صور المعرض غير قابل للكتابة — اضبط صلاحيات uploads/gallery على 775 من الاستضافة.";
+        }
       }
     } catch {
       /* ignore health probe */

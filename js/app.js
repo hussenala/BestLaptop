@@ -2889,10 +2889,12 @@ function setupHeaderSearch() {
   const isMobileSearch = () => mobileSearchMq.matches;
 
   function syncSearchToggle(open) {
+    const mobile = isMobileSearch();
+    toggle.classList.toggle("is-open", open && !mobile);
     toggle.setAttribute("aria-expanded", open ? "true" : "false");
-    toggle.setAttribute("aria-label", open ? (isMobileSearch() ? "إغلاق البحث" : "تنفيذ البحث") : "فتح البحث");
-    toggle.querySelector(".search-ico-open")?.toggleAttribute("hidden", open && !isMobileSearch());
-    toggle.querySelector(".search-label")?.toggleAttribute("hidden", !open || isMobileSearch());
+    toggle.setAttribute("aria-label", open ? (mobile ? "إغلاق البحث" : "تنفيذ البحث") : "فتح البحث");
+    toggle.querySelector(".search-ico-open")?.toggleAttribute("hidden", open && !mobile);
+    toggle.querySelector(".search-label")?.toggleAttribute("hidden", !open || mobile);
     panel.hidden = !open;
     document.body.classList.toggle("search-open", open);
   }
