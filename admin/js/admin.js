@@ -684,7 +684,7 @@ function setupProductEditor() {
         <div class="card-body">
           <p class="pc-meta">${esc(brand)}</p>
           <h3>${esc(name)}</h3>
-          <p class="muted">${esc(specs)}</p>
+          <p class="muted pc-specs">${esc(specs)}</p>
           ${
             stock > 0
               ? `<div class="price"><b>${money(price)}</b>${oldPrice > price ? `<span class="old">${money(oldPrice)}</span>` : ""}</div>`

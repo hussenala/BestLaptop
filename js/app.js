@@ -740,7 +740,7 @@ function productCard(p, opts = {}) {
       <div class="card-body">
         <p class="pc-meta">${p.brand}</p>
         <h3><a href="${productUrl(p.id)}">${p.name}</a></h3>
-        <p class="muted">${productCardSpecs(p)}</p>
+        <p class="muted pc-specs">${productCardSpecs(p)}</p>
         ${
           oos
             ? ""
