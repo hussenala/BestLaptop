@@ -791,6 +791,65 @@ function summaryRows(pricing) {
   `;
 }
 
+function initMobileCheckoutBar() {
+  const page = document.body.dataset.page;
+  if (page !== "cart" && page !== "checkout") return;
+  if (document.querySelector("[data-mobile-checkout-bar]")) return;
+
+  const bar = document.createElement("div");
+  bar.className = "checkout-mobile-bar";
+  bar.dataset.mobileCheckoutBar = "";
+  bar.hidden = true;
+  bar.innerHTML = `
+    <div class="checkout-mobile-bar-inner">
+      <div class="checkout-mobile-bar-meta">
+        <span class="checkout-mobile-bar-label">الإجمالي</span>
+        <strong data-mobile-checkout-total>0 IQD</strong>
+      </div>
+      <button type="button" class="btn btn-primary checkout-mobile-bar-btn" data-mobile-checkout-action>المتابعة للدفع</button>
+    </div>`;
+  document.body.appendChild(bar);
+
+  bar.querySelector("[data-mobile-checkout-action]")?.addEventListener("click", () => {
+    if (page === "cart") {
+      if (!getCart().length) {
+        showToast("أضف جهازاً أولاً");
+        return;
+      }
+      location.href = "/checkout";
+      return;
+    }
+    const form = document.querySelector("[data-checkout-form]");
+    if (form) form.requestSubmit();
+  });
+}
+
+function updateMobileCheckoutBar(pricing) {
+  const page = document.body.dataset.page;
+  if (page !== "cart" && page !== "checkout") return;
+  initMobileCheckoutBar();
+  const bar = document.querySelector("[data-mobile-checkout-bar]");
+  if (!bar) return;
+  const labelEl = bar.querySelector(".checkout-mobile-bar-label");
+  const totalEl = bar.querySelector("[data-mobile-checkout-total]");
+  const actionEl = bar.querySelector("[data-mobile-checkout-action]");
+  const hasItems = !!pricing?.items?.length;
+  const itemCount = hasItems ? pricing.items.reduce((sum, item) => sum + (Number(item.qty) || 0), 0) : 0;
+
+  bar.hidden = !hasItems;
+  document.body.classList.toggle("has-mobile-checkout-bar", hasItems);
+  if (!hasItems) return;
+
+  if (labelEl) {
+    labelEl.textContent = page === "checkout" ? `${itemCount} منتج · الإجمالي` : "الإجمالي";
+  }
+  if (totalEl) totalEl.textContent = money(pricing.total);
+  if (actionEl) {
+    actionEl.textContent = page === "cart" ? "المتابعة للدفع" : "تأكيد الطلب";
+    actionEl.disabled = false;
+  }
+}
+
 function productCardSpecs(p) {
   const parts = [p.gpu, p.ram, p.storage].filter(Boolean);
   if (parts.length) return parts.join(" · ");
@@ -2328,6 +2387,7 @@ function renderCartPage() {
         <p class="muted">أضف لابتوب من التشكيلة ثم ارجع هنا لإتمام الطلب.</p>
         <a class="btn btn-primary" href="/products">تصفح المنتجات</a>
       </div>`;
+    updateMobileCheckoutBar(pricing);
     return;
   }
 
@@ -2377,6 +2437,7 @@ function renderCartPage() {
       </aside>
     </div>
   `;
+  updateMobileCheckoutBar(pricing);
 }
 
 function renderCheckout() {
@@ -2415,6 +2476,7 @@ function renderCheckout() {
         </div>`;
     }
     form?.querySelector("[data-place-order]")?.setAttribute("disabled", "disabled");
+    updateMobileCheckoutBar(pricing);
     return;
   }
 
@@ -2442,6 +2504,7 @@ function renderCheckout() {
       <p class="muted summary-note">سنتواصل معك لتأكيد التسليم على <span dir="ltr">${formatPhoneDisplay(STORE.phone)}</span></p>
     `;
   }
+  updateMobileCheckoutBar(pricing);
 }
 
 function setupCheckoutForm() {
@@ -3290,6 +3353,7 @@ async function bootStorefront() {
   }
   applyStoreBranding();
   applyStorefrontCartMode();
+  initMobileCheckoutBar();
   renderHeaderBrands();
   renderCategoryFilter();
   applyUrlFilters();
@@ -3319,6 +3383,7 @@ window.refreshStorefrontViews = function refreshStorefrontViews() {
   if (typeof SitePages !== "undefined") SitePages.paintLinks();
   applyStoreBranding();
   applyStorefrontCartMode();
+  initMobileCheckoutBar();
   renderHeaderBrands();
   renderCategoryFilter();
   renderShopFilters();
