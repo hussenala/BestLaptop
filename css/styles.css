@@ -1689,6 +1689,11 @@ body.nav-open { overflow: hidden; }
   border-color: rgba(251, 191, 36, 0.35);
   background: rgba(251, 191, 36, 0.1);
 }
+.pc-condition.cond-used {
+  color: #fb923c;
+  border-color: rgba(251, 146, 60, 0.4);
+  background: rgba(251, 146, 60, 0.12);
+}
 .product-card .pc-specs {
   font-size: 0.72rem;
   line-height: 1.35;

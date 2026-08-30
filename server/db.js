@@ -163,8 +163,10 @@ function rowToProduct(row) {
 
 function normalizeProductCondition(value) {
   const raw = String(value || "new").trim().toLowerCase();
-  if (raw === "open box" || raw === "open_box") return "open-box";
-  const allowed = ["new", "refurbished", "open-box"];
+  if (raw === "open box" || raw === "open_box" || raw === "openbox") return "open-box";
+  if (raw === "refurb") return "refurbished";
+  if (raw === "مستعمل" || raw === "يوزد") return "used";
+  const allowed = ["new", "refurbished", "open-box", "used"];
   return allowed.includes(raw) ? raw : "new";
 }
 
@@ -270,7 +272,7 @@ function getHealth() {
       ok: true,
       db: true,
       engine: "sqlite",
-      build: 108,
+      build: 109,
       users,
       hasAdmin: users > 0,
       version,

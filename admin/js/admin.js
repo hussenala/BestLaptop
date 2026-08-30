@@ -23,7 +23,12 @@ function conditionBadgeHtml(condition) {
 function conditionOptionsHtml(selected = "new") {
   if (typeof productConditionOptions === "function") return productConditionOptions(selected);
   const value = typeof normalizeProductCondition === "function" ? normalizeProductCondition(selected) : "new";
-  return `<option value="new" ${value === "new" ? "selected" : ""}>New — جديد</option>`;
+  return [
+    `<option value="new" ${value === "new" ? "selected" : ""}>New — جديد</option>`,
+    `<option value="refurbished" ${value === "refurbished" ? "selected" : ""}>Refurbished — مجدّد</option>`,
+    `<option value="open-box" ${value === "open-box" ? "selected" : ""}>Open Box — مفتوح</option>`,
+    `<option value="used" ${value === "used" ? "selected" : ""}>Used — يوزد</option>`,
+  ].join("");
 }
 
 const NAV = [

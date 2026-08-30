@@ -460,7 +460,7 @@ function version(PDO $pdo) {
 }
 
 function app_build() {
-  return 108;
+  return 109;
 }
 
 function normalize_upload_path($src) {
@@ -499,7 +499,8 @@ function normalize_product_condition($value) {
   $raw = strtolower(trim((string) ($value ?? "new")));
   if ($raw === "open box" || $raw === "open_box" || $raw === "openbox") $raw = "open-box";
   if ($raw === "refurb") $raw = "refurbished";
-  $allowed = ["new", "refurbished", "open-box"];
+  if ($raw === "مستعمل" || $raw === "يوزد") $raw = "used";
+  $allowed = ["new", "refurbished", "open-box", "used"];
   return in_array($raw, $allowed, true) ? $raw : "new";
 }
 

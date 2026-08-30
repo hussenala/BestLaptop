@@ -2,12 +2,14 @@ const PRODUCT_CONDITIONS = {
   new: { label: "New", labelAr: "جديد", class: "cond-new" },
   refurbished: { label: "Refurbished", labelAr: "مجدّد", class: "cond-refurbished" },
   "open-box": { label: "Open Box", labelAr: "مفتوح", class: "cond-open-box" },
+  used: { label: "Used", labelAr: "يوزد", class: "cond-used" },
 };
 
 function normalizeProductCondition(value) {
   const raw = String(value || "new").trim().toLowerCase();
   if (raw === "open box" || raw === "open_box" || raw === "openbox") return "open-box";
   if (raw === "refurb" || raw === "refurbished") return "refurbished";
+  if (raw === "used" || raw === "مستعمل" || raw === "يوزد") return "used";
   return PRODUCT_CONDITIONS[raw] ? raw : "new";
 }
 
