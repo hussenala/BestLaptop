@@ -698,8 +698,12 @@ function getSettings() {
 }
 
 function saveSettings(settings) {
+  const normalized = {
+    ...settings,
+    cartEnabled: Object.prototype.hasOwnProperty.call(settings, "cartEnabled") ? settings.cartEnabled !== false : true,
+  };
   db.prepare("INSERT INTO settings (key,value) VALUES ('main',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(
-    JSON.stringify(settings)
+    JSON.stringify(normalized)
   );
   bumpVersion();
 }

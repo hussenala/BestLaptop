@@ -114,12 +114,15 @@ const StoreAPI = (() => {
       if (!next.payments?.length && STORE.payments?.length) next.payments = STORE.payments;
       Object.assign(STORE, next);
     }
+    if (typeof STORE !== "undefined") {
+      const cartFromStore = payload.store?.cartEnabled;
+      const cartFromSettings = payload.settings?.cartEnabled;
+      if (cartFromStore !== undefined) STORE.cartEnabled = cartFromStore !== false;
+      else if (cartFromSettings !== undefined) STORE.cartEnabled = cartFromSettings !== false;
+    }
     if (typeof STORE !== "undefined" && payload.settings) {
       if ("homeLayout" in payload.settings) {
         STORE.homeLayout = payload.settings.homeLayout;
-      }
-      if ("cartEnabled" in payload.settings) {
-        STORE.cartEnabled = payload.settings.cartEnabled !== false;
       }
     }
     const officeGallery = payload.settings?.officeGallery || payload.store?.officeGallery;

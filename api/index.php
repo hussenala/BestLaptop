@@ -232,8 +232,15 @@ function checkout_options(array $s) {
   $s["maintenanceMode"] = !empty($s["maintenanceMode"]);
   if (empty($s["maintenanceMessage"])) $s["maintenanceMessage"] = "";
   if (!isset($s["homeLayout"]) || !is_array($s["homeLayout"])) $s["homeLayout"] = null;
-  $s["cartEnabled"] = !isset($s["cartEnabled"]) || !empty($s["cartEnabled"]);
+  $s["cartEnabled"] = normalize_bool_setting($s["cartEnabled"] ?? null, true);
   return $s;
+}
+
+function normalize_bool_setting($value, $default = true) {
+  if ($value === null) return $default;
+  if ($value === false || $value === 0 || $value === "0" || $value === "false") return false;
+  if ($value === true || $value === 1 || $value === "1" || $value === "true") return true;
+  return $default;
 }
 
 function is_maintenance_mode(PDO $pdo) {
@@ -437,8 +444,9 @@ function settings(PDO $pdo) {
 }
 
 function save_settings(PDO $pdo, $s) {
+  $normalized = checkout_options(is_array($s) ? $s : []);
   $pdo->prepare("INSERT INTO settings (key,value) VALUES ('main',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value")
-    ->execute([json_encode($s, JSON_UNESCAPED_UNICODE)]);
+    ->execute([json_encode($normalized, JSON_UNESCAPED_UNICODE)]);
   bump($pdo);
 }
 
@@ -726,7 +734,7 @@ function public_store(PDO $pdo) {
       "officeGallery" => normalize_office_gallery($s["officeGallery"] ?? null),
       "maintenanceMode" => !empty($s["maintenanceMode"]),
       "maintenanceMessage" => $s["maintenanceMessage"] ?? "",
-      "cartEnabled" => !isset($s["cartEnabled"]) || !empty($s["cartEnabled"]),
+      "cartEnabled" => normalize_bool_setting($s["cartEnabled"] ?? null, true),
     ],
   ];
 }

@@ -379,11 +379,21 @@ function statusLabel(id) {
   return StoreDB.ORDER_STATUSES.find((s) => s.id === id)?.label || id;
 }
 
-function closeModal() {
+function closeModal(force = false) {
   const box = document.querySelector("[data-modal]");
+  if (!box || box.hidden) return;
+  if (!force && !confirmModalClose()) return;
   box.hidden = true;
   box.classList.remove("is-open");
   box.querySelector("[data-modal-card]")?.classList.remove("admin-modal-card--wide");
+}
+
+function confirmModalClose() {
+  const slideForm = document.querySelector("[data-slide-form]");
+  if (slideForm?.dataset.dirty === "1") {
+    return window.confirm("لديك تعديلات غير محفوظة في الشريحة. هل تريد إغلاق النافذة؟");
+  }
+  return true;
 }
 
 function openModal(html, opts = {}) {
@@ -393,6 +403,12 @@ function openModal(html, opts = {}) {
   box.classList.add("is-open");
   card.classList.toggle("admin-modal-card--wide", !!opts.wide);
   card.innerHTML = html;
+  card.querySelectorAll("[data-close-modal]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      closeModal();
+    });
+  });
 }
 
 function renderNav(user) {
@@ -1183,9 +1199,15 @@ function setupSlideEditor() {
 
   if (!form.dataset.previewBound) {
     form.dataset.previewBound = "1";
+    const markDirty = () => {
+      form.dataset.dirty = "1";
+    };
+    form.addEventListener("input", markDirty);
+    form.addEventListener("change", markDirty);
     form.addEventListener("input", syncSlidePreview);
     form.addEventListener("change", syncSlidePreview);
   }
+  delete form.dataset.dirty;
   syncSlidePreview();
 }
 
@@ -1868,7 +1890,6 @@ document.addEventListener("click", (e) => {
     location.replace("login.html");
   }
   if (e.target.closest("[data-sidebar-toggle]")) document.querySelector(".admin-app").classList.toggle("nav-open");
-  if (e.target.closest("[data-close-modal]") || e.target.matches("[data-modal]")) closeModal();
   const delP = e.target.closest("[data-del-product]");
   if (delP) {
     const product = db().products.find((x) => x.id === delP.dataset.delProduct);
@@ -1880,7 +1901,7 @@ document.addEventListener("click", (e) => {
     void (async () => {
       try {
         await StoreDB.deleteProduct(confirmDelP.dataset.confirmDelProduct);
-        closeModal();
+        closeModal(true);
         toast("تم حذف المنتج");
         render();
       } catch (err) {
@@ -2159,7 +2180,7 @@ document.addEventListener("click", (e) => {
         toast("تم حذف سجل الشراء");
         render();
         if (returnPhone) openCustomerHistoryByPhone(returnPhone);
-        else closeModal();
+        else closeModal(true);
       } catch (err) {
         toast(err.message || "تعذر الحذف");
       }
@@ -2328,7 +2349,7 @@ document.addEventListener("submit", (e) => {
       };
       try {
         await StoreDB.saveProduct(item);
-        closeModal();
+        closeModal(true);
         toast("تم حفظ المنتج");
         location.hash = "#/products";
         render();
@@ -2345,7 +2366,7 @@ document.addEventListener("submit", (e) => {
       const item = { id: f.get("id"), title: f.get("title"), text: f.get("text") };
       try {
         await StoreDB.saveCategory(item);
-        closeModal();
+        closeModal(true);
         render();
       } catch (err) {
         toast(err.message || "تعذر الحفظ");
@@ -2361,7 +2382,7 @@ document.addEventListener("submit", (e) => {
       const item = { id, name: f.get("name"), country: f.get("country") };
       try {
         await StoreDB.saveBrand(item);
-        closeModal();
+        closeModal(true);
         render();
       } catch (err) {
         toast(err.message || "تعذر الحفظ");
@@ -2385,7 +2406,7 @@ document.addEventListener("submit", (e) => {
       };
       try {
         await StoreDB.saveCoupon(item);
-        closeModal();
+        closeModal(true);
         render();
       } catch (err) {
         toast(err.message || "تعذر الحفظ");
@@ -2427,7 +2448,7 @@ document.addEventListener("submit", (e) => {
       };
       try {
         await StoreDB.saveSlide(item);
-        closeModal();
+        closeModal(true);
         toast("تم حفظ الشريحة");
         render();
       } catch (err) {
@@ -2483,7 +2504,7 @@ document.addEventListener("submit", (e) => {
       };
       try {
         await StoreDB.saveProductSlider(item);
-        closeModal();
+        closeModal(true);
         toast("تم حفظ السلايدر");
         render();
       } catch (err) {
@@ -2583,7 +2604,7 @@ document.addEventListener("submit", (e) => {
           await StoreDB.createUser(payload);
           toast("تم إضافة المستخدم");
         }
-        closeModal();
+        closeModal(true);
         render();
       } catch (err) {
         toast(err.message || "تعذر الحفظ");
