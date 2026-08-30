@@ -120,8 +120,9 @@ function resolveAsset(src) {
   if (!src) return "/img/logo.jpg";
   if (typeof src === "object") src = src.src || src.url || "";
   if (!src) return "/img/logo.jpg";
-  if (src.startsWith("data:") || src.startsWith("http") || src.startsWith("/")) return src;
-  return src;
+  if (src.startsWith("data:") || src.startsWith("http://") || src.startsWith("https://")) return src;
+  if (src.startsWith("/")) return src;
+  return `/${String(src).replace(/^\.?\//, "")}`;
 }
 
 function galleryImageSrc(value) {

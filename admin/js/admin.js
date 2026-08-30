@@ -249,7 +249,7 @@ function updateServerBuildBadge(healthBody) {
     if (conditionBroken) {
       alertEl.hidden = false;
       alertEl.innerHTML =
-        '<strong>تنبيه:</strong> السيرفر لا يدعم حالة المنتج بعد. ارفع <code>api/index.php</code> و <code>js/app.js</code> و <code>js/product-condition.js</code> (build 102+) ثم امسح كاش LiteSpeed واضغط Ctrl+Shift+R.';
+        '<strong>تنبيه:</strong> السيرفر لا يدعم حالة المنتج بعد. ارفع <code>api/index.php</code> و <code>js/app.js</code> و <code>js/product-condition.js</code> (build 103+) ثم امسح كاش LiteSpeed واضغط Ctrl+Shift+R.';
     } else if (stale) {
       alertEl.hidden = false;
       alertEl.innerHTML =
@@ -523,7 +523,9 @@ function ordersTable(list, editable = true) {
 
 function resolveAdminAsset(src) {
   if (!src) return "";
-  if (src.startsWith("data:") || src.startsWith("http") || src.startsWith("/")) return src;
+  if (src.startsWith("data:") || src.startsWith("http://") || src.startsWith("https://")) return src;
+  if (src.startsWith("/")) return src;
+  if (src.startsWith("uploads/")) return `/${src}`;
   return `../${src}`;
 }
 
@@ -618,6 +620,14 @@ function findImageIndex(list, src) {
   return list.findIndex((item) => imageUrlKey(item) === key);
 }
 
+function normalizeImagePath(src) {
+  const raw = String(src || "").trim();
+  if (!raw) return "";
+  if (raw.startsWith("data:") || raw.startsWith("http://") || raw.startsWith("https://")) return raw;
+  if (raw.startsWith("/")) return raw;
+  return `/${raw.replace(/^\.?\//, "")}`;
+}
+
 function normalizeProductImages(product) {
   const raw =
     Array.isArray(product?.images) && product.images.length
@@ -626,13 +636,15 @@ function normalizeProductImages(product) {
         ? [product.image]
         : [];
   const seen = new Set();
-  const images = raw.filter((src) => {
-    const key = imageUrlKey(src);
-    if (!key || seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-  const cover = String(product?.image || "").trim();
+  const images = raw
+    .map((src) => normalizeImagePath(src))
+    .filter((src) => {
+      const key = imageUrlKey(src);
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  const cover = normalizeImagePath(product?.image || "");
   if (cover && images.length > 1) {
     const idx = findImageIndex(images, cover);
     if (idx > 0) {
@@ -654,20 +666,40 @@ function getProductImages() {
 }
 
 function setProductImages(list) {
+  const normalized = normalizeProductImages({ images: list, image: list[0] });
   const el = document.querySelector("[data-images-json]");
-  if (el) el.value = JSON.stringify(list);
-  paintImagePreviews(list);
+  if (el) el.value = JSON.stringify(normalized);
+  paintImagePreviews(normalized);
 }
 
-function setPrimaryProductImage(src) {
+function moveProductImage(index, direction) {
   const list = getProductImages();
-  const i = findImageIndex(list, src);
+  const i = Number(index);
+  const j = i + direction;
+  if (i < 0 || i >= list.length || j < 0 || j >= list.length) return;
+  [list[i], list[j]] = [list[j], list[i]];
+  setProductImages(list);
+  syncProductEditorPreview();
+}
+
+function setPrimaryProductImage(index) {
+  const list = getProductImages();
+  const i = Number(index);
   if (i < 1 || i >= list.length) return;
   const [item] = list.splice(i, 1);
   list.unshift(item);
   setProductImages(list);
-  setupProductEditor();
+  syncProductEditorPreview();
   toast("تم تعيين الصورة الرئيسية");
+}
+
+function removeProductImage(index) {
+  const list = getProductImages();
+  const i = Number(index);
+  if (i < 0 || i >= list.length) return;
+  list.splice(i, 1);
+  setProductImages(list);
+  syncProductEditorPreview();
 }
 
 function paintImagePreviews(list) {
@@ -678,18 +710,67 @@ function paintImagePreviews(list) {
     ? list
         .map(
           (src, i) => `
-    <figure class="img-preview${isEditor && i === 0 ? " is-primary" : ""}"${isEditor && i !== 0 ? ` data-set-primary-src="${esc(src)}"` : ""}>
-      <span class="img-order-badge" aria-hidden="true">${i + 1}</span>
-      ${isEditor && i === 0 ? '<span class="img-primary-badge">الصورة الرئيسية</span>' : ""}
-      ${isEditor && i !== 0 ? '<span class="img-set-primary-hint">اضغط لتعيينها رئيسية</span>' : ""}
-      <img src="${esc(resolveAdminAsset(src))}" alt="" />
-      <button type="button" class="img-rm" data-rm-img="${i}" aria-label="حذف">×</button>
-    </figure>`
+    <article class="pe-image-row${isEditor && i === 0 ? " is-primary" : ""}">
+      <div class="pe-image-thumb">
+        <img src="${esc(resolveAdminAsset(src))}" alt="" />
+        <span class="img-order-badge">${i + 1}</span>
+      </div>
+      <div class="pe-image-meta">
+        <strong>${i === 0 ? "الصورة الرئيسية (غلاف المنتج)" : `صورة ${i + 1}`}</strong>
+        <span class="muted pe-image-path">${esc(src)}</span>
+      </div>
+      <div class="pe-image-actions">
+        ${i > 0 ? `<button type="button" class="btn btn-ghost btn-xs" data-img-up="${i}" aria-label="تحريك لأعلى">↑</button>` : ""}
+        ${i < list.length - 1 ? `<button type="button" class="btn btn-ghost btn-xs" data-img-down="${i}" aria-label="تحريك لأسفل">↓</button>` : ""}
+        ${i !== 0 ? `<button type="button" class="btn btn-ghost btn-xs" data-img-primary="${i}">★ رئيسية</button>` : `<span class="pe-image-main-pill">الغلاف</span>`}
+        <button type="button" class="btn btn-ghost btn-xs danger-text" data-img-rm="${i}" aria-label="حذف">×</button>
+      </div>
+    </article>`
         )
         .join("")
     : isEditor
       ? `<p class="pe-gallery-empty muted">لم تُرفع صور بعد — أضف صورة واحدة على الأقل.</p>`
       : "";
+}
+
+function syncProductEditorPreview() {
+  const form = document.querySelector("[data-product-form]");
+  const preview = document.querySelector("[data-product-live-preview]");
+  if (!form || !preview) return;
+  const name = form.querySelector('[name="name"]')?.value || "اسم المنتج";
+  const tag = form.querySelector('[name="tag"]')?.value || "جديد";
+  const brand = form.querySelector('[name="brand"]')?.value || "—";
+  const condition = form.querySelector('[name="productCondition"]')?.value || "new";
+  const price = parseMoneyInput(form.querySelector('[name="price"]')?.value);
+  const oldPrice = parseMoneyInput(form.querySelector('[name="oldPrice"]')?.value);
+  const stock = Number(form.querySelector('[name="stock"]')?.value) || 0;
+  const images = getProductImages();
+  const img = images[0] ? resolveAdminAsset(images[0]) : "../img/logo.jpg";
+  const specs = form.querySelector('[name="specs"]')?.value || productEditorSpecsPreview(form);
+  const off = oldPrice > price ? Math.round(((oldPrice - price) / oldPrice) * 100) : 0;
+
+  preview.innerHTML = `
+    <article class="product-card preview-card ${stock <= 0 ? "is-oos" : ""}">
+      <div class="pc-media">
+        <img src="${esc(img)}" alt="" />
+        <span class="badge">${esc(tag)}</span>
+        ${off ? `<span class="badge badge-sale">-${off}%</span>` : ""}
+        ${stock <= 0 ? `<span class="oos-ribbon">غير متوفر</span>` : ""}
+      </div>
+      <div class="card-body">
+        <div class="pc-meta-row">
+          <p class="pc-meta">${esc(brand)}</p>
+          ${productConditionBadge(condition)}
+        </div>
+        <h3>${esc(name)}</h3>
+        <p class="muted pc-specs">${esc(specs)}</p>
+        ${
+          stock > 0
+            ? `<div class="price"><b>${money(price)}</b>${oldPrice > price ? `<span class="old">${money(oldPrice)}</span>` : ""}</div>`
+            : ""
+        }
+      </div>
+    </article>`;
 }
 
 function renderDashboard() {
@@ -759,50 +840,12 @@ function productEditorSpecsPreview(form) {
 
 function setupProductEditor() {
   const form = document.querySelector("[data-product-form]");
-  const preview = document.querySelector("[data-product-live-preview]");
-  if (!form || !preview) return;
-
-  function syncPreview() {
-    const name = form.querySelector('[name="name"]')?.value || "اسم المنتج";
-    const tag = form.querySelector('[name="tag"]')?.value || "جديد";
-    const brand = form.querySelector('[name="brand"]')?.value || "—";
-    const condition = form.querySelector('[name="productCondition"]')?.value || "new";
-    const price = parseMoneyInput(form.querySelector('[name="price"]')?.value);
-    const oldPrice = parseMoneyInput(form.querySelector('[name="oldPrice"]')?.value);
-    const stock = Number(form.querySelector('[name="stock"]')?.value) || 0;
-    const images = getProductImages();
-    const img = images[0] ? resolveAdminAsset(images[0]) : "../img/logo.jpg";
-    const specs = form.querySelector('[name="specs"]')?.value || productEditorSpecsPreview(form);
-    const off = oldPrice > price ? Math.round(((oldPrice - price) / oldPrice) * 100) : 0;
-
-    preview.innerHTML = `
-      <article class="product-card preview-card ${stock <= 0 ? "is-oos" : ""}">
-        <div class="pc-media">
-          <img src="${esc(img)}" alt="" />
-          <span class="badge">${esc(tag)}</span>
-          ${off ? `<span class="badge badge-sale">-${off}%</span>` : ""}
-          ${stock <= 0 ? `<span class="oos-ribbon">غير متوفر</span>` : ""}
-        </div>
-        <div class="card-body">
-          <div class="pc-meta-row">
-            <p class="pc-meta">${esc(brand)}</p>
-            ${productConditionBadge(condition)}
-          </div>
-          <h3>${esc(name)}</h3>
-          <p class="muted pc-specs">${esc(specs)}</p>
-          ${
-            stock > 0
-              ? `<div class="price"><b>${money(price)}</b>${oldPrice > price ? `<span class="old">${money(oldPrice)}</span>` : ""}</div>`
-              : ""
-          }
-        </div>
-      </article>`;
-  }
+  if (!form) return;
 
   if (!form.dataset.previewBound) {
     form.dataset.previewBound = "1";
-    form.addEventListener("input", syncPreview);
-    form.addEventListener("change", syncPreview);
+    form.addEventListener("input", syncProductEditorPreview);
+    form.addEventListener("change", syncProductEditorPreview);
     const specsField = form.querySelector('[name="specs"]');
     ["gpu", "cpu", "ram", "storage"].forEach((name) => {
       form.querySelector(`[name="${name}"]`)?.addEventListener("input", () => {
@@ -811,7 +854,11 @@ function setupProductEditor() {
     });
   }
   setupMoneyInputs(form);
-  syncPreview();
+  const hidden = form.querySelector("[data-images-json]");
+  if (hidden && !hidden.value) {
+    hidden.value = JSON.stringify(normalizeProductImages({ images: [], image: "" }));
+  }
+  syncProductEditorPreview();
 }
 
 function peField(label, inputHtml, span = 1) {
@@ -922,15 +969,15 @@ function renderProductEditor(productId = null) {
 
           <aside class="pe-aside">
             <section class="pe-aside-block">
-              ${peAsideBlock("4", "صور المنتج", "PNG أو JPG — الصورة 1 هي الغلاف. اضغط أي صورة أخرى لتعيينها رئيسية.", `
+              ${peAsideBlock("4", "صور المنتج", "الصورة 1 هي غلاف المنتج. استخدم ↑ ↓ لترتيب الصور و ★ لتعيين الغلاف.", `
                 <label class="pe-upload">
                   <input type="file" accept="image/*" multiple data-product-files hidden />
                   <span class="pe-upload-icon" aria-hidden="true">↑</span>
                   <strong>رفع صور المنتج</strong>
-                  <small>انقر أو اسحب الملفات هنا</small>
+                  <small>انقر أو اسحب الملفات هنا — PNG أو JPG أو WEBP</small>
                 </label>
                 <div class="pe-gallery" data-image-previews></div>
-                <input type="hidden" name="imagesJson" data-images-json value='${esc(JSON.stringify(images))}' />
+                <textarea name="imagesJson" data-images-json hidden aria-hidden="true"></textarea>
               `)}
             </section>
 
@@ -1970,7 +2017,11 @@ function render(opts = {}) {
     document.querySelector("[data-page-kicker]").textContent = "المنتجات";
     document.querySelector("[data-page-title]").textContent = route.mode === "new" ? "إضافة منتج" : "تعديل منتج";
     document.querySelector("[data-admin-view]").innerHTML = renderProductEditor(route.mode === "edit" ? route.id : null);
-    paintImagePreviews(getProductImages());
+    const hidden = document.querySelector("[data-images-json]");
+    const existing = route.id ? db().products.find((x) => x.id === route.id) : null;
+    const images = normalizeProductImages(existing || {});
+    if (hidden) hidden.value = JSON.stringify(images);
+    paintImagePreviews(images);
     setupProductEditor();
     return;
   }
@@ -2295,18 +2346,24 @@ document.addEventListener("click", (e) => {
     })();
     return;
   }
-  const rmImg = e.target.closest("[data-rm-img]");
+  const rmImg = e.target.closest("[data-img-rm]");
   if (rmImg) {
-    const list = getProductImages();
-    list.splice(Number(rmImg.dataset.rmImg), 1);
-    setProductImages(list);
-    setupProductEditor();
+    removeProductImage(rmImg.dataset.imgRm);
     return;
   }
-  const setPrimary = e.target.closest("[data-set-primary-src]");
-  if (setPrimary && !e.target.closest("[data-rm-img]")) {
-    setPrimaryProductImage(setPrimary.dataset.setPrimarySrc);
+  const upImg = e.target.closest("[data-img-up]");
+  if (upImg) {
+    moveProductImage(upImg.dataset.imgUp, -1);
     return;
+  }
+  const downImg = e.target.closest("[data-img-down]");
+  if (downImg) {
+    moveProductImage(downImg.dataset.imgDown, 1);
+    return;
+  }
+  const primaryImg = e.target.closest("[data-img-primary]");
+  if (primaryImg) {
+    setPrimaryProductImage(primaryImg.dataset.imgPrimary);
   }
 });
 
@@ -2341,12 +2398,12 @@ document.addEventListener("change", (e) => {
       try {
         for (const file of files) {
           const dataUrl = await readFileAsDataUrl(file);
-          const url = await StoreDB.uploadImage(dataUrl, "products");
+          const url = normalizeImagePath(await StoreDB.uploadImage(dataUrl, "products"));
           list.push(url);
         }
         setProductImages(list);
         e.target.value = "";
-        setupProductEditor();
+        syncProductEditorPreview();
         toast("تم رفع الصور");
       } catch (err) {
         toast(err.message || "تعذر رفع الصورة");
@@ -2455,7 +2512,7 @@ document.addEventListener("submit", (e) => {
         tag: f.get("tag"),
         screen: f.get("screen"),
         images,
-        image: images[0],
+        image: images[0] || "",
         specs: f.get("specs") || `${f.get("gpu")} · ${f.get("ram")} · ${f.get("storage")}`,
         headline: f.get("headline") || "",
         blurb: f.get("blurb") || "",

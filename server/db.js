@@ -94,6 +94,41 @@ function parseImages(row) {
     images = [];
   }
   if (!images.length && row.image) images = [row.image];
+  return normalizeProductImages({ images, image: row.image || "" });
+}
+
+function normalizeImagePath(src) {
+  const raw = String(src || "").trim();
+  if (!raw) return "";
+  if (raw.startsWith("data:") || raw.startsWith("http://") || raw.startsWith("https://")) return raw;
+  if (raw.startsWith("/")) return raw;
+  return `/${raw.replace(/^\.?\//, "")}`;
+}
+
+function normalizeProductImages(item) {
+  const raw =
+    Array.isArray(item?.images) && item.images.length
+      ? item.images.filter(Boolean)
+      : item?.image
+        ? [item.image]
+        : [];
+  const seen = new Set();
+  const images = raw
+    .map((src) => normalizeImagePath(src))
+    .filter((src) => {
+      if (!src || seen.has(src)) return false;
+      seen.add(src);
+      return true;
+    });
+  const cover = normalizeImagePath(item?.image || "");
+  if (cover && images.length > 1) {
+    const idx = images.indexOf(cover);
+    if (idx < 0) images.unshift(cover);
+    else if (idx > 0) {
+      images.splice(idx, 1);
+      images.unshift(cover);
+    }
+  }
   return images;
 }
 
@@ -134,7 +169,7 @@ function normalizeProductCondition(value) {
 }
 
 function productToRow(p) {
-  const images = Array.isArray(p.images) && p.images.length ? p.images : p.image ? [p.image] : [];
+  const images = normalizeProductImages(p);
   return {
     id: p.id,
     name: p.name,
@@ -235,7 +270,7 @@ function getHealth() {
       ok: true,
       db: true,
       engine: "sqlite",
-      build: 102,
+      build: 103,
       users,
       hasAdmin: users > 0,
       version,

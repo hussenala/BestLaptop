@@ -183,6 +183,41 @@ const StoreDB = (() => {
     return `${prefix}-${Date.now().toString(36)}`;
   }
 
+  function normalizeImagePath(src) {
+    const raw = String(src || "").trim();
+    if (!raw) return "";
+    if (raw.startsWith("data:") || raw.startsWith("http://") || raw.startsWith("https://")) return raw;
+    if (raw.startsWith("/")) return raw;
+    return `/${raw.replace(/^\.?\//, "")}`;
+  }
+
+  function normalizeProductImages(item) {
+    const raw =
+      Array.isArray(item?.images) && item.images.length
+        ? item.images.filter(Boolean)
+        : item?.image
+          ? [item.image]
+          : [];
+    const seen = new Set();
+    const images = raw
+      .map((src) => normalizeImagePath(src))
+      .filter((src) => {
+        if (!src || seen.has(src)) return false;
+        seen.add(src);
+        return true;
+      });
+    const cover = normalizeImagePath(item?.image || "");
+    if (cover && images.length > 1) {
+      const idx = images.indexOf(cover);
+      if (idx < 0) images.unshift(cover);
+      else if (idx > 0) {
+        images.splice(idx, 1);
+        images.unshift(cover);
+      }
+    }
+    return images;
+  }
+
   async function ensureProductConditionSupport() {
     if (typeof StoreAPI?.fetchApi !== "function") return;
     const { res, body } = await StoreAPI.fetchApi("/api/health", { cache: "no-store" });
@@ -199,19 +234,29 @@ const StoreDB = (() => {
   }
 
   async function saveProduct(item) {
-    await ensureProductConditionSupport();
+    const images = normalizeProductImages(item);
     const payload = {
       ...item,
+      images,
+      image: images[0] || "",
       condition: normalizeProductCondition(item.condition ?? item.productCondition ?? "new"),
     };
+    let conditionReady = true;
+    try {
+      await ensureProductConditionSupport();
+    } catch {
+      conditionReady = false;
+    }
     const saved = cache?.products?.some((p) => p.id === item.id)
       ? await api(`/api/admin/products/${encodeURIComponent(item.id)}`, { method: "PUT", body: JSON.stringify(payload) })
       : await api("/api/admin/products", { method: "POST", body: JSON.stringify(payload) });
-    if (!saved || !("condition" in saved)) {
-      throw new Error("السيرفر لم يحفظ حالة المنتج — ارفع api/index.php المحدّث على الاستضافة");
-    }
-    if (normalizeProductCondition(saved.condition) !== payload.condition) {
-      throw new Error("حالة المنتج لم تُحفظ بشكل صحيح — ارفع api/index.php المحدّث");
+    if (conditionReady) {
+      if (!saved || !("condition" in saved)) {
+        throw new Error("السيرفر لم يحفظ حالة المنتج — ارفع api/index.php المحدّث على الاستضافة");
+      }
+      if (normalizeProductCondition(saved.condition) !== payload.condition) {
+        throw new Error("حالة المنتج لم تُحفظ بشكل صحيح — ارفع api/index.php المحدّث");
+      }
     }
     await refresh();
     if (typeof StoreAPI.publishStorefront === "function") {
@@ -320,7 +365,7 @@ const StoreDB = (() => {
       method: "POST",
       body: JSON.stringify({ data: dataUrl, folder }),
     });
-    return data.url;
+    return normalizeImagePath(data.url);
   }
 
   async function updateStock(id, stock) {

@@ -442,7 +442,39 @@ function version(PDO $pdo) {
 }
 
 function app_build() {
-  return 102;
+  return 103;
+}
+
+function normalize_upload_path($src) {
+  $src = trim((string) $src);
+  if ($src === "") return "";
+  if (preg_match('#^https?://#i', $src) || str_starts_with($src, "data:")) return $src;
+  if (str_starts_with($src, "/")) return $src;
+  return "/" . ltrim($src, "./");
+}
+
+function normalize_product_images($images, $cover = "") {
+  $images = is_array($images) ? $images : [];
+  $seen = [];
+  $out = [];
+  foreach ($images as $src) {
+    $src = normalize_upload_path($src);
+    if ($src === "" || isset($seen[$src])) continue;
+    $seen[$src] = true;
+    $out[] = $src;
+  }
+  $cover = normalize_upload_path($cover);
+  if ($cover !== "") {
+    $idx = array_search($cover, $out, true);
+    if ($idx === false) array_unshift($out, $cover);
+    elseif ($idx > 0) {
+      $item = $out[$idx];
+      array_splice($out, $idx, 1);
+      array_unshift($out, $item);
+    }
+  }
+  if (!$out && $cover !== "") $out = [$cover];
+  return array_values($out);
 }
 
 function normalize_product_condition($value) {
@@ -521,6 +553,7 @@ function product_from_row($row) {
     $images = json_decode($row["images_json"], true) ?: [];
   }
   if (!$images && !empty($row["image"])) $images = [$row["image"]];
+  $images = normalize_product_images($images, $row["image"] ?? "");
   return [
     "id" => $row["id"],
     "name" => $row["name"],
@@ -564,9 +597,10 @@ function get_product(PDO $pdo, $id) {
 }
 
 function upsert_product(PDO $pdo, $p) {
-  $images = [];
-  if (!empty($p["images"]) && is_array($p["images"])) $images = $p["images"];
-  elseif (!empty($p["image"])) $images = [$p["image"]];
+  $rawImages = [];
+  if (!empty($p["images"]) && is_array($p["images"])) $rawImages = $p["images"];
+  elseif (!empty($p["image"])) $rawImages = [$p["image"]];
+  $images = normalize_product_images($rawImages, $p["image"] ?? "");
   $existing = get_product($pdo, $p["id"]);
   $created = $existing["createdAt"] ?? ($p["createdAt"] ?? gmdate("c"));
   $condition = product_condition_from_payload($p, $existing["condition"] ?? "new");
