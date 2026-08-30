@@ -110,5 +110,3 @@ const SitePages = (() => {
     init,
   };
 })();
-
-window.SitePages = SitePages;

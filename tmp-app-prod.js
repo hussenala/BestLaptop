@@ -26,17 +26,6 @@ function money(n) {
   return `${value} IQD`;
 }
 
-function productIdFromUrl() {
-  const pathMatch = location.pathname.match(/\/product\/([^/]+)\/?$/i);
-  if (pathMatch) return decodeURIComponent(pathMatch[1]);
-  const fromRoutes = window.SitePages?.productIdFromLocation?.();
-  if (fromRoutes) return fromRoutes;
-  if (typeof SitePages !== "undefined" && SitePages.productIdFromLocation) {
-    return SitePages.productIdFromLocation();
-  }
-  return new URLSearchParams(location.search).get("id");
-}
-
 function resolveAsset(src) {
   if (!src) return "/img/logo.jpg";
   if (typeof src === "object") src = src.src || src.url || "";
@@ -1330,12 +1319,11 @@ function renderProductPage() {
   const el = document.querySelector("[data-product]");
   if (!el) return;
   try {
-    const id = productIdFromUrl();
+    const id =
+      typeof SitePages !== "undefined"
+        ? SitePages.productIdFromLocation()
+        : new URLSearchParams(location.search).get("id");
     const p = PRODUCTS.find((item) => item.id === id);
-    if (!p && id && typeof StoreAPI !== "undefined" && !StoreAPI.isStoreReady?.()) {
-      el.innerHTML = `<p class="muted">جاري تحميل المنتج...</p>`;
-      return;
-    }
     if (!p) {
       el.innerHTML = `<p class="empty">الجهاز غير موجود. <a href="/products">العودة للمتجر</a></p>`;
       return;

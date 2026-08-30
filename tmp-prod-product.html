@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <base href="/" />
-<title data-page-title>التواصل | BEST LAPTOP</title>
+    <base href="/" />
+    <title data-page-title>المنتج | BEST LAPTOP</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet" />
@@ -15,7 +15,7 @@
         localStorage.getItem("bestlaptop-theme") === "light" ? "light" : "dark";
     </script>
   </head>
-  <body data-page="contact">
+  <body data-page="product">
     <div class="topbar">
       <div class="container topbar-inner">
         <span>بغداد · شارع الصناعة، مجمع النعمان، الطابق الثاني · ضمان سنتين حقيقي</span>
@@ -45,7 +45,7 @@
         <ul class="nav-links">
           <li><a href="/" data-page-link="home">الرئيسية</a></li>
           <li><a data-page-link="products" href="/products">المنتجات</a></li>
-          <li><a data-page-link="contact" class="active" href="/contact">التواصل</a></li>
+          <li><a data-page-link="contact" href="/contact">التواصل</a></li>
         </ul>
         <a class="btn-cart" href="/cart">السلة</a>
       </div>
@@ -56,35 +56,14 @@
 
     <main class="section">
       <div class="container">
-        <p class="eyebrow">تواصل مع المكتب</p>
-        <h1>أخبرنا باحتياجك لنرشّح الجهاز المناسب</h1>
-        <p class="lead muted">ألعاب، مونتاج، تصميم، أو ميزانية محددة — نرد خلال ساعات العمل.</p>
-        <div class="contact-grid" style="margin-top: 24px">
-          <form class="card form" data-contact-form>
-            <label>الاسم<input name="name" required placeholder="اسمك الكامل" /></label>
-            <label>الجوال<input name="phone" required placeholder="0772xxxxxxx" /></label>
-            <label>
-              نوع الاستفسار
-              <select name="topic">
-                <option>طلب جهاز قيمنق</option>
-                <option>طلب جهاز إنتاج</option>
-                <option>متابعة طلب</option>
-                <option>ضمان وصيانة</option>
-              </select>
-            </label>
-            <label>الرسالة<textarea name="message" required placeholder="صف احتياجك والميزانية..."></textarea></label>
-            <button class="btn btn-primary" type="submit">إرسال الرسالة</button>
-          </form>
-          <aside class="card" data-store-contact>
-            <h2>بيانات المعرض</h2>
-            <p class="muted">بغداد — شارع الصناعة، مجمع النعمان، الطابق الثاني</p>
-            <p><strong>الجوال:</strong> 0772 222 4489</p>
-            <p><strong>البريد:</strong> support@bestlaptop.iq</p>
-            <p><strong>السبت–الخميس:</strong> 9:30 ص – 8:30 م</p>
-            <p><strong>الضمان:</strong> سنتان حقيقي معتمد</p>
-            <a class="btn btn-ghost" href="/products" style="margin-top: 18px">العودة لالمنتجات</a>
-          </aside>
+        <div class="pdp" data-product></div>
+        <div class="section-head" style="margin-top: 42px">
+          <div>
+            <p class="eyebrow">أجهزة مشابهة</p>
+            <h2>قد تناسبك أيضاً</h2>
+          </div>
         </div>
+        <div class="grid" data-related></div>
       </div>
     </main>
 
@@ -100,23 +79,26 @@
               </span>
             </a>
             <p class="footer-location" data-store-footer-location>بغداد · شارع الصناعة، مجمع النعمان، الطابق الثاني</p>
-            <p data-store-footer-about>استشارة مجانية قبل الشراء · ضمان سنتين حقيقي · بغداد.</p>
+            <p data-store-footer-about>بغداد — شارع الصناعة، مجمع النعمان، الطابق الثاني. ضمان سنتين حقيقي.</p>
           </div>
           <div>
             <h3>روابط</h3>
             <ul>
               <li><a href="/">الرئيسية</a></li>
               <li><a data-page-link="products" href="/products">المنتجات</a></li>
+              <li><a href="/cart">صفحة السلة</a></li>
+              <li><a data-page-link="contact" href="/contact">التواصل</a></li>
             </ul>
           </div>
           <div>
             <h3>تواصل</h3>
             <ul>
+              <li>0772 222 4489</li>
               <li>support@bestlaptop.iq</li>
             </ul>
           </div>
         </div>
-        <p class="footer-copy">© 2026 بيست لابتوب.</p>
+        <p class="footer-copy">© 2026 بيست لابتوب. الأسعار بـ IQD.</p>
       </div>
     </footer>
 
@@ -136,7 +118,7 @@
             <script src="/js/data.js?v=34"></script>
     <script src="/js/api-client.js?v=56"></script>
     <script src="/js/theme.js"></script>
-    <script src="/js/routes.js?v=3"></script>
-    <script src="/js/app.js?v=68"></script>
+    <script src="/js/routes.js?v=2"></script>
+    <script src="/js/app.js?v=67"></script>
   </body>
 </html>
