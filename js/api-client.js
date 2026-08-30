@@ -80,6 +80,13 @@ const StoreAPI = (() => {
     throw new Error(lastMessage);
   }
 
+  function galleryImageSrc(value) {
+    if (!value) return "";
+    if (typeof value === "string") return value;
+    if (typeof value === "object") return value.src || value.url || "";
+    return "";
+  }
+
   function applyStore(payload) {
     if (!payload) return;
     version = payload.version || version;
@@ -109,7 +116,16 @@ const StoreAPI = (() => {
     }
     const officeGallery = payload.settings?.officeGallery || payload.store?.officeGallery;
     if (typeof STORE !== "undefined" && officeGallery) {
-      STORE.officeGallery = officeGallery;
+      const images = officeGallery.images || {};
+      STORE.officeGallery = {
+        ...officeGallery,
+        images: {
+          wide: galleryImageSrc(images.wide),
+          tall: galleryImageSrc(images.tall),
+          bottomStart: galleryImageSrc(images.bottomStart),
+          bottomEnd: galleryImageSrc(images.bottomEnd),
+        },
+      };
     }
     window.dispatchEvent(new CustomEvent("store:updated", { detail: payload }));
   }

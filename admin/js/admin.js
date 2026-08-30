@@ -1460,9 +1460,17 @@ function renderSettings() {
   </form>`;
 }
 
+function galleryImageSrc(value) {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "object") return value.src || value.url || "";
+  return "";
+}
+
 function gallerySlotPreview(src, label) {
-  if (!src) return `<div class="gallery-slot-empty">${esc(label)}</div>`;
-  return `<img src="${esc(resolveAdminAsset(src))}" alt="" class="gallery-slot-preview" />`;
+  const url = typeof src === "object" && src ? src.src || src.url || "" : src;
+  if (!url) return `<div class="gallery-slot-empty">${esc(label)}</div>`;
+  return `<img src="${esc(resolveAdminAsset(url))}" alt="" class="gallery-slot-preview" />`;
 }
 
 function renderGalleryAdmin() {
@@ -1493,7 +1501,7 @@ function renderGalleryAdmin() {
           <div class="gallery-slot-meta">
             <strong>${esc(s.label)}</strong>
             <p class="muted">${esc(s.hint)}</p>
-            <input type="hidden" name="keep_${s.key}" value="${esc(images[s.key] || "")}" />
+            <input type="hidden" name="keep_${s.key}" value="${esc(galleryImageSrc(images[s.key]))}" />
             <label class="file-label">رفع / استبدال<input name="file_${s.key}" type="file" accept="image/*" /></label>
             <button class="btn btn-ghost" type="button" data-clear-gallery="${esc(s.key)}" ${images[s.key] ? "" : "disabled"}>إزالة الصورة</button>
           </div>

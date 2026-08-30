@@ -180,6 +180,7 @@ function init_schema(PDO $pdo) {
   seed_default_slides($pdo);
   migrate_checkout_options($pdo);
   migrate_office_gallery($pdo);
+  migrate_office_gallery_v2($pdo);
 }
 
 function default_cities() {
@@ -211,14 +212,26 @@ function checkout_options(array $s) {
   return $s;
 }
 
+function normalize_gallery_image($value) {
+  if (is_string($value)) return trim($value);
+  if (is_array($value)) {
+    return trim((string) ($value["src"] ?? $value["url"] ?? ""));
+  }
+  return "";
+}
+
 function normalize_office_gallery($gallery) {
   $defaults = default_office_gallery();
   if (!is_array($gallery)) return $defaults;
   $images = is_array($gallery["images"] ?? null) ? $gallery["images"] : [];
+  $normalized = [];
+  foreach ($defaults["images"] as $key => $_) {
+    $normalized[$key] = normalize_gallery_image($images[$key] ?? "");
+  }
   return [
     "active" => ($gallery["active"] ?? true) !== false,
     "title" => trim((string) ($gallery["title"] ?? $defaults["title"])) ?: $defaults["title"],
-    "images" => array_merge($defaults["images"], array_intersect_key($images, $defaults["images"])),
+    "images" => $normalized,
   ];
 }
 
@@ -257,6 +270,14 @@ function migrate_office_gallery(PDO $pdo) {
   }
   save_settings($pdo, checkout_options($raw));
   $pdo->exec("INSERT INTO meta (key,value) VALUES ('office_gallery_v1','1') ON CONFLICT(key) DO UPDATE SET value=excluded.value");
+}
+
+function migrate_office_gallery_v2(PDO $pdo) {
+  $done = $pdo->query("SELECT value FROM meta WHERE key='office_gallery_v2'")->fetchColumn();
+  if ($done) return;
+  $raw = settings_raw($pdo);
+  save_settings($pdo, checkout_options($raw));
+  $pdo->exec("INSERT INTO meta (key,value) VALUES ('office_gallery_v2','1') ON CONFLICT(key) DO UPDATE SET value=excluded.value");
 }
 
 function ensure_upload_dir($folder) {

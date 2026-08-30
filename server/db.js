@@ -652,6 +652,13 @@ function defaultOfficeGallery() {
   };
 }
 
+function normalizeGalleryImage(value) {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "object") return value.src || value.url || "";
+  return "";
+}
+
 function getSettings() {
   const row = db.prepare("SELECT value FROM settings WHERE key='main'").get();
   const s = row ? JSON.parse(row.value) : {};
@@ -664,10 +671,10 @@ function getSettings() {
       active: s.officeGallery.active !== false,
       title: s.officeGallery.title || d.title,
       images: {
-        wide: s.officeGallery.images?.wide || "",
-        tall: s.officeGallery.images?.tall || "",
-        bottomStart: s.officeGallery.images?.bottomStart || "",
-        bottomEnd: s.officeGallery.images?.bottomEnd || "",
+        wide: normalizeGalleryImage(s.officeGallery.images?.wide),
+        tall: normalizeGalleryImage(s.officeGallery.images?.tall),
+        bottomStart: normalizeGalleryImage(s.officeGallery.images?.bottomStart),
+        bottomEnd: normalizeGalleryImage(s.officeGallery.images?.bottomEnd),
       },
     };
   }

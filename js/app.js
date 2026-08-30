@@ -27,9 +27,18 @@ function money(n) {
 }
 
 function resolveAsset(src) {
-  if (!src) return "img/logo.jpg";
+  if (!src) return "/img/logo.jpg";
+  if (typeof src === "object") src = src.src || src.url || "";
+  if (!src) return "/img/logo.jpg";
   if (src.startsWith("data:") || src.startsWith("http") || src.startsWith("/")) return src;
   return src;
+}
+
+function galleryImageSrc(value) {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "object") return value.src || value.url || "";
+  return "";
 }
 
 function storeHref(key, query) {
@@ -946,7 +955,7 @@ function renderOfficeGallery() {
     { key: "bottomStart", area: "b1" },
     { key: "bottomEnd", area: "b2" },
   ];
-  const hasAny = slots.some((s) => images[s.key]);
+  const hasAny = slots.some((s) => galleryImageSrc(images[s.key]));
   if (g.active === false || !hasAny) {
     mount.hidden = true;
     mount.innerHTML = "";
@@ -956,7 +965,7 @@ function renderOfficeGallery() {
   const title = g.title || "من داخل مكتب بيست لابتوب";
   const cells = slots
     .map((s) => {
-      const src = images[s.key];
+      const src = galleryImageSrc(images[s.key]);
       if (!src) {
         return `<div class="office-gallery-cell office-gallery-cell--empty" style="grid-area:${s.area}" aria-hidden="true"></div>`;
       }
