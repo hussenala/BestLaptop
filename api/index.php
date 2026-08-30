@@ -206,7 +206,33 @@ function checkout_options(array $s) {
   if (empty($s["cities"])) $s["cities"] = default_cities();
   if (empty($s["shipping"])) $s["shipping"] = default_shipping();
   if (empty($s["payments"])) $s["payments"] = default_payments();
+  $s["officeGallery"] = normalize_office_gallery($s["officeGallery"] ?? null);
   return $s;
+}
+
+function normalize_office_gallery($gallery) {
+  $defaults = [
+    "active" => true,
+    "title" => "من داخل مكتب بيست لابتوب",
+    "images" => ["wide" => "", "tall" => "", "bottomStart" => "", "bottomEnd" => ""],
+  ];
+  if (!is_array($gallery)) return $defaults;
+  $images = is_array($gallery["images"] ?? null) ? $gallery["images"] : [];
+  return [
+    "active" => ($gallery["active"] ?? true) !== false,
+    "title" => trim((string) ($gallery["title"] ?? $defaults["title"])) ?: $defaults["title"],
+    "images" => array_merge($defaults["images"], array_intersect_key($images, $defaults["images"])),
+  ];
+}
+
+function merge_settings(array $current, array $patch) {
+  $merged = array_replace_recursive($current, $patch);
+  if (array_key_exists("officeGallery", $patch)) {
+    $merged["officeGallery"] = normalize_office_gallery(
+      array_replace_recursive($current["officeGallery"] ?? [], $patch["officeGallery"] ?? [])
+    );
+  }
+  return checkout_options($merged);
 }
 
 function migrate_checkout_options(PDO $pdo) {
@@ -593,11 +619,7 @@ function public_store(PDO $pdo) {
       "shipping" => $s["shipping"] ?? [],
       "payments" => $s["payments"] ?? [],
       "featured" => $s["featured"] ?? ["eyebrow" => "الأكثر مبيعاً", "title" => "منتجات مميزة للقيمنق والمونتاج", "category" => "all", "limit" => 8, "productIds" => [], "autoplay" => true, "speedMs" => 4500],
-      "officeGallery" => $s["officeGallery"] ?? [
-        "active" => true,
-        "title" => "من داخل مكتب بيست لابتوب",
-        "images" => ["wide" => "", "tall" => "", "bottomStart" => "", "bottomEnd" => ""],
-      ],
+      "officeGallery" => normalize_office_gallery($s["officeGallery"] ?? null),
     ],
   ];
 }
@@ -850,7 +872,12 @@ try {
     if ($bin === false || strlen($bin) > 8 * 1024 * 1024) json_out(400, ["error" => "Image too large (max 8MB)"]);
     $folder = in_array($body["folder"] ?? "", ["logo", "slides", "gallery"], true) ? $body["folder"] : "products";
     $dir = dirname(__DIR__) . DIRECTORY_SEPARATOR . "uploads" . DIRECTORY_SEPARATOR . $folder;
-    if (!is_dir($dir) && !mkdir($dir, 0775, true) && !is_dir($dir)) json_out(400, ["error" => "Upload failed"]);
+    if (!is_dir($dir) && !@mkdir($dir, 0775, true) && !is_dir($dir)) {
+      json_out(500, ["error" => "Upload folder not writable", "detail" => "Set permissions 775 on uploads/$folder/"]);
+    }
+    if (!is_writable($dir)) {
+      json_out(500, ["error" => "Upload folder not writable", "detail" => "Set permissions 775 on uploads/$folder/"]);
+    }
     $name = (int) (microtime(true) * 1000) . "-" . bin2hex(random_bytes(4)) . "." . $ext;
     file_put_contents($dir . DIRECTORY_SEPARATOR . $name, $bin);
     json_out(201, ["url" => "/uploads/$folder/$name"]);
@@ -870,8 +897,9 @@ try {
     if ($method === "GET") json_out(200, settings($pdo));
     if ($method === "PUT") {
       $body = read_json();
-      save_settings($pdo, $body);
-      json_out(200, $body);
+      $merged = merge_settings(settings_raw($pdo), is_array($body) ? $body : []);
+      save_settings($pdo, $merged);
+      json_out(200, $merged);
     }
   }
 

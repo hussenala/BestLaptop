@@ -9,8 +9,8 @@ const SiteConfig = (() => {
 
   return {
     url,
-    adminLogin: `${url}${adminPath("login.html")}`,
-    adminPanel: `${url}${adminPath("index.html")}`,
+    adminLogin: `${url}/admin/login`,
+    adminPanel: `${url}/admin`,
     isAdminPage: () => /^\/admin(\/|$)/.test(location.pathname),
   };
 })();

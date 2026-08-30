@@ -326,7 +326,7 @@ function getSeedData() {
         productIds: [],
         autoplay: false,
         speedMs: 4500,
-        linkUrl: "products.html",
+        linkUrl: "/products",
       },
     ],
     coupons: [

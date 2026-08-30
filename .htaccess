@@ -5,14 +5,26 @@ RewriteRule ^api/index\.php$ - [L]
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteRule ^api/(.*)$ api/index.php?r=/$1 [QSA,L]
 
+# Redirect old .html URLs to clean paths
+RewriteRule ^index\.html$ / [R=301,L]
+RewriteCond %{QUERY_STRING} ^id=([^&]+)(&.*)?$
+RewriteRule ^product\.html$ /product/%1?%2 [R=301,L]
+RewriteRule ^product\.html$ /products [R=301,L]
+RewriteRule ^products\.html$ /products [R=301,L,QSA]
+RewriteRule ^cart\.html$ /cart [R=301,L]
+RewriteRule ^checkout\.html$ /checkout [R=301,L]
+RewriteRule ^contact\.html$ /contact [R=301,L]
+RewriteRule ^order\.html$ /order [R=301,L]
+
 # Admin panel (Apache/static fallback when Node is not fronting requests)
 RewriteRule ^admin/login/?$ admin/login.html [L]
 RewriteRule ^admin/?$ admin/index.html [L]
 RewriteRule ^admin/([a-z0-9-]+)/?$ admin/index.html#/$1 [L,NE]
 
-# Next.js-style URLs → static HTML pages
+# Clean URLs → static HTML pages
 RewriteRule ^products/?$ products.html [L]
-RewriteRule ^product/([^/]+)/?$ product.html?id=$1 [L,QSA]
+RewriteRule ^product/([^/]+)/?$ product.html [L]
+RewriteRule ^product/?$ product.html [L]
 RewriteRule ^cart/?$ cart.html [L]
 RewriteRule ^checkout/?$ checkout.html [L]
 RewriteRule ^contact/?$ contact.html [L]

@@ -107,8 +107,9 @@ const StoreAPI = (() => {
       if (!next.payments?.length && STORE.payments?.length) next.payments = STORE.payments;
       Object.assign(STORE, next);
     }
-    if (typeof STORE !== "undefined" && payload.settings?.officeGallery) {
-      STORE.officeGallery = payload.settings.officeGallery;
+    const officeGallery = payload.settings?.officeGallery || payload.store?.officeGallery;
+    if (typeof STORE !== "undefined" && officeGallery) {
+      STORE.officeGallery = officeGallery;
     }
     window.dispatchEvent(new CustomEvent("store:updated", { detail: payload }));
   }

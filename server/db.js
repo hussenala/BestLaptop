@@ -382,7 +382,7 @@ function migrateSchema() {
       product_ids_json TEXT DEFAULT '[]',
       autoplay INTEGER DEFAULT 1,
       speed_ms INTEGER DEFAULT 4500,
-      link_url TEXT DEFAULT 'products.html'
+      link_url TEXT DEFAULT '/products'
     );
     CREATE TABLE IF NOT EXISTS hero_slides (
       id TEXT PRIMARY KEY,
@@ -616,7 +616,7 @@ function seedDatabase() {
         JSON.stringify(Array.isArray(s.productIds) ? s.productIds : []),
         s.autoplay !== false ? 1 : 0,
         Number(s.speedMs) || 4500,
-        s.linkUrl || "products.html"
+        s.linkUrl || "/products"
       )
     );
 
@@ -901,7 +901,7 @@ function productSliderToRow(s) {
     product_ids_json: JSON.stringify(Array.isArray(s.productIds) ? s.productIds : []),
     autoplay: s.autoplay !== false ? 1 : 0,
     speed_ms: Number(s.speedMs) || 4500,
-    link_url: s.linkUrl || "products.html",
+    link_url: s.linkUrl || "/products",
   };
 }
 

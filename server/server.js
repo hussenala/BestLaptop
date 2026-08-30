@@ -385,8 +385,20 @@ async function handleApi(req, res, pathname) {
     if (method === "GET") return send(res, 200, db.getSettings());
     if (method === "PUT") {
       const body = await readBody(req);
-      db.saveSettings(body);
-      return send(res, 200, body);
+      const current = db.getSettings();
+      const merged = { ...current, ...(body || {}) };
+      if (body?.officeGallery) {
+        merged.officeGallery = {
+          ...(current.officeGallery || {}),
+          ...body.officeGallery,
+          images: {
+            ...((current.officeGallery && current.officeGallery.images) || {}),
+            ...((body.officeGallery && body.officeGallery.images) || {}),
+          },
+        };
+      }
+      db.saveSettings(merged);
+      return send(res, 200, merged);
     }
   }
 
@@ -442,11 +454,7 @@ const PAGE_ALIASES = {
 function serveStatic(req, res, pathname) {
   const productMatch = pathname.match(/^\/product\/([^/]+)\/?$/);
   if (productMatch) {
-    const query = url.parse(req.url).search || "";
-    const sep = query ? "&" : "?";
-    res.writeHead(302, { Location: `/product.html${query}${sep}id=${encodeURIComponent(productMatch[1])}` });
-    res.end();
-    return;
+    pathname = "/product.html";
   }
 
   const adminPageMatch = pathname.match(/^\/admin\/([a-z0-9-]+)\/?$/);
@@ -504,7 +512,7 @@ function start(listenHost = HOST, listenPort = PORT) {
   const server = http.createServer(requestHandler);
   server.listen(listenPort, listenHost, () => {
     console.log(`BEST LAPTOP server http://${listenHost}:${listenPort}/`);
-    console.log(`Admin panel http://${listenHost}:${listenPort}/admin/login.html`);
+    console.log(`Admin panel http://${listenHost}:${listenPort}/admin/login`);
     const health = db.getHealth();
     console.log(`Database ${health.db ? "connected" : "FAILED"} · users=${health.users}`);
   });

@@ -32,6 +32,14 @@ function resolveAsset(src) {
   return src;
 }
 
+function storeHref(key, query) {
+  return typeof SitePages !== "undefined" ? SitePages.href(key, query) : `${key}.html`;
+}
+
+function productUrl(id) {
+  return typeof SitePages !== "undefined" ? SitePages.productUrl(id) : `product.html?id=${encodeURIComponent(id)}`;
+}
+
 function youtubeIdFromUrl(url) {
   if (!url || typeof url !== "string") return "";
   const raw = url.trim();
@@ -171,9 +179,9 @@ function orderWhatsAppUrl(order) {
 
 function productAbsoluteUrl(productId) {
   try {
-    return new URL(`product.html?id=${encodeURIComponent(productId)}`, window.location.href).href;
+    return new URL(productUrl(productId), window.location.origin).href;
   } catch {
-    return `product.html?id=${encodeURIComponent(productId)}`;
+    return productUrl(productId);
   }
 }
 
@@ -264,8 +272,8 @@ function applyStoreBranding() {
       <li>${s.phone}</li>
       <li>${s.email}</li>
       <li>${s.hours}</li>
-      <li><a href="contact.html">صفحة التواصل</a></li>
-      <li><a href="admin/login.html">لوحة التحكم</a></li>
+      <li><a href="/contact" data-page-link="contact">${typeof SitePages !== "undefined" ? SitePages.label("contact") : "التواصل"}</a></li>
+      <li><a href="/admin/login">لوحة التحكم</a></li>
     `;
   }
 
@@ -281,7 +289,7 @@ function applyStoreBranding() {
       <p><strong>البريد:</strong> ${s.email}</p>
       <p><strong>ساعات العمل:</strong> ${s.hours}</p>
       <p><strong>الضمان:</strong> ${s.warranty}</p>
-      <a class="btn btn-ghost" href="products.html" style="margin-top: 18px">العودة لصفحة المنتجات</a>
+      <a class="btn btn-ghost" href="/products" style="margin-top: 18px">العودة للمنتجات</a>
     `;
   }
 
@@ -439,9 +447,9 @@ async function addToCart(id, opts = {}) {
 
 function cartPageUrl() {
   try {
-    return new URL("cart.html", window.location.href).href;
+    return new URL("/cart", window.location.origin).href;
   } catch {
-    return "cart.html";
+    return "/cart";
   }
 }
 
@@ -565,9 +573,9 @@ function priceBlock(p, qty = 1, lineUnit = null) {
 
 function checkoutSteps(active) {
   const steps = [
-    { n: 1, id: "cart", label: "السلة", href: "cart.html" },
-    { n: 2, id: "pay", label: "الدفع", href: "checkout.html" },
-    { n: 3, id: "done", label: "التأكيد", href: "order.html" },
+    { n: 1, id: "cart", label: "السلة", href: "/cart" },
+    { n: 2, id: "pay", label: "الدفع", href: "/checkout" },
+    { n: 3, id: "done", label: "التأكيد", href: "/order" },
   ];
   return `
     <ol class="checkout-steps" aria-label="خطوات الشراء">
@@ -601,7 +609,7 @@ function productCard(p, opts = {}) {
   const lazy = opts.catalog ? ' loading="lazy" decoding="async"' : "";
   return `
     <article class="${cls} ${oos ? "is-oos" : ""}" data-product-link="${p.id}">
-      <a class="pc-media" href="product.html?id=${p.id}">
+      <a class="pc-media" href="${productUrl(p.id)}">
         <img src="${p.image}" alt="${p.name}"${lazy} />
         <span class="badge">${p.tag}</span>
         ${off && !oos ? `<span class="badge badge-sale">خصم ${off}%</span>` : ""}
@@ -609,7 +617,7 @@ function productCard(p, opts = {}) {
       </a>
       <div class="card-body">
         <p class="pc-meta">${p.brand}</p>
-        <h3><a href="product.html?id=${p.id}">${p.name}</a></h3>
+        <h3><a href="${productUrl(p.id)}">${p.name}</a></h3>
         <p class="muted">${p.specs}</p>
         ${
           oos
@@ -620,7 +628,7 @@ function productCard(p, opts = {}) {
         </div>`
         }
         <div class="pc-actions">
-          <a class="btn btn-ghost" href="product.html?id=${p.id}">التفاصيل</a>
+          <a class="btn btn-ghost" href="${productUrl(p.id)}">التفاصيل</a>
           ${
             oos
               ? `<button class="btn btn-ghost" type="button" disabled>غير متوفر</button>`
@@ -714,7 +722,7 @@ function productSliderSectionHtml(cfg) {
       <div class="container">
         <div class="section-head">
           <div>${eyebrow}<h2>${cfg.title || ""}</h2></div>
-          <a class="btn btn-ghost" href="${cfg.linkUrl || "products.html"}">كل المنتجات</a>
+          <a class="btn btn-ghost" href="${cfg.linkUrl || "/products"}">كل المنتجات</a>
         </div>
         <div class="product-slider-wrap">
           <button class="product-slider-btn icon-btn" type="button" data-ps-prev aria-label="السابق">‹</button>
@@ -973,7 +981,7 @@ function renderFeatured() {
 
   let sliders = typeof PRODUCT_SLIDERS !== "undefined" && PRODUCT_SLIDERS.length ? PRODUCT_SLIDERS : [];
   if (!sliders.length && STORE.featured) {
-    sliders = [{ id: "legacy", active: true, ...STORE.featured, linkUrl: "products.html" }];
+    sliders = [{ id: "legacy", active: true, ...STORE.featured, linkUrl: "/products" }];
   }
   sliders = sliders.filter((s) => s.active !== false);
 
@@ -1036,7 +1044,7 @@ function renderNewProductsSlider() {
     title: "أحدث المنتجات",
     autoplay: false,
     speedMs: 4200,
-    linkUrl: "products.html",
+    linkUrl: "/products",
   };
 
   mount.innerHTML = productSliderSectionHtml(cfg);
@@ -1113,7 +1121,7 @@ function renderHeaderBrands() {
   el.innerHTML = brands
     .map(
       (b) =>
-        `<a href="products.html?brand=${encodeURIComponent(b.name)}" class="header-brand-link">${b.name}</a>`
+        `<a href="/products?brand=${encodeURIComponent(b.name)}" class="header-brand-link">${b.name}</a>`
     )
     .join("");
   bindTouchPan(el);
@@ -1301,13 +1309,13 @@ function renderCatalog() {
 function renderProductPage() {
   const el = document.querySelector("[data-product]");
   if (!el) return;
-  const id = new URLSearchParams(location.search).get("id");
+  const id = typeof SitePages !== "undefined" ? SitePages.productIdFromLocation() : new URLSearchParams(location.search).get("id");
   const p = PRODUCTS.find((item) => item.id === id);
   if (!p) {
-    el.innerHTML = `<p class="empty">الجهاز غير موجود. <a href="products.html">العودة للمتجر</a></p>`;
+    el.innerHTML = `<p class="empty">الجهاز غير موجود. <a href="/products">العودة للمتجر</a></p>`;
     return;
   }
-  document.title = `${p.name} واي كمباني`;
+  document.title = typeof SitePages !== "undefined" ? SitePages.documentTitle("product", p.name) : `${p.name} | BEST LAPTOP`;
   const off = discount(p);
   const oos = !inStock(p);
   const images = (Array.isArray(p.images) && p.images.length ? p.images : [p.image]).filter(Boolean);
@@ -1379,7 +1387,7 @@ function renderProductPage() {
           }
           ${productInquiryWhatsAppButton(p)}
         </div>
-        <a class="btn btn-ghost" href="products.html">كل المنتجات</a>
+        <a class="btn btn-ghost" href="/products">كل المنتجات</a>
       </div>
       <table class="spec-table">
         <tr><th>المعالج</th><td>${p.cpu}</td></tr>
@@ -1624,9 +1632,9 @@ function renderCart() {
         .map(
           (i) => `
         <div class="cart-item">
-          <a href="product.html?id=${i.id}"><img src="${i.product.image}" alt="${i.product.name}" /></a>
+          <a href="${productUrl(i.id)}"><img src="${i.product.image}" alt="${i.product.name}" /></a>
           <div>
-            <strong><a href="product.html?id=${i.id}">${i.product.name}</a></strong>
+            <strong><a href="${productUrl(i.id)}">${i.product.name}</a></strong>
             <div class="muted">${i.product.cpu} · ${i.product.gpu}</div>
             ${i.arabization ? `<div class="muted line-addon">مع تعريب الكيبورد</div>` : ""}
             ${qtyControl(cartLineKey(i), i.qty)}
@@ -1653,14 +1661,19 @@ function closeCart() {
   document.querySelector("[data-drawer]")?.classList.remove("open");
 }
 
-function currentPageFile() {
-  return (location.pathname.split("/").pop() || "index.html").toLowerCase() || "index.html";
-}
-
 function navHrefActive(href) {
-  const dest = new URL(href, location.href);
+  const dest = new URL(href, location.origin);
+  if (typeof SitePages !== "undefined") {
+    const hereKey = SitePages.pathKey(location.pathname);
+    const destKey = SitePages.pathKey(dest.pathname);
+    if (hereKey !== destKey) return false;
+    if (destKey === "products") {
+      return (dest.searchParams.get("cat") || "") === (new URLSearchParams(location.search).get("cat") || "");
+    }
+    return true;
+  }
   const destFile = (dest.pathname.split("/").pop() || "index.html").toLowerCase();
-  const here = currentPageFile();
+  const here = (location.pathname.split("/").pop() || "index.html").toLowerCase();
   if (destFile !== here) return false;
   if (destFile === "products.html") {
     return (dest.searchParams.get("cat") || "") === (new URLSearchParams(location.search).get("cat") || "");
@@ -1705,12 +1718,16 @@ function paintMobileNav() {
           { id: "oled", title: "شاشات OLED", text: "تغطية لونية للمصممين" },
           { id: "workstation", title: "محطات العمل", text: "ذاكرة واسعة ورندر ثقيل" },
         ];
-  const pages = [
-    { href: "index.html", label: "الرئيسية" },
-    { href: "products.html", label: "المنتجات" },
-    { href: "contact.html", label: "التواصل" },
-    { href: "cart.html", label: "السلة" },
-  ];
+  const pages = typeof SitePages !== "undefined"
+    ? SitePages.MAIN_NAV.map((key) => ({ href: SitePages.href(key), label: SitePages.label(key), key })).concat([
+        { href: SitePages.href("cart"), label: SitePages.label("cart"), key: "cart" },
+      ])
+    : [
+        { href: "/", label: "الرئيسية", key: "home" },
+        { href: "/products", label: "المنتجات", key: "products" },
+        { href: "/contact", label: "التواصل", key: "contact" },
+        { href: "/cart", label: "السلة", key: "cart" },
+      ];
   const phone = s.phone || "";
   const tel = phoneDigits(phone);
   const wa = storeWhatsAppNumber();
@@ -1719,7 +1736,7 @@ function paintMobileNav() {
 
   drawer.innerHTML = `
     <div class="mobile-nav-head">
-      <a class="logo" href="index.html" data-close-nav>
+      <a class="logo" href="/" data-close-nav>
         <img src="${logo}" alt="${s.name || "BEST LAPTOP"}" />
         <span class="logo-text">
           <strong>${s.name || "BEST LAPTOP"}</strong>
@@ -1729,7 +1746,7 @@ function paintMobileNav() {
       <button class="icon-btn mobile-nav-close" type="button" data-close-nav aria-label="إغلاق القائمة">×</button>
     </div>
     <div class="mobile-nav-body">
-      <form class="mobile-nav-search" action="products.html" method="get">
+      <form class="mobile-nav-search" action="/products" method="get">
         <input name="q" type="search" placeholder="ابحث عن لابتوب..." aria-label="بحث" />
         <button class="btn btn-primary" type="submit">بحث</button>
       </form>
@@ -1744,7 +1761,7 @@ function paintMobileNav() {
       <div class="mobile-nav-cats">
         ${cats
           .map((c) => {
-            const href = `products.html?cat=${encodeURIComponent(c.id)}`;
+            const href = `/products?cat=${encodeURIComponent(c.id)}`;
             return `<a class="mobile-nav-cat${navHrefActive(href) ? " active" : ""}" href="${href}"><strong>${c.title}</strong><small>${c.text || ""}</small></a>`;
           })
           .join("")}
@@ -1753,7 +1770,7 @@ function paintMobileNav() {
       <div class="mobile-nav-actions">
         ${tel ? `<a class="mobile-nav-link" href="tel:${tel}">اتصال · ${phone}</a>` : ""}
         ${wa ? `<a class="mobile-nav-link" href="https://wa.me/${wa}" target="_blank" rel="noopener">واتساب</a>` : ""}
-        <a class="mobile-nav-link" href="contact.html">موقع المعرض</a>
+        <a class="mobile-nav-link" href="/contact">موقع المعرض</a>
       </div>
     </div>
     <div class="mobile-nav-foot">
@@ -1815,7 +1832,7 @@ function checkout() {
     showToast("أضف جهازاً أولاً");
     return;
   }
-  location.href = "checkout.html";
+  location.href = "/checkout";
 }
 
 function renderCartPage() {
@@ -1832,7 +1849,7 @@ function renderCartPage() {
         <div class="empty-icon">${ICONS.bag}</div>
         <h2>سلتك فارغة</h2>
         <p class="muted">أضف لابتوب من التشكيلة ثم ارجع هنا لإتمام الطلب.</p>
-        <a class="btn btn-primary" href="products.html">تصفح المنتجات</a>
+        <a class="btn btn-primary" href="/products">تصفح المنتجات</a>
       </div>`;
     return;
   }
@@ -1844,12 +1861,12 @@ function renderCartPage() {
           .map(
             (i) => `
           <article class="cart-line">
-            <a class="cart-line-media" href="product.html?id=${i.id}">
+            <a class="cart-line-media" href="${productUrl(i.id)}">
               <img src="${i.product.image}" alt="${i.product.name}" />
             </a>
             <div class="cart-line-info">
               <p class="eyebrow">${i.product.brand}</p>
-              <h3><a href="product.html?id=${i.id}">${i.product.name}</a></h3>
+              <h3><a href="${productUrl(i.id)}">${i.product.name}</a></h3>
               ${specPills(i.product)}
               ${arabizationNote(i)}
               ${priceBlock(i.product, i.qty, unitPrice(i.product, i))}
@@ -1877,8 +1894,8 @@ function renderCartPage() {
           </select>
         </label>
         ${summaryRows(pricing)}
-        <a class="btn btn-primary btn-lg" href="checkout.html">المتابعة للدفع</a>
-        <a class="btn btn-ghost" href="products.html">متابعة التسوق</a>
+        <a class="btn btn-primary btn-lg" href="/checkout">المتابعة للدفع</a>
+        <a class="btn btn-ghost" href="/products">متابعة التسوق</a>
         <p class="muted summary-note">${STORE.warranty}</p>
       </aside>
     </div>
@@ -1890,8 +1907,8 @@ function renderCheckout() {
   const summary = document.querySelector("[data-checkout-summary]");
   const steps = document.querySelector("[data-checkout-steps]");
   if (!form && !summary) return;
-  if (location.pathname.endsWith("checkout.html") && new URLSearchParams(location.search).get("done") === "1") {
-    location.replace("order.html");
+  if (location.pathname.includes("/checkout") && new URLSearchParams(location.search).get("done") === "1") {
+    location.replace("/order");
     return;
   }
   if (steps) steps.innerHTML = checkoutSteps(2);
@@ -1904,7 +1921,7 @@ function renderCheckout() {
         <div class="empty-cart compact">
           <h2>لا يوجد طلب</h2>
           <p class="muted">أضف جهازاً للسلة أولاً.</p>
-          <a class="btn btn-primary" href="products.html">العودة للمتجر</a>
+          <a class="btn btn-primary" href="/products">العودة للمتجر</a>
         </div>`;
     }
     form?.querySelector("[data-place-order]")?.setAttribute("disabled", "disabled");
@@ -2073,7 +2090,7 @@ async function placeOrder(form) {
     const saved = await StoreAPI.createOrder(order);
     sessionStorage.setItem(ORDER_KEY, JSON.stringify(saved));
     localStorage.setItem(CART_KEY, "[]");
-    location.href = "order.html";
+    location.href = "/order";
   } catch (err) {
     showToast(err.message || "تعذر إتمام الطلب");
   }
@@ -2095,7 +2112,7 @@ function renderOrderPage() {
       <div class="empty-cart">
         <h2>لا يوجد طلب حديث</h2>
         <p class="muted">أكمل الشراء من السلة لإظهار تأكيد الطلب هنا.</p>
-        <a class="btn btn-primary" href="cart.html">افتح السلة</a>
+        <a class="btn btn-primary" href="/cart">افتح السلة</a>
       </div>`;
     return;
   }
@@ -2133,7 +2150,7 @@ function renderOrderPage() {
           <h2>التسليم والدفع</h2>
           <p><strong>${order.delivery.label}</strong><br /><span class="muted">${order.address.city} — ${order.address.area}، ${order.address.street}</span></p>
           <p><strong>${order.payment.label}</strong><br /><span class="muted">${STORE.warranty}</span></p>
-          <a class="btn btn-primary btn-lg" href="products.html">العودة للمتجر</a>
+          <a class="btn btn-primary btn-lg" href="/products">العودة للمتجر</a>
         </aside>
       </div>
     </div>
@@ -2142,7 +2159,7 @@ function renderOrderPage() {
 
 function goSearch(value) {
   const q = (value || "").trim();
-  const url = q ? `products.html?q=${encodeURIComponent(q)}` : "products.html";
+  const url = q ? `/products?q=${encodeURIComponent(q)}` : "/products";
   location.href = url;
 }
 
@@ -2233,7 +2250,7 @@ function renderSlider() {
     root.querySelector("[data-slide-cool]").textContent = s.cooling || "";
     root.querySelector("[data-slide-screen]").textContent = s.screen || "";
     const link = root.querySelector("[data-slide-link]");
-    if (link) link.href = s.productId ? `product.html?id=${s.productId}` : "products.html";
+    if (link) link.href = s.productId ? productUrl(s.productId) : "/products";
     const addBtn = root.querySelector("[data-slide-add]");
     if (addBtn) {
       if (s.productId) {
@@ -2440,7 +2457,7 @@ function renderSlider() {
 document.addEventListener("click", (e) => {
   if (e.target.closest("[data-back-page]")) {
     if (window.history.length > 1) window.history.back();
-    else location.href = "products.html";
+    else location.href = "/products";
     return;
   }
 
@@ -2523,7 +2540,7 @@ document.addEventListener("click", (e) => {
   }
   if (!e.target.closest("a, button, input, select, textarea")) {
     const card = e.target.closest("[data-product-link]");
-    if (card) location.href = `product.html?id=${card.dataset.productLink}`;
+    if (card) location.href = productUrl(card.dataset.productLink);
   }
 });
 
@@ -2609,6 +2626,7 @@ document.querySelector("[data-checkout-form]")?.addEventListener("submit", (e) =
 });
 
 async function bootStorefront() {
+  if (typeof SitePages !== "undefined") SitePages.init();
   try {
     await StoreAPI.bootstrap();
   } catch {
@@ -2637,6 +2655,7 @@ async function bootStorefront() {
 }
 
 window.addEventListener("store:updated", () => {
+  if (typeof SitePages !== "undefined") SitePages.paintLinks();
   applyStoreBranding();
   renderHeaderBrands();
   renderCategoryFilter();

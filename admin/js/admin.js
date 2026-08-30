@@ -1136,7 +1136,7 @@ function syncPsFormPanels(form) {
   }
   const link = form.querySelector("[name='linkUrl']");
   if (link && source === "brand" && brand && (!link.dataset.touched || link.value.includes("brand="))) {
-    link.value = `products.html?brand=${encodeURIComponent(brand)}`;
+    link.value = `/products?brand=${encodeURIComponent(brand)}`;
   }
 }
 
@@ -1192,7 +1192,7 @@ function productSliderForm(s = {}) {
         </div>
       </div>
 
-      <label class="span-2">رابط «كل المنتجات»<input name="linkUrl" data-ps-link value="${esc(s.linkUrl || "products.html")}" /></label>
+      <label class="span-2">رابط «كل المنتجات»<input name="linkUrl" data-ps-link value="${esc(s.linkUrl || "/products")}" /></label>
       <div class="modal-actions span-2"><button class="btn btn-ghost" type="button" data-close-modal>إلغاء</button>
       <button class="btn btn-primary" type="submit">حفظ السلايدر</button></div>
     </form>`;
@@ -1212,7 +1212,7 @@ function renderFeaturedAdmin() {
       </div>
       <div class="toolbar-admin slider-toolbar">
         <button class="btn btn-primary" type="button" data-add-ps>+ سلايدر منتجات جديد</button>
-        <a class="btn btn-ghost" href="../index.html" target="_blank" rel="noopener">معاينة المتجر ↗</a>
+        <a class="btn btn-ghost" href="/" target="_blank" rel="noopener">معاينة المتجر ↗</a>
       </div>
     </div>
     ${
@@ -1337,7 +1337,7 @@ function renderSliderAdmin() {
       </div>
       <div class="toolbar-admin slider-toolbar">
         <button class="btn btn-primary" type="button" data-add-slide>+ إضافة شريحة</button>
-        <a class="btn btn-ghost" href="../index.html" target="_blank" rel="noopener">معاينة المتجر ↗</a>
+        <a class="btn btn-ghost" href="/" target="_blank" rel="noopener">معاينة المتجر ↗</a>
       </div>
     </div>
     ${
@@ -2214,7 +2214,7 @@ document.addEventListener("submit", (e) => {
         productIds: Array.isArray(productIds) ? productIds : [],
         autoplay: false,
         speedMs: 4500,
-        linkUrl: f.get("linkUrl") || (brand ? `products.html?brand=${encodeURIComponent(brand)}` : "products.html"),
+        linkUrl: f.get("linkUrl") || (brand ? `/products?brand=${encodeURIComponent(brand)}` : "/products"),
       };
       try {
         await StoreDB.saveProductSlider(item);
@@ -2283,15 +2283,14 @@ document.addEventListener("submit", (e) => {
             images[key] = String(f.get(`keep_${key}`) || "");
           }
         }
-        const next = {
+        await StoreDB.saveSettings({
           ...db().settings,
           officeGallery: {
             active: f.get("active") === "1",
             title: String(f.get("title") || "من داخل مكتب بيست لابتوب").trim(),
             images,
           },
-        };
-        await StoreDB.saveSettings(next);
+        });
         toast("تم حفظ معرض المكتب");
         render();
       } catch (err) {

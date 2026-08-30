@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>المنتجات واي كمباني</title>
+    <title data-page-title>المنتجات | BEST LAPTOP</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet" />
@@ -14,7 +14,7 @@
         localStorage.getItem("bestlaptop-theme") === "light" ? "light" : "dark";
     </script>
   </head>
-  <body>
+  <body data-page="products">
     <div class="topbar">
       <div class="container topbar-inner">
         <span>بغداد · شارع الصناعة، مجمع النعمان، الطابق الثاني · ضمان سنتين حقيقي</span>
@@ -27,14 +27,14 @@
 
     <header class="site-header">
       <div class="container nav">
-        <a class="logo" href="index.html">
+        <a class="logo" href="/">
           <img src="img/logo.jpg" alt="BEST LAPTOP" />
           <span class="logo-text">
             <strong>BEST LAPTOP</strong>
             <small>بيست لابتوب</small>
           </span>
         </a>
-        <form class="header-search" data-search-box action="products.html" method="get">
+        <form class="header-search" data-search-box action="/products" method="get">
           <button class="search-toggle" type="button" data-search-toggle aria-label="بحث">بحث</button>
           <input name="q" data-header-search type="search" placeholder="ابحث عن لابتوب أو مواصفات..." />
         </form>
@@ -42,11 +42,11 @@
           <span class="menu-bars" aria-hidden="true"></span>
         </button>
         <ul class="nav-links">
-          <li><a href="index.html">الصفحة الرئيسية</a></li>
-          <li><a class="active" href="products.html">صفحة المنتجات</a></li>
-          <li><a href="contact.html">صفحة التواصل</a></li>
+          <li><a href="/" data-page-link="home">الرئيسية</a></li>
+          <li><a data-page-link="products" class="active" href="/products">المنتجات</a></li>
+          <li><a data-page-link="contact" href="/contact">التواصل</a></li>
         </ul>
-        <a class="btn-cart" href="cart.html">السلة</a>
+        <a class="btn-cart" href="/cart">السلة</a>
       </div>
     </header>
     <div class="header-brands">
@@ -143,7 +143,7 @@
       <div class="container">
         <div class="footer-grid">
           <div class="footer-brand">
-            <a class="logo footer-logo" href="index.html">
+            <a class="logo footer-logo" href="/">
               <img src="img/logo.jpg" alt="BEST LAPTOP" />
               <span class="logo-text">
                 <strong>BEST LAPTOP</strong>
@@ -156,8 +156,8 @@
           <div>
             <h3>أقسام المتجر</h3>
             <ul>
-              <li><a href="index.html">الصفحة الرئيسية</a></li>
-              <li><a href="products.html">صفحة المنتجات</a></li>
+              <li><a href="/">الرئيسية</a></li>
+              <li><a data-page-link="products" href="/products">المنتجات</a></li>
             </ul>
           </div>
           <div>
@@ -179,14 +179,15 @@
       <div class="cart-body" data-cart-items></div>
       <div class="cart-foot">
         <p>الإجمالي: <strong data-cart-total>0 IQD</strong></p>
-        <a class="btn btn-primary" href="checkout.html">إتمام الطلب</a>
+        <a class="btn btn-primary" href="/checkout">إتمام الطلب</a>
       </div>
     </aside>
     <div class="toast" data-toast></div>
 
     <script src="js/data.js?v=34"></script>
     <script src="js/api-client.js?v=55"></script>
-    <script src="js/app.js?v=63"></script>
+    <script src="js/app.js?v=65"></script>
     <script src="js/theme.js"></script>
+    <script src="js/routes.js?v=2"></script>
   </body>
 </html>
