@@ -1205,14 +1205,19 @@ function initTouchPanStrips() {
 }
 
 function getStoreBrands() {
-  if (typeof BRANDS !== "undefined" && BRANDS.length) return BRANDS;
-  return [...new Set(PRODUCTS.map((p) => p.brand).filter(Boolean))].map((name) => ({ name }));
+  const productBrands = new Set(PRODUCTS.map((p) => p.brand).filter(Boolean));
+  if (typeof BRANDS !== "undefined" && BRANDS.length) {
+    return BRANDS.filter((b) => productBrands.has(b.name));
+  }
+  return [...productBrands].map((name) => ({ name }));
 }
 
 function renderHeaderBrands() {
   const el = document.querySelector("[data-header-brands]");
   if (!el) return;
   const brands = getStoreBrands();
+  const section = el.closest(".header-brands");
+  if (section) section.hidden = brands.length === 0;
   el.innerHTML = brands
     .map(
       (b) =>
@@ -2342,6 +2347,9 @@ function renderSlider() {
 
   function paintContent() {
     const s = root._sliderSlides[root._sliderIndex];
+    root.classList.toggle("is-image-only", !!s.imageOnly);
+    const heroInner = root.querySelector(".hero-inner");
+    if (heroInner) heroInner.hidden = !!s.imageOnly;
     const chips = root.querySelector(".chips");
     if (chips) {
       chips.innerHTML = [s.chip1, s.chip2].filter(Boolean).map((t) => `<span class="chip">${t}</span>`).join("");

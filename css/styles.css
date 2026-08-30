@@ -670,6 +670,18 @@ body.nav-open .menu-bars::after {
   cursor: grab;
 }
 
+.hero-slider.is-image-only .hero-inner {
+  display: none;
+}
+
+.hero-slider.is-image-only .slider-shade {
+  opacity: 0.08;
+}
+
+.header-brands[hidden] {
+  display: none;
+}
+
 .header-brands {
   border-bottom: 1px solid var(--line);
   background: var(--bg-elevated);

@@ -1033,6 +1033,10 @@ function slideForm(s = {}) {
       <label>قسم التصفية<select name="category"><option value="">— الكل —</option>${cats}</select></label>
       <label class="span-2">العنوان الفرعي<input name="headline" value="${esc(s.headline || "")}" placeholder="سطر جذاب تحت العنوان" /></label>
       <label class="span-2">الوصف<input name="blurb" value="${esc(s.blurb || "")}" placeholder="وصف قصير للعرض" /></label>
+      <label class="span-2 check-row">
+        <input type="checkbox" name="imageOnly" value="1" ${s.imageOnly ? "checked" : ""} />
+        عرض الصورة فقط — إخفاء النص والمواصفات على الموقع
+      </label>
       <div class="form-section span-2"><h3>الشارات والمواصفات</h3></div>
       <label>الوسم<input name="tag" value="${esc(s.tag || "")}" /></label>
       <label>الشارة 1<input name="chip1" value="${esc(s.chip1 || "")}" placeholder="ضمان سنتين" /></label>
@@ -1075,6 +1079,7 @@ function setupSlideEditor() {
     const imageRaw = val("image") || product?.image || "";
     const image = imageRaw ? resolveAdminAsset(imageRaw) : "";
     const active = form.querySelector('[name="active"]')?.value !== "0";
+    const imageOnly = form.querySelector('[name="imageOnly"]')?.checked;
     const stock = product ? Number(product.stock) || 0 : 0;
     const showPrice = !!(product && stock > 0);
     const showAdd = !!product;
@@ -1083,14 +1088,15 @@ function setupSlideEditor() {
     const mediaHtml = adminHeroMediaHtml(videoUrl, image);
 
     preview.innerHTML = `
-      <div class="slide-hero-mock${active ? "" : " is-inactive"}">
+      <div class="slide-hero-mock${active ? "" : " is-inactive"}${imageOnly ? " is-image-only" : ""}">
         ${active ? "" : `<span class="slide-hero-inactive-badge">متوقفة — لن تظهر في الموقع حتى تُفعَّل</span>`}
-        <section class="hero-slider" aria-hidden="true">
+        ${imageOnly ? `<span class="slide-hero-image-only-badge">صورة فقط — بدون نص</span>` : ""}
+        <section class="hero-slider${imageOnly ? " is-image-only" : ""}" aria-hidden="true">
           <div class="slider-viewport">
             <div class="slider-track">${mediaHtml}</div>
             <div class="slider-shade"></div>
           </div>
-          <div class="hero-inner">
+          <div class="hero-inner"${imageOnly ? " hidden" : ""}>
             <div>
               <div class="chips">
                 ${chip1 ? `<span class="chip">${esc(chip1)}</span>` : ""}
@@ -1425,6 +1431,7 @@ function renderSliderAdmin() {
                   <div class="slide-tags">
                     ${s.category ? `<span class="pill">${esc(s.category)}</span>` : ""}
                     ${s.productId ? `<span class="pill">منتج</span>` : ""}
+                    ${s.imageOnly ? `<span class="pill">صورة فقط</span>` : ""}
                     <span class="pill ${s.active === false ? "warn" : ""}">${s.active === false ? "متوقفة" : "نشطة"}</span>
                   </div>
                 </div>
@@ -2237,6 +2244,7 @@ document.addEventListener("submit", (e) => {
         screen: f.get("screen") || linked?.screen || "",
         chip1: f.get("chip1") || "",
         chip2: f.get("chip2") || "",
+        imageOnly: f.get("imageOnly") === "1",
       };
       try {
         await StoreDB.saveSlide(item);

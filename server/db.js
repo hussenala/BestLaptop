@@ -419,6 +419,9 @@ function migrateSchema() {
   if (!columnExists("hero_slides", "video_url")) {
     db.exec("ALTER TABLE hero_slides ADD COLUMN video_url TEXT");
   }
+  if (!columnExists("hero_slides", "image_only")) {
+    db.exec("ALTER TABLE hero_slides ADD COLUMN image_only INTEGER NOT NULL DEFAULT 0");
+  }
   if (!columnExists("product_sliders", "brand")) {
     db.exec("ALTER TABLE product_sliders ADD COLUMN brand TEXT DEFAULT ''");
   }
@@ -808,6 +811,7 @@ function rowToSlide(row) {
     screen: row.screen || "",
     chip1: row.chip1 || "",
     chip2: row.chip2 || "",
+    imageOnly: !!row.image_only,
   };
 }
 
@@ -830,6 +834,7 @@ function slideToRow(s) {
     screen: s.screen || "",
     chip1: s.chip1 || "",
     chip2: s.chip2 || "",
+    image_only: s.imageOnly ? 1 : 0,
   };
 }
 
@@ -847,13 +852,13 @@ function getSlide(id) {
 
 function upsertSlide(s) {
   db.prepare(`
-    INSERT INTO hero_slides (id,sort_order,active,title,headline,blurb,image,video_url,product_id,category,tag,gpu,tgp,cooling,screen,chip1,chip2)
-    VALUES (@id,@sort_order,@active,@title,@headline,@blurb,@image,@video_url,@product_id,@category,@tag,@gpu,@tgp,@cooling,@screen,@chip1,@chip2)
+    INSERT INTO hero_slides (id,sort_order,active,title,headline,blurb,image,video_url,product_id,category,tag,gpu,tgp,cooling,screen,chip1,chip2,image_only)
+    VALUES (@id,@sort_order,@active,@title,@headline,@blurb,@image,@video_url,@product_id,@category,@tag,@gpu,@tgp,@cooling,@screen,@chip1,@chip2,@image_only)
     ON CONFLICT(id) DO UPDATE SET
       sort_order=excluded.sort_order, active=excluded.active, title=excluded.title, headline=excluded.headline,
       blurb=excluded.blurb, image=excluded.image, video_url=excluded.video_url, product_id=excluded.product_id, category=excluded.category,
       tag=excluded.tag, gpu=excluded.gpu, tgp=excluded.tgp, cooling=excluded.cooling, screen=excluded.screen,
-      chip1=excluded.chip1, chip2=excluded.chip2
+      chip1=excluded.chip1, chip2=excluded.chip2, image_only=excluded.image_only
   `).run(slideToRow(s));
   bumpVersion();
   return getSlide(s.id);

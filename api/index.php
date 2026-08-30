@@ -151,6 +151,11 @@ function init_schema(PDO $pdo) {
       if (($c["name"] ?? "") === "video_url") $hasVideo = true;
     }
     if (!$hasVideo) $pdo->exec("ALTER TABLE hero_slides ADD COLUMN video_url TEXT");
+    $hasImageOnly = false;
+    foreach ($cols as $c) {
+      if (($c["name"] ?? "") === "image_only") $hasImageOnly = true;
+    }
+    if (!$hasImageOnly) $pdo->exec("ALTER TABLE hero_slides ADD COLUMN image_only INTEGER NOT NULL DEFAULT 0");
   } catch (Throwable $e) {
     /* ignore migration errors */
   }
@@ -510,6 +515,7 @@ function list_slides(PDO $pdo, $activeOnly = false) {
       "category" => $row["category"] ?? "", "tag" => $row["tag"] ?? "", "gpu" => $row["gpu"] ?? "",
       "tgp" => $row["tgp"] ?? "", "cooling" => $row["cooling"] ?? "", "screen" => $row["screen"] ?? "",
       "chip1" => $row["chip1"] ?? "", "chip2" => $row["chip2"] ?? "",
+      "imageOnly" => !empty($row["image_only"]),
     ];
   }
   return $out;
@@ -540,11 +546,12 @@ function get_slide(PDO $pdo, $id) {
 
 function upsert_slide(PDO $pdo, array $s) {
   $id = $s["id"] ?? uid("sl");
-  $pdo->prepare("INSERT INTO hero_slides (id,sort_order,active,title,headline,blurb,image,video_url,product_id,category,tag,gpu,tgp,cooling,screen,chip1,chip2)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+  $pdo->prepare("INSERT INTO hero_slides (id,sort_order,active,title,headline,blurb,image,video_url,product_id,category,tag,gpu,tgp,cooling,screen,chip1,chip2,image_only)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ON CONFLICT(id) DO UPDATE SET sort_order=excluded.sort_order, active=excluded.active, title=excluded.title, headline=excluded.headline,
       blurb=excluded.blurb, image=excluded.image, video_url=excluded.video_url, product_id=excluded.product_id, category=excluded.category,
-      tag=excluded.tag, gpu=excluded.gpu, tgp=excluded.tgp, cooling=excluded.cooling, screen=excluded.screen, chip1=excluded.chip1, chip2=excluded.chip2")
+      tag=excluded.tag, gpu=excluded.gpu, tgp=excluded.tgp, cooling=excluded.cooling, screen=excluded.screen, chip1=excluded.chip1, chip2=excluded.chip2,
+      image_only=excluded.image_only")
     ->execute([
       $id,
       (int) ($s["sortOrder"] ?? 0),
@@ -563,6 +570,7 @@ function upsert_slide(PDO $pdo, array $s) {
       $s["screen"] ?? "",
       $s["chip1"] ?? "",
       $s["chip2"] ?? "",
+      !empty($s["imageOnly"]) ? 1 : 0,
     ]);
   bump($pdo);
   return get_slide($pdo, $id);
