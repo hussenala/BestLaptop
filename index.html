@@ -54,8 +54,8 @@
       <div class="container header-brands-track" data-header-brands aria-label="الماركات العالمية"></div>
     </div>
 
-    <main>
-      <section class="hero-slider" data-slider>
+    <main data-home-root>
+      <section class="hero-slider" data-slider data-home-block="hero">
         <div class="slider-viewport">
           <div class="slider-track" data-slide-track></div>
           <div class="slider-shade" aria-hidden="true"></div>
@@ -90,13 +90,11 @@
         </div>
       </section>
 
-      <div data-product-sliders></div>
+      <div data-home-block="new-products" data-new-products></div>
 
-      <div data-new-products></div>
+      <section class="section office-gallery-section" data-office-gallery data-home-block="office-gallery" hidden></section>
 
-      <section class="section office-gallery-section" data-office-gallery hidden></section>
-
-      <section class="section">
+      <section class="section" data-home-block="categories">
         <div class="container">
           <div class="section-head">
             <div>
@@ -166,9 +164,10 @@
     </aside>
     <div class="toast" data-toast></div>
             <script src="/js/data.js?v=35"></script>
-    <script src="/js/api-client.js?v=56"></script>
+    <script src="/js/api-client.js?v=57"></script>
     <script src="/js/theme.js"></script>
+    <script src="/js/home-layout.js?v=1"></script>
     <script src="/js/routes.js?v=3"></script>
-    <script src="/js/app.js?v=72"></script>
+    <script src="/js/app.js?v=73"></script>
   </body>
 </html>

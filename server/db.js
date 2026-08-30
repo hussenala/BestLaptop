@@ -668,6 +668,7 @@ function getSettings() {
   if (!s.notice && s.city) s.notice = `${s.city} · ${s.address} · ${s.warranty}`;
   s.maintenanceMode = !!s.maintenanceMode;
   if (!s.maintenanceMessage) s.maintenanceMessage = "";
+  if (!Array.isArray(s.homeLayout)) s.homeLayout = null;
   if (!s.officeGallery || typeof s.officeGallery !== "object") {
     s.officeGallery = defaultOfficeGallery();
   } else {

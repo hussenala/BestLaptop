@@ -114,6 +114,11 @@ const StoreAPI = (() => {
       if (!next.payments?.length && STORE.payments?.length) next.payments = STORE.payments;
       Object.assign(STORE, next);
     }
+    if (typeof STORE !== "undefined" && payload.settings) {
+      if ("homeLayout" in payload.settings) {
+        STORE.homeLayout = payload.settings.homeLayout;
+      }
+    }
     const officeGallery = payload.settings?.officeGallery || payload.store?.officeGallery;
     if (typeof STORE !== "undefined" && officeGallery) {
       const images = officeGallery.images || {};

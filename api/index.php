@@ -216,6 +216,7 @@ function checkout_options(array $s) {
   $s["officeGallery"] = normalize_office_gallery($s["officeGallery"] ?? null);
   $s["maintenanceMode"] = !empty($s["maintenanceMode"]);
   if (empty($s["maintenanceMessage"])) $s["maintenanceMessage"] = "";
+  if (!isset($s["homeLayout"]) || !is_array($s["homeLayout"])) $s["homeLayout"] = null;
   return $s;
 }
 

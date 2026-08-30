@@ -9,6 +9,7 @@ const ICO = {
   stock: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M4 18V8l8-4 8 4v10l-8 4z"/></svg>',
   star: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 3 9.5 9H3l5.2 3.8L6 19l6-4 6 4-2.2-6.2L21 9h-6.5z"/></svg>',
   featured: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M13 2 15 9h7l-5.5 4 2 7L13 17l-5.5 3 2-7L4 9h7z"/></svg>',
+  layout: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M4 5h16v4H4zm0 6h10v4H4zm0 6h16v4H4zm12-6h4v10h-4z"/></svg>',
   gallery: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M4 5h16v14H4zm2 2v6l3.2-2.4L14 15l4-5v9H6zm9-1.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3z"/></svg>',
   gear: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M10 2h4l.6 3.2a7 7 0 0 1 2.2 1.3L20 5.6 22 9l-2.6 1.6a7 7 0 0 1 0 2.8L22 15l-2 3.4-3.2-.9a7 7 0 0 1-2.2 1.3L14 22h-4l-.6-3.2a7 7 0 0 1-2.2-1.3L4 18.4 2 15l2.6-1.6a7 7 0 0 1 0-2.8L2 9l2-3.4 3.2.9A7 7 0 0 1 9.4 5.2zM12 15a3 3 0 1 0-3-3 3 3 0 0 0 3 3z"/></svg>',
   shield: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2 4 6v6c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V6z"/></svg>',
@@ -25,6 +26,7 @@ const NAV = [
   { id: "inventory", label: "المخزون", icon: ICO.stock },
   { id: "slider", label: "بانر الموقع", icon: ICO.star },
   { id: "featured", label: "سلايدر منتجات", icon: ICO.featured },
+  { id: "home-layout", label: "ترتيب الرئيسية", icon: ICO.layout },
   { id: "gallery", label: "معرض المكتب", icon: ICO.gallery },
   { id: "settings", label: "إعدادات المتجر", icon: ICO.gear },
   { id: "users", label: "المستخدمون والصلاحيات", icon: ICO.shield },
@@ -41,6 +43,7 @@ const TITLES = {
   inventory: ["المخزون", "الكميات والتنبيهات"],
   slider: ["بانر الموقع", "شرائح العروض الرئيسية"],
   featured: ["سلايدر منتجات", "سلايدرات متعددة أفقية"],
+  "home-layout": ["ترتيب الرئيسية", "سحب الأقسام وترتيبها"],
   gallery: ["معرض المكتب", "صور من داخل المكتب"],
   settings: ["الإعدادات", "هوية المتجر"],
   users: ["الصلاحيات", "مستخدمو اللوحة"],
@@ -1255,6 +1258,103 @@ function productSliderForm(s = {}) {
     </form>`;
 }
 
+function homeLayoutList() {
+  const sliders = db().productSliders || [];
+  if (typeof HomeLayout === "undefined") return [];
+  return HomeLayout.normalize(db().settings?.homeLayout, sliders);
+}
+
+function renderHomeLayoutAdmin() {
+  const list = homeLayoutList();
+  return `
+    <div class="slider-admin-head">
+      <div class="toolbar-admin slider-toolbar">
+        <a class="btn btn-ghost" href="/" target="_blank" rel="noopener">معاينة المتجر ↗</a>
+        <button class="btn btn-primary" type="button" data-save-home-layout>حفظ الترتيب</button>
+      </div>
+    </div>
+    <p class="muted home-layout-hint">اسحب الأقسام لإعادة ترتيب الصفحة الرئيسية. أوقف «ظاهر» لإخفاء قسم دون حذفه.</p>
+  ${
+    list.length
+      ? `<div class="panel home-layout-list" data-home-layout-list>
+          ${list
+            .map(
+              (item, idx) => `
+            <article class="slide-admin-card home-layout-card ${item.active === false ? "is-off" : ""}" data-home-layout-row="${esc(item.id)}" draggable="true">
+              <div class="slide-drag" title="اسحب لإعادة الترتيب">⠿</div>
+              <div class="slide-order">${idx + 1}</div>
+              <div class="slide-meta">
+                <b>${esc(item.label)}</b>
+                <div class="slide-tags"><span class="pill">${esc(HomeLayout.blockTypeLabel(item.type))}</span></div>
+              </div>
+              <label class="check-row home-layout-toggle">
+                <input type="checkbox" data-home-layout-active ${item.active !== false ? "checked" : ""} />
+                ظاهر
+              </label>
+            </article>`
+            )
+            .join("")}
+        </div>`
+      : `<div class="panel slide-empty"><p class="muted">لا توجد أقسام.</p></div>`
+  }`;
+}
+
+function collectHomeLayoutFromDom() {
+  const list = document.querySelector("[data-home-layout-list]");
+  const base = homeLayoutList();
+  if (!list) return base;
+  const byId = new Map(base.map((b) => [b.id, { ...b }]));
+  return [...list.querySelectorAll("[data-home-layout-row]")]
+    .map((row) => {
+      const item = byId.get(row.dataset.homeLayoutRow);
+      if (!item) return null;
+      const cb = row.querySelector("[data-home-layout-active]");
+      item.active = cb?.checked !== false;
+      return item;
+    })
+    .filter(Boolean);
+}
+
+function setupHomeLayoutDragDrop() {
+  const list = document.querySelector("[data-home-layout-list]");
+  if (!list || list.dataset.bound === "1") return;
+  list.dataset.bound = "1";
+  let dragId = null;
+  list.querySelectorAll("[data-home-layout-row]").forEach((row) => {
+    row.addEventListener("dragstart", () => {
+      dragId = row.dataset.homeLayoutRow;
+      row.classList.add("dragging");
+    });
+    row.addEventListener("dragend", () => {
+      row.classList.remove("dragging");
+      list.querySelectorAll("[data-home-layout-row]").forEach((r) => r.classList.remove("drag-over"));
+    });
+    row.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      row.classList.add("drag-over");
+    });
+    row.addEventListener("dragleave", () => row.classList.remove("drag-over"));
+    row.addEventListener("drop", (e) => {
+      e.preventDefault();
+      row.classList.remove("drag-over");
+      const targetId = row.dataset.homeLayoutRow;
+      if (!dragId || dragId === targetId) return;
+      const fromEl = list.querySelector(`[data-home-layout-row="${dragId}"]`);
+      const toEl = row;
+      if (!fromEl || !toEl) return;
+      const items = [...list.querySelectorAll("[data-home-layout-row]")];
+      const fromIdx = items.indexOf(fromEl);
+      const toIdx = items.indexOf(toEl);
+      if (fromIdx < toIdx) toEl.after(fromEl);
+      else toEl.before(fromEl);
+      list.querySelectorAll("[data-home-layout-row]").forEach((r, i) => {
+        const order = r.querySelector(".slide-order");
+        if (order) order.textContent = String(i + 1);
+      });
+    });
+  });
+}
+
 function renderFeaturedAdmin() {
   const list = [...(db().productSliders || [])].sort((a, b) => a.sortOrder - b.sortOrder);
   const active = list.filter((s) => s.active !== false).length;
@@ -1647,6 +1747,7 @@ const PAGES = {
   inventory: renderInventory,
   slider: renderSliderAdmin,
   featured: renderFeaturedAdmin,
+  "home-layout": renderHomeLayoutAdmin,
   gallery: renderGalleryAdmin,
   settings: renderSettings,
   users: renderUsers,
@@ -1688,6 +1789,7 @@ function render(opts = {}) {
   document.querySelector("[data-admin-view]").innerHTML = PAGES[id]();
   if (id === "slider") setupSlideDragDrop();
   if (id === "featured") setupPsDragDrop();
+  if (id === "home-layout") setupHomeLayoutDragDrop();
   if (opts.focus) {
     const field = document.querySelector(opts.focus);
     if (field) {
@@ -1769,6 +1871,18 @@ document.addEventListener("click", (e) => {
   if (e.target.closest("[data-add-slide]")) {
     openModal(slideForm(), { wide: true });
     setupSlideEditor();
+  }
+  if (e.target.closest("[data-save-home-layout]")) {
+    void (async () => {
+      try {
+        const next = { ...db().settings, homeLayout: collectHomeLayoutFromDom() };
+        await StoreDB.saveSettings(next);
+        toast("تم حفظ ترتيب الصفحة الرئيسية");
+        render();
+      } catch (err) {
+        toast(err.message || "تعذر الحفظ");
+      }
+    })();
   }
   const editSlide = e.target.closest("[data-edit-slide]");
   if (editSlide) {

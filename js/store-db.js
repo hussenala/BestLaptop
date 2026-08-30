@@ -89,6 +89,7 @@ const StoreDB = (() => {
         notice: cache.settings.notice || "",
         featured: cache.settings.featured || STORE.featured,
         officeGallery: cache.settings.officeGallery || STORE.officeGallery,
+        homeLayout: cache.settings.homeLayout ?? null,
         city: cache.settings.city,
         address: cache.settings.address,
         fullAddress: cache.settings.fullAddress,

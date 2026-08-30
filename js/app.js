@@ -1032,6 +1032,13 @@ function initProductSlider(root, products, cfg) {
 function renderOfficeGallery() {
   const mount = document.querySelector("[data-office-gallery]");
   if (!mount) return;
+  const layout = getHomeLayout();
+  const block = layout.find((b) => b.type === "office-gallery");
+  if (block?.active === false) {
+    mount.hidden = true;
+    mount.innerHTML = "";
+    return;
+  }
 
   const g = STORE.officeGallery || {};
   const images = g.images || {};
@@ -1070,52 +1077,124 @@ function renderOfficeGallery() {
   </div>`;
 }
 
-function renderFeatured() {
-  const mount = document.querySelector("[data-product-sliders]");
-  if (!mount) return;
+function getHomeLayout() {
+  const sliders = typeof PRODUCT_SLIDERS !== "undefined" ? PRODUCT_SLIDERS : [];
+  const saved = STORE?.homeLayout;
+  if (typeof HomeLayout !== "undefined") return HomeLayout.normalize(saved, sliders);
+  return [];
+}
 
-  let sliders = typeof PRODUCT_SLIDERS !== "undefined" && PRODUCT_SLIDERS.length ? PRODUCT_SLIDERS : [];
-  if (!sliders.length && STORE.featured) {
-    sliders = [{ id: "legacy", active: true, ...STORE.featured, linkUrl: "/products" }];
+function ensureProductSliderMount(sliderId) {
+  const root = document.querySelector("[data-home-root]");
+  if (!root) return null;
+  let el = root.querySelector(`[data-ps-mount="${sliderId}"]`);
+  if (!el) {
+    el = document.createElement("div");
+    el.dataset.homeBlock = "product-slider";
+    el.dataset.psMount = sliderId;
+    root.appendChild(el);
   }
-  sliders = sliders.filter((s) => s.active !== false);
+  return el;
+}
 
-  const fp = JSON.stringify(
-    sliders.map((s) => [s.id, s.title, s.category, s.brand || "", s.limit, ...(s.productIds || [])].join("|"))
-  );
+function getHomeBlockElement(block) {
+  const root = document.querySelector("[data-home-root]");
+  if (!root || !block) return null;
+  if (block.type === "product-slider") return ensureProductSliderMount(block.sliderId);
+  return root.querySelector(`[data-home-block="${block.type}"]`);
+}
 
-  if (mount._productSlidersFp !== fp) {
+function applyHomeLayout() {
+  const root = document.querySelector("[data-home-root]");
+  if (!root) return;
+  const layout = getHomeLayout();
+  layout.forEach((block) => {
+    if (block.type === "product-slider") ensureProductSliderMount(block.sliderId);
+  });
+  layout.forEach((block) => {
+    const el = getHomeBlockElement(block);
+    if (!el) return;
+    el.hidden = block.active === false;
+    root.appendChild(el);
+  });
+}
+
+function renderProductSliderMount(sliderId) {
+  const mount = document.querySelector(`[data-ps-mount="${sliderId}"]`);
+  if (!mount) return;
+  const cfg = (typeof PRODUCT_SLIDERS !== "undefined" ? PRODUCT_SLIDERS : []).find((s) => s.id === sliderId);
+  if (!cfg || cfg.active === false) {
     mount.querySelectorAll("[data-product-slider]").forEach((node) => {
       node._productSliderCleanup?.();
       node._engagePauseDestroy?.();
     });
-    mount._productSlidersFp = fp;
+    mount.innerHTML = "";
+    mount.hidden = true;
+    return;
+  }
 
-    if (!sliders.length) {
-      mount.innerHTML = "";
-      return;
-    }
+  const products = getSliderProducts(cfg);
+  const fp = JSON.stringify([cfg.id, cfg.title, cfg.category, cfg.brand || "", cfg.limit, ...(cfg.productIds || [])].join("|"));
+  if (mount._productSliderFp === fp && mount.querySelector("[data-product-slider]")) return;
+  mount._productSliderFp = fp;
 
-    mount.innerHTML = sliders.map(productSliderSectionHtml).join("");
-    sliders.forEach((cfg) => {
-      const root = mount.querySelector(`[data-product-slider="${cfg.id}"]`);
-      if (!root) return;
-      const products = getSliderProducts(cfg);
-      const track = root.querySelector("[data-product-track]");
-      if (!products.length) {
-        root.hidden = true;
-        return;
-      }
-      root.hidden = false;
-      if (track) track.innerHTML = products.map(productCard).join("");
-      initProductSlider(root, products, cfg);
-    });
+  mount.querySelectorAll("[data-product-slider]").forEach((node) => {
+    node._productSliderCleanup?.();
+    node._engagePauseDestroy?.();
+  });
+
+  if (!products.length) {
+    mount.innerHTML = "";
+    mount.hidden = true;
+    return;
+  }
+
+  mount.hidden = false;
+  mount.innerHTML = productSliderSectionHtml(cfg);
+  const root = mount.querySelector(`[data-product-slider="${cfg.id}"]`);
+  if (!root) return;
+  const track = root.querySelector("[data-product-track]");
+  if (track) track.innerHTML = products.map(productCard).join("");
+  initProductSlider(root, products, cfg);
+}
+
+function renderFeatured() {
+  const layout = getHomeLayout();
+  const hasLayoutSliders = layout.some((b) => b.type === "product-slider");
+  const sliderIds = layout.filter((b) => b.type === "product-slider" && b.active !== false).map((b) => b.sliderId);
+  const ids = hasLayoutSliders
+    ? sliderIds
+    : (typeof PRODUCT_SLIDERS !== "undefined" ? PRODUCT_SLIDERS : [])
+        .filter((s) => s.active !== false)
+        .map((s) => s.id);
+  ids.forEach((id) => renderProductSliderMount(id));
+  if (hasLayoutSliders) {
+    layout
+      .filter((b) => b.type === "product-slider" && b.active === false)
+      .forEach((b) => {
+        const mount = document.querySelector(`[data-ps-mount="${b.sliderId}"]`);
+        if (!mount) return;
+        mount.querySelectorAll("[data-product-slider]").forEach((node) => {
+          node._productSliderCleanup?.();
+          node._engagePauseDestroy?.();
+        });
+        mount.innerHTML = "";
+        mount.hidden = true;
+      });
   }
 }
 
 function renderNewProductsSlider() {
   const mount = document.querySelector("[data-new-products]");
   if (!mount) return;
+  const layout = getHomeLayout();
+  const block = layout.find((b) => b.type === "new-products");
+  if (block?.active === false) {
+    mount.innerHTML = "";
+    mount.hidden = true;
+    return;
+  }
+  mount.hidden = false;
   const products = getSliderProducts({ category: "new", limit: 10 });
   const fp = products.map((p) => p.id).join("|");
   if (mount._newProductsFp === fp && mount.querySelector("[data-product-slider]")) return;
@@ -2307,6 +2386,12 @@ function heroSlidesSource() {
 function renderSlider() {
   const root = document.querySelector("[data-slider]");
   if (!root) return;
+  const layoutBlock = getHomeLayout().find((b) => b.type === "hero");
+  if (layoutBlock?.active === false) {
+    root.hidden = true;
+    if (root._sliderCleanup) root._sliderCleanup();
+    return;
+  }
   const slides = heroSlidesSource();
   if (!slides.length) {
     root.hidden = true;
@@ -2763,6 +2848,7 @@ async function bootStorefront() {
   renderNewProductsSlider();
   renderFeatured();
   renderOfficeGallery();
+  applyHomeLayout();
   renderCatalog();
   renderProductPage();
   setupCheckoutForm();
@@ -2789,6 +2875,7 @@ window.addEventListener("store:updated", () => {
   renderNewProductsSlider();
   renderFeatured();
   renderOfficeGallery();
+  applyHomeLayout();
   renderCatalog();
   renderProductPage();
   renderSlider();

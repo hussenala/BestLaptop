@@ -652,6 +652,11 @@
 .slide-admin-card.is-off { opacity: 0.72; }
 .slide-admin-card.dragging { opacity: 0.55; }
 .slide-admin-card.drag-over { border-color: var(--accent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent); }
+.home-layout-hint { margin-bottom: 16px; }
+.home-layout-list { display: flex; flex-direction: column; gap: 10px; }
+.home-layout-card { cursor: grab; }
+.home-layout-card:active { cursor: grabbing; }
+.home-layout-toggle { margin-inline-start: auto; flex-shrink: 0; white-space: nowrap; }
 .slide-drag {
   cursor: grab;
   color: var(--muted);
