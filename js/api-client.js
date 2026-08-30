@@ -149,9 +149,14 @@ const StoreAPI = (() => {
   }
 
   async function bootstrap() {
-    const data = await fetchStore();
-    startPolling();
-    return data;
+    try {
+      const data = await fetchStore();
+      startPolling();
+      return data;
+    } catch (err) {
+      storeReady = true;
+      throw err;
+    }
   }
 
   function startPolling() {

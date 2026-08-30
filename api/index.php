@@ -420,7 +420,7 @@ function version(PDO $pdo) {
 }
 
 function app_build() {
-  return 91;
+  return 93;
 }
 
 function health(PDO $pdo) {

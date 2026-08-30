@@ -2847,6 +2847,10 @@ function setupHeaderSearch() {
   const input = document.querySelector("[data-header-search]");
   const toggle = document.querySelector("[data-search-toggle]");
   if (!box || !input || !toggle) return;
+  if (box.dataset.searchReady === "1") return;
+  box.dataset.searchReady = "1";
+
+  if (typeof paintSearchToggleIcons === "function") paintSearchToggleIcons();
 
   let panel = box.querySelector(".header-search-panel");
   let closeBtn = box.querySelector("[data-search-close]");
@@ -3032,6 +3036,11 @@ function initHomeEffects() {
 
 async function bootStorefront() {
   if (typeof SitePages !== "undefined") SitePages.init();
+  setupHeaderSearch();
+  setupMobileNav();
+  initTouchPanStrips();
+  if (document.querySelector("[data-catalog]")) renderCatalog();
+  if (document.querySelector("[data-product]")) renderProductPage();
   try {
     await StoreAPI.bootstrap();
   } catch {
@@ -3061,9 +3070,6 @@ async function bootStorefront() {
   renderCheckout();
   renderOrderPage();
   applyStoreBranding();
-  setupHeaderSearch();
-  setupMobileNav();
-  initTouchPanStrips();
 }
 
 window.addEventListener("store:updated", () => {
@@ -3090,6 +3096,7 @@ window.addEventListener("store:updated", () => {
   renderCartPage();
   renderCheckout();
   setupCheckoutForm();
+  setupHeaderSearch();
   setupMobileNav();
   initTouchPanStrips();
 });
