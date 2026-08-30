@@ -718,6 +718,12 @@ function summaryRows(pricing) {
   `;
 }
 
+function productCardSpecs(p) {
+  const parts = [p.gpu, p.ram, p.storage].filter(Boolean);
+  if (parts.length) return parts.join(" · ");
+  return p.specs || "";
+}
+
 function productCard(p, opts = {}) {
   const off = discount(p);
   const oos = !inStock(p);
@@ -734,7 +740,7 @@ function productCard(p, opts = {}) {
       <div class="card-body">
         <p class="pc-meta">${p.brand}</p>
         <h3><a href="${productUrl(p.id)}">${p.name}</a></h3>
-        <p class="muted">${p.specs}</p>
+        <p class="muted">${productCardSpecs(p)}</p>
         ${
           oos
             ? ""

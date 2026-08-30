@@ -650,10 +650,9 @@ function renderDashboard() {
 
 function productEditorSpecsPreview(form) {
   const gpu = form.querySelector('[name="gpu"]')?.value || "";
-  const cpu = form.querySelector('[name="cpu"]')?.value || "";
   const ram = form.querySelector('[name="ram"]')?.value || "";
   const storage = form.querySelector('[name="storage"]')?.value || "";
-  const parts = [gpu, cpu, ram, storage].filter(Boolean);
+  const parts = [gpu, ram, storage].filter(Boolean);
   return parts.join(" · ");
 }
 
@@ -777,7 +776,7 @@ function renderProductEditor(productId = null) {
     ${peField("الذاكرة (RAM)", `<input name="ram" value="${esc(p.ram || "")}" placeholder="32GB" />`)}
     ${peField("التخزين", `<input name="storage" value="${esc(p.storage || "")}" placeholder="1TB SSD" />`)}
     ${peField("الشاشة", `<input name="screen" value="${esc(p.screen || "")}" placeholder="16 بوصة 240Hz OLED" />`, 2)}
-    ${peField("سطر المواصفات في البطاقة", `<input name="specs" value="${esc(p.specs || "")}" placeholder="${esc(autoSpecs || "RTX 4070 · Ryzen 9 · 32GB · 1TB")}" />`, 2)}
+    ${peField("سطر المواصفات في البطاقة", `<input name="specs" value="${esc(p.specs || "")}" placeholder="${esc(autoSpecs || "RTX 4070 · 32GB · 1TB")}" />`, 2)}
   `;
 
   return `
@@ -2340,7 +2339,7 @@ document.addEventListener("submit", (e) => {
         screen: f.get("screen"),
         images,
         image: images[0],
-        specs: f.get("specs") || `${f.get("gpu")} · ${f.get("cpu")} · ${f.get("ram")} · ${f.get("storage")}`,
+        specs: f.get("specs") || `${f.get("gpu")} · ${f.get("ram")} · ${f.get("storage")}`,
         headline: f.get("headline") || "",
         blurb: f.get("blurb") || "",
         tgp: f.get("tgp") || "",
