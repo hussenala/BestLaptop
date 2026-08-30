@@ -68,7 +68,7 @@ const StoreDB = (() => {
   async function refresh() {
     cache = await api("/api/admin/state");
     syncGlobals();
-    StoreAPI.notifyChange();
+    StoreAPI.notifyChange(cache?.version);
     return cache;
   }
 

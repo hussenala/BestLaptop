@@ -29,7 +29,16 @@ const StoreAPI = (() => {
 
   function phpApiUrl(path) {
     const route = String(path).replace(/^\/api/, "") || "/";
-    return `${apiUrl("api/index.php")}?r=${encodeURIComponent(route)}`;
+    const url = new URL(apiUrl("api/index.php"));
+    url.searchParams.set("r", route);
+    url.searchParams.set("_", String(Date.now()));
+    return url.href;
+  }
+
+  function withCacheBust(url) {
+    const next = new URL(url, location.href);
+    next.searchParams.set("_", String(Date.now()));
+    return next.href;
   }
 
   function formatApiError(body, fallback) {
@@ -50,7 +59,7 @@ const StoreAPI = (() => {
     let lastMessage = "تعذر الاتصال بواجهة المتجر.";
     for (const url of urls) {
       try {
-        const res = await fetch(url, options);
+        const res = await fetch(withCacheBust(url), { ...options, cache: "no-store" });
         const text = await res.text();
         if (!looksJson(text)) {
           lastMessage =
@@ -119,26 +128,28 @@ const StoreAPI = (() => {
 
   function startPolling() {
     clearInterval(pollTimer);
-    pollTimer = setInterval(async () => {
-      try {
-        const { res, body } = await fetchApi("/api/health", { cache: "no-store" });
-        if (!res.ok) return;
-        const next = body.version;
-        if (next && next !== version) {
-          await fetchStore();
-          if (typeof renderFeatured === "function") renderFeatured();
-          if (typeof renderOfficeGallery === "function") renderOfficeGallery();
-          if (typeof renderHeaderBrands === "function") renderHeaderBrands();
-          if (typeof renderShopFilters === "function") renderShopFilters();
-          if (typeof renderCatalog === "function") renderCatalog();
-          if (typeof renderProductPage === "function") renderProductPage();
-          if (typeof renderSlider === "function") renderSlider();
-          if (typeof renderCategoryFilter === "function") renderCategoryFilter();
-        }
-      } catch {
-        /* offline */
+    pollTimer = setInterval(checkForUpdates, 5000);
+  }
+
+  async function checkForUpdates() {
+    try {
+      const { res, body } = await fetchApi("/api/health", { cache: "no-store" });
+      if (!res.ok) return;
+      const next = body.version;
+      if (next && next !== version) {
+        await fetchStore();
+        if (typeof renderFeatured === "function") renderFeatured();
+        if (typeof renderOfficeGallery === "function") renderOfficeGallery();
+        if (typeof renderHeaderBrands === "function") renderHeaderBrands();
+        if (typeof renderShopFilters === "function") renderShopFilters();
+        if (typeof renderCatalog === "function") renderCatalog();
+        if (typeof renderProductPage === "function") renderProductPage();
+        if (typeof renderSlider === "function") renderSlider();
+        if (typeof renderCategoryFilter === "function") renderCategoryFilter();
       }
-    }, 8000);
+    } catch {
+      /* offline */
+    }
   }
 
   async function createOrder(order) {
@@ -159,12 +170,18 @@ const StoreAPI = (() => {
     return body;
   }
 
-  function notifyChange() {
-    localStorage.setItem(VERSION_KEY, String(Date.now()));
+  function notifyChange(nextVersion) {
+    const v = nextVersion ? String(nextVersion) : String(Date.now());
+    localStorage.setItem(VERSION_KEY, v);
+    if (nextVersion) version = v;
   }
 
   window.addEventListener("storage", (e) => {
     if (e.key === VERSION_KEY && e.newValue !== version) fetchStore();
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && storeReady) checkForUpdates();
   });
 
   return { bootstrap, fetchStore, createOrder, getOrder, notifyChange, applyStore, apiUrl, fetchApi, isStoreReady: () => storeReady };

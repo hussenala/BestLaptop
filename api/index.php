@@ -6,8 +6,19 @@ header("Access-Control-Allow-Headers: Content-Type, Authorization");
 header("Access-Control-Allow-Methods: GET,POST,PUT,PATCH,DELETE,OPTIONS");
 if (!empty($_SERVER["HTTP_ORIGIN"])) {
   $origin = $_SERVER["HTTP_ORIGIN"];
-  $allowed = ["https://way-company.com", "https://www.way-company.com", "http://127.0.0.1:8765", "http://localhost:8765"];
-  if (in_array($origin, $allowed, true) || preg_match("#^https://([a-z0-9-]+\\.)?way-company\\.com$#i", $origin)) {
+  $allowed = [
+    "https://way-company.com",
+    "https://www.way-company.com",
+    "https://bestlaptop-ip.com",
+    "https://www.bestlaptop-ip.com",
+    "http://127.0.0.1:8765",
+    "http://localhost:8765",
+  ];
+  if (
+    in_array($origin, $allowed, true)
+    || preg_match("#^https://([a-z0-9-]+\\.)?way-company\\.com$#i", $origin)
+    || preg_match("#^https://([a-z0-9-]+\\.)?bestlaptop-ip\\.com$#i", $origin)
+  ) {
     header("Access-Control-Allow-Origin: " . $origin);
     header("Vary: Origin");
   }
@@ -53,9 +64,18 @@ function route_path() {
 function db_file() {
   $dir = dirname(__DIR__) . DIRECTORY_SEPARATOR . "server" . DIRECTORY_SEPARATOR . "data";
   if (!is_dir($dir) && !@mkdir($dir, 0775, true) && !is_dir($dir)) {
-    $dir = sys_get_temp_dir();
+    json_out(503, [
+      "error" => "Database directory is not writable",
+      "detail" => "Set permissions 775 on server/data/ in Hostinger File Manager.",
+    ]);
   }
   return $dir . DIRECTORY_SEPARATOR . "store.db";
+}
+
+function db_writable() {
+  $file = db_file();
+  $dir = dirname($file);
+  return (file_exists($file) && is_writable($file)) || is_writable($dir);
 }
 
 function pdo() {
@@ -281,7 +301,19 @@ function version(PDO $pdo) {
 
 function health(PDO $pdo) {
   $users = (int) $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
-  return ["ok" => true, "db" => true, "engine" => "sqlite-php", "users" => $users, "hasAdmin" => $users > 0, "version" => version($pdo)];
+  $products = (int) $pdo->query("SELECT COUNT(*) FROM products")->fetchColumn();
+  $uploads = dirname(__DIR__) . DIRECTORY_SEPARATOR . "uploads";
+  return [
+    "ok" => true,
+    "db" => true,
+    "engine" => "sqlite-php",
+    "users" => $users,
+    "hasAdmin" => $users > 0,
+    "version" => version($pdo),
+    "products" => $products,
+    "dbWritable" => db_writable(),
+    "uploadsWritable" => is_dir($uploads) ? is_writable($uploads) : @mkdir($uploads, 0775, true),
+  ];
 }
 
 function settings(PDO $pdo) {
