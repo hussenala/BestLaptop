@@ -148,6 +148,25 @@ function init_schema(PDO $pdo) {
     /* ignore migration errors */
   }
   try {
+    $cols = $pdo->query("PRAGMA table_info(products)")->fetchAll();
+    $hasCondition = false;
+    $hasProductCondition = false;
+    foreach ($cols as $c) {
+      $name = $c["name"] ?? "";
+      if ($name === "condition") $hasCondition = true;
+      if ($name === "product_condition") $hasProductCondition = true;
+    }
+    if (!$hasProductCondition) {
+      $pdo->exec("ALTER TABLE products ADD COLUMN product_condition TEXT NOT NULL DEFAULT 'new'");
+      if ($hasCondition) {
+        $pdo->exec("UPDATE products SET product_condition = COALESCE(NULLIF(condition, ''), 'new')");
+      }
+      $pdo->exec("UPDATE products SET product_condition = 'new' WHERE product_condition IS NULL OR product_condition = ''");
+    }
+  } catch (Throwable $e) {
+    /* ignore migration errors */
+  }
+  try {
     $cols = $pdo->query("PRAGMA table_info(hero_slides)")->fetchAll();
     $hasVideo = false;
     foreach ($cols as $c) {
@@ -423,7 +442,38 @@ function version(PDO $pdo) {
 }
 
 function app_build() {
-  return 95;
+  return 102;
+}
+
+function normalize_product_condition($value) {
+  $raw = strtolower(trim((string) ($value ?? "new")));
+  if ($raw === "open box" || $raw === "open_box" || $raw === "openbox") $raw = "open-box";
+  if ($raw === "refurb") $raw = "refurbished";
+  $allowed = ["new", "refurbished", "open-box"];
+  return in_array($raw, $allowed, true) ? $raw : "new";
+}
+
+function product_condition_from_row($row) {
+  if (!$row) return "new";
+  $raw = $row["product_condition"] ?? $row["condition"] ?? "new";
+  return normalize_product_condition($raw);
+}
+
+function product_condition_from_payload($payload, $fallback = "new") {
+  if (!is_array($payload)) return normalize_product_condition($fallback);
+  $raw = $payload["condition"] ?? $payload["productCondition"] ?? $fallback;
+  return normalize_product_condition($raw);
+}
+
+function products_have_condition_column(PDO $pdo) {
+  try {
+    foreach ($pdo->query("PRAGMA table_info(products)")->fetchAll() as $c) {
+      if (($c["name"] ?? "") === "product_condition") return true;
+    }
+  } catch (Throwable $e) {
+    /* ignore */
+  }
+  return false;
 }
 
 function health(PDO $pdo) {
@@ -431,12 +481,16 @@ function health(PDO $pdo) {
   $products = (int) $pdo->query("SELECT COUNT(*) FROM products")->fetchColumn();
   $uploads = dirname(__DIR__) . DIRECTORY_SEPARATOR . "uploads";
   [$galleryDir, $galleryError] = ensure_upload_dir("gallery");
+  $conditionReady = products_have_condition_column($pdo);
+  $features = ["cartEnabled", "showAddToCart", "headerSearchV2", "homeEffects", "adminModalFix"];
+  if ($conditionReady) $features[] = "productCondition";
   return [
     "ok" => true,
     "db" => true,
     "engine" => "sqlite-php",
     "build" => app_build(),
-    "features" => ["cartEnabled", "showAddToCart", "headerSearchV2", "homeEffects", "adminModalFix"],
+    "features" => $features,
+    "productConditionReady" => $conditionReady,
     "users" => $users,
     "hasAdmin" => $users > 0,
     "version" => version($pdo),
@@ -487,6 +541,7 @@ function product_from_row($row) {
     "headline" => $row["headline"],
     "blurb" => $row["blurb"],
     "slide" => !empty($row["slide"]),
+    "condition" => product_condition_from_row($row),
     "images" => $images,
     "image" => $images[0] ?? ($row["image"] ?? ""),
     "createdAt" => $row["created_at"] ?? "",
@@ -514,19 +569,21 @@ function upsert_product(PDO $pdo, $p) {
   elseif (!empty($p["image"])) $images = [$p["image"]];
   $existing = get_product($pdo, $p["id"]);
   $created = $existing["createdAt"] ?? ($p["createdAt"] ?? gmdate("c"));
-  $st = $pdo->prepare("INSERT INTO products (id,name,brand,category,price,old_price,cpu,ram,storage,stock,tag,specs,screen,gpu,tgp,cooling,headline,blurb,slide,image,images_json,created_at)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+  $condition = product_condition_from_payload($p, $existing["condition"] ?? "new");
+  $st = $pdo->prepare("INSERT INTO products (id,name,brand,category,price,old_price,cpu,ram,storage,stock,tag,specs,screen,gpu,tgp,cooling,headline,blurb,slide,image,images_json,product_condition,created_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ON CONFLICT(id) DO UPDATE SET name=excluded.name, brand=excluded.brand, category=excluded.category, price=excluded.price,
       old_price=excluded.old_price, cpu=excluded.cpu, ram=excluded.ram, storage=excluded.storage, stock=excluded.stock,
       tag=excluded.tag, specs=excluded.specs, screen=excluded.screen, gpu=excluded.gpu, tgp=excluded.tgp, cooling=excluded.cooling,
-      headline=excluded.headline, blurb=excluded.blurb, slide=excluded.slide, image=excluded.image, images_json=excluded.images_json");
+      headline=excluded.headline, blurb=excluded.blurb, slide=excluded.slide, image=excluded.image, images_json=excluded.images_json,
+      product_condition=excluded.product_condition");
   $st->execute([
     $p["id"], $p["name"] ?? "", $p["brand"] ?? "", $p["category"] ?? "",
     (int) ($p["price"] ?? 0), isset($p["oldPrice"]) ? (int) $p["oldPrice"] : null,
     $p["cpu"] ?? "", $p["ram"] ?? "", $p["storage"] ?? "", (int) ($p["stock"] ?? 0),
     $p["tag"] ?? "", $p["specs"] ?? "", $p["screen"] ?? "", $p["gpu"] ?? "", $p["tgp"] ?? "",
     $p["cooling"] ?? "", $p["headline"] ?? "", $p["blurb"] ?? "", !empty($p["slide"]) ? 1 : 0,
-    $images[0] ?? "", json_encode($images, JSON_UNESCAPED_UNICODE), $created,
+    $images[0] ?? "", json_encode($images, JSON_UNESCAPED_UNICODE), $condition, $created,
   ]);
   bump($pdo);
   return get_product($pdo, $p["id"]);

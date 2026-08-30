@@ -119,10 +119,18 @@ function rowToProduct(row) {
     headline: row.headline,
     blurb: row.blurb,
     slide: !!row.slide,
+    condition: normalizeProductCondition(row.product_condition ?? row.condition),
     images,
     image: images[0] || row.image || "",
     createdAt: row.created_at || "",
   };
+}
+
+function normalizeProductCondition(value) {
+  const raw = String(value || "new").trim().toLowerCase();
+  if (raw === "open box" || raw === "open_box") return "open-box";
+  const allowed = ["new", "refurbished", "open-box"];
+  return allowed.includes(raw) ? raw : "new";
 }
 
 function productToRow(p) {
@@ -147,6 +155,7 @@ function productToRow(p) {
     headline: p.headline || "",
     blurb: p.blurb || "",
     slide: p.slide ? 1 : 0,
+    product_condition: normalizeProductCondition(p.condition ?? p.productCondition ?? "new"),
     images_json: JSON.stringify(images),
     image: images[0] || "",
   };
@@ -219,12 +228,20 @@ function applyEnvAdminCredentials() {
 function getHealth() {
   try {
     const users = db.prepare("SELECT COUNT(*) AS n FROM users").get()?.n || 0;
+    const version = getVersion();
+    const conditionReady = columnExists("products", "product_condition");
+    const features = conditionReady ? ["productCondition"] : [];
     return {
       ok: true,
       db: true,
       engine: "sqlite",
+      build: 102,
       users,
       hasAdmin: users > 0,
+      version,
+      storeVersion: version,
+      productConditionReady: conditionReady,
+      features,
     };
   } catch {
     return { ok: false, db: false, engine: "sqlite", users: 0, hasAdmin: false };
@@ -416,6 +433,15 @@ function migrateSchema() {
       db.prepare("UPDATE products SET created_at = ? WHERE id = ?").run(d.toISOString(), r.id);
     });
   }
+  if (!columnExists("products", "product_condition")) {
+    db.exec("ALTER TABLE products ADD COLUMN product_condition TEXT NOT NULL DEFAULT 'new'");
+  }
+  if (columnExists("products", "condition")) {
+    db.prepare(
+      "UPDATE products SET product_condition = COALESCE(NULLIF(condition, ''), 'new') WHERE product_condition IS NULL OR product_condition = '' OR product_condition = 'new'"
+    ).run();
+  }
+  db.prepare("UPDATE products SET product_condition = 'new' WHERE product_condition IS NULL OR product_condition = ''").run();
   if (!columnExists("hero_slides", "video_url")) {
     db.exec("ALTER TABLE hero_slides ADD COLUMN video_url TEXT");
   }
@@ -724,18 +750,22 @@ function getProduct(id) {
 
 function upsertProduct(p) {
   const existing = getProduct(p.id);
-  const row = productToRow(p);
+  const row = productToRow({
+    ...existing,
+    ...p,
+    condition: normalizeProductCondition(p.condition ?? p.productCondition ?? existing?.condition ?? "new"),
+  });
   row.created_at = existing?.createdAt || p.createdAt || new Date().toISOString();
   db.prepare(`
-    INSERT INTO products (id,name,brand,category,price,old_price,cpu,ram,storage,stock,tag,specs,screen,gpu,tgp,cooling,headline,blurb,slide,image,images_json,created_at)
-    VALUES (@id,@name,@brand,@category,@price,@old_price,@cpu,@ram,@storage,@stock,@tag,@specs,@screen,@gpu,@tgp,@cooling,@headline,@blurb,@slide,@image,@images_json,@created_at)
+    INSERT INTO products (id,name,brand,category,price,old_price,cpu,ram,storage,stock,tag,specs,screen,gpu,tgp,cooling,headline,blurb,slide,image,images_json,product_condition,created_at)
+    VALUES (@id,@name,@brand,@category,@price,@old_price,@cpu,@ram,@storage,@stock,@tag,@specs,@screen,@gpu,@tgp,@cooling,@headline,@blurb,@slide,@image,@images_json,@product_condition,@created_at)
     ON CONFLICT(id) DO UPDATE SET
       name=excluded.name, brand=excluded.brand, category=excluded.category, price=excluded.price,
       old_price=excluded.old_price, cpu=excluded.cpu, ram=excluded.ram, storage=excluded.storage,
       stock=excluded.stock, tag=excluded.tag, specs=excluded.specs,
       screen=excluded.screen, gpu=excluded.gpu, tgp=excluded.tgp, cooling=excluded.cooling,
       headline=excluded.headline, blurb=excluded.blurb, slide=excluded.slide, image=excluded.image,
-      images_json=excluded.images_json
+      images_json=excluded.images_json, product_condition=excluded.product_condition
   `).run(row);
   bumpVersion();
   return getProduct(p.id);

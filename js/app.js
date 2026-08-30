@@ -738,7 +738,10 @@ function productCard(p, opts = {}) {
         ${oos ? `<span class="oos-ribbon">غير متوفر</span>` : ""}
       </a>
       <div class="card-body">
-        <p class="pc-meta">${p.brand}</p>
+        <div class="pc-meta-row">
+          <p class="pc-meta">${p.brand}</p>
+          ${productConditionBadge(p.condition)}
+        </div>
         <h3><a href="${productUrl(p.id)}">${p.name}</a></h3>
         <p class="muted pc-specs">${productCardSpecs(p)}</p>
         ${
@@ -762,6 +765,34 @@ function productCard(p, opts = {}) {
       </div>
     </article>
   `;
+}
+
+function productListFingerprint(products = []) {
+  return products
+    .map((p) =>
+      [
+        p.id,
+        normalizeProductCondition(p.condition),
+        p.price,
+        p.stock,
+        p.image,
+        p.name,
+        p.tag,
+      ].join(":")
+    )
+    .join("|");
+}
+
+function clearProductSliderCaches() {
+  document.querySelectorAll("[data-ps-mount]").forEach((mount) => {
+    delete mount._productSliderFp;
+    delete mount._productsFp;
+  });
+  const newMount = document.querySelector("[data-new-products]");
+  if (newMount) {
+    delete newMount._newProductsFp;
+    delete newMount._productsFp;
+  }
 }
 
 function getSliderProducts(cfg = {}) {
@@ -1163,9 +1194,12 @@ function renderProductSliderMount(sliderId) {
   }
 
   const products = getSliderProducts(cfg);
-  const fp = JSON.stringify([cfg.id, cfg.title, cfg.category, cfg.brand || "", cfg.limit, ...(cfg.productIds || [])].join("|"));
+  const configFp = [cfg.id, cfg.title, cfg.category, cfg.brand || "", cfg.limit, ...(cfg.productIds || [])].join("|");
+  const productsFp = productListFingerprint(products);
+  const fp = `${configFp}::${productsFp}`;
   if (mount._productSliderFp === fp && mount.querySelector("[data-product-slider]")) return;
   mount._productSliderFp = fp;
+  mount._productsFp = productsFp;
 
   mount.querySelectorAll("[data-product-slider]").forEach((node) => {
     node._productSliderCleanup?.();
@@ -1225,9 +1259,11 @@ function renderNewProductsSlider() {
   }
   mount.hidden = false;
   const products = getSliderProducts({ category: "new", limit: 10 });
-  const fp = products.map((p) => p.id).join("|");
+  const productsFp = productListFingerprint(products);
+  const fp = `new-arrivals::${productsFp}`;
   if (mount._newProductsFp === fp && mount.querySelector("[data-product-slider]")) return;
   mount._newProductsFp = fp;
+  mount._productsFp = productsFp;
 
   if (!products.length) {
     const oldEmpty = mount.querySelector("[data-product-slider]");
@@ -1584,7 +1620,7 @@ function renderProductPage() {
       ${addonHtml}
     </div>
     <div class="pdp-info">
-      <p class="eyebrow">${p.brand} · ${catLabel(p.category)}</p>
+      <p class="eyebrow">${p.brand} · ${catLabel(p.category)} · ${productConditionLabel(p.condition)}</p>
       <h1>${p.name}</h1>
       <p class="pc-meta">${oos ? "غير متوفر" : `متوفر ${p.stock} أجهزة`}</p>
       <p class="lead muted">${p.headline || p.blurb || p.specs}</p>
@@ -3074,7 +3110,8 @@ async function bootStorefront() {
   applyStoreBranding();
 }
 
-window.addEventListener("store:updated", () => {
+window.refreshStorefrontViews = function refreshStorefrontViews() {
+  clearProductSliderCaches();
   if (isMaintenanceMode()) {
     renderMaintenancePage();
     return;
@@ -3099,8 +3136,11 @@ window.addEventListener("store:updated", () => {
   renderCheckout();
   setupCheckoutForm();
   setupHeaderSearch();
-  setupMobileNav();
   initTouchPanStrips();
+};
+
+window.addEventListener("store:updated", () => {
+  window.refreshStorefrontViews();
 });
 
 bootStorefront();

@@ -185,14 +185,7 @@ const StoreAPI = (() => {
       const next = body.storeVersion || body.version;
       if (next && String(next) !== String(version)) {
         await fetchStore();
-        if (typeof renderFeatured === "function") renderFeatured();
-        if (typeof renderOfficeGallery === "function") renderOfficeGallery();
-        if (typeof renderHeaderBrands === "function") renderHeaderBrands();
-        if (typeof renderShopFilters === "function") renderShopFilters();
-        if (typeof renderCatalog === "function") renderCatalog();
-        if (typeof renderProductPage === "function") renderProductPage();
-        if (typeof renderSlider === "function") renderSlider();
-        if (typeof renderCategoryFilter === "function") renderCategoryFilter();
+        if (typeof window.refreshStorefrontViews === "function") window.refreshStorefrontViews();
       }
     } catch {
       /* offline */
@@ -224,7 +217,11 @@ const StoreAPI = (() => {
   try {
     const syncChannel = new BroadcastChannel("bestlaptop-store-sync");
     syncChannel.onmessage = () => {
-      fetchStore().catch(() => {});
+      fetchStore()
+        .then(() => {
+          if (typeof window.refreshStorefrontViews === "function") window.refreshStorefrontViews();
+        })
+        .catch(() => {});
     };
   } catch {
     /* ignore */
@@ -232,7 +229,11 @@ const StoreAPI = (() => {
 
   window.addEventListener("storage", (e) => {
     if (e.key === VERSION_KEY && e.newValue && String(e.newValue) !== String(version)) {
-      fetchStore().catch(() => {});
+      fetchStore()
+        .then(() => {
+          if (typeof window.refreshStorefrontViews === "function") window.refreshStorefrontViews();
+        })
+        .catch(() => {});
     }
   });
 

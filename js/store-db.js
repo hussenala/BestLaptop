@@ -183,13 +183,41 @@ const StoreDB = (() => {
     return `${prefix}-${Date.now().toString(36)}`;
   }
 
+  async function ensureProductConditionSupport() {
+    if (typeof StoreAPI?.fetchApi !== "function") return;
+    const { res, body } = await StoreAPI.fetchApi("/api/health", { cache: "no-store" });
+    if (!res.ok) throw new Error("تعذر التحقق من السيرفر");
+    const ready = body.productConditionReady || (body.features || []).includes("productCondition");
+    const build = Number(body.build || 0);
+    if (!ready || build < 101) {
+      throw new Error(
+        "حالة المنتج غير مدعومة على السيرفر (build " +
+          (build || "?") +
+          "). ارفع api/index.php و js/app.js و js/product-condition.js ثم امسح كاش LiteSpeed."
+      );
+    }
+  }
+
   async function saveProduct(item) {
-    if (cache?.products?.some((p) => p.id === item.id)) {
-      await api(`/api/admin/products/${encodeURIComponent(item.id)}`, { method: "PUT", body: JSON.stringify(item) });
-    } else {
-      await api("/api/admin/products", { method: "POST", body: JSON.stringify(item) });
+    await ensureProductConditionSupport();
+    const payload = {
+      ...item,
+      condition: normalizeProductCondition(item.condition ?? item.productCondition ?? "new"),
+    };
+    const saved = cache?.products?.some((p) => p.id === item.id)
+      ? await api(`/api/admin/products/${encodeURIComponent(item.id)}`, { method: "PUT", body: JSON.stringify(payload) })
+      : await api("/api/admin/products", { method: "POST", body: JSON.stringify(payload) });
+    if (!saved || !("condition" in saved)) {
+      throw new Error("السيرفر لم يحفظ حالة المنتج — ارفع api/index.php المحدّث على الاستضافة");
+    }
+    if (normalizeProductCondition(saved.condition) !== payload.condition) {
+      throw new Error("حالة المنتج لم تُحفظ بشكل صحيح — ارفع api/index.php المحدّث");
     }
     await refresh();
+    if (typeof StoreAPI.publishStorefront === "function") {
+      StoreAPI.publishStorefront(cache?.version);
+    }
+    return saved;
   }
 
   async function deleteProduct(id) {

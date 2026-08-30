@@ -222,19 +222,43 @@ function publishToast(msg) {
 
 function updateServerBuildBadge(healthBody) {
   const el = document.querySelector("[data-server-build]");
-  if (!el || !healthBody) return;
+  const alertEl = document.querySelector("[data-deploy-alert]");
+  if (!healthBody) return;
   const localBuild = Number(document.querySelector('meta[name="bl-build"]')?.content || 0);
   const serverBuild = Number(healthBody.build || 0);
   const storeVersion = healthBody.storeVersion || healthBody.version || "—";
+  const conditionReady = healthBody.productConditionReady || (healthBody.features || []).includes("productCondition");
   const stale = serverBuild && localBuild && serverBuild < localBuild;
-  el.hidden = false;
-  el.classList.toggle("is-stale", stale);
-  el.textContent = stale
-    ? `السيرفر قديم (b${serverBuild}) — ارفع الملفات`
-    : `سيرفر b${serverBuild || "?"} | بيانات v${storeVersion}`;
-  el.title = stale
-    ? "ملفات السيرفر أقدم من نسخة لوحة التحكم — ارفع HTML و CSS و JS و api/index.php"
-    : "رقم build من /api/health ورقم بيانات المتجر الحالية";
+  const conditionBroken = !conditionReady || serverBuild < 101;
+  if (el) {
+    el.hidden = false;
+    el.classList.toggle("is-stale", stale || conditionBroken);
+    el.textContent =
+      conditionBroken
+        ? `السيرفر قديم (b${serverBuild || "?"}) — ارفع api/index.php`
+        : stale
+          ? `السيرفر قديم (b${serverBuild}) — ارفع الملفات`
+          : `سيرفر b${serverBuild || "?"} | بيانات v${storeVersion}`;
+    el.title = conditionBroken
+      ? "حالة المنتج لن تعمل حتى ترفع api/index.php المحدّث"
+      : stale
+        ? "ملفات السيرفر أقدم من نسخة لوحة التحكم"
+        : "رقم build من /api/health ورقم بيانات المتجر الحالية";
+  }
+  if (alertEl) {
+    if (conditionBroken) {
+      alertEl.hidden = false;
+      alertEl.innerHTML =
+        '<strong>تنبيه:</strong> السيرفر لا يدعم حالة المنتج بعد. ارفع <code>api/index.php</code> و <code>js/app.js</code> و <code>js/product-condition.js</code> (build 102+) ثم امسح كاش LiteSpeed واضغط Ctrl+Shift+R.';
+    } else if (stale) {
+      alertEl.hidden = false;
+      alertEl.innerHTML =
+        '<strong>تنبيه:</strong> ملفات السيرفر أقدم من لوحة التحكم. ارفع آخر نسخة من الملفات ثم امسح الكاش.';
+    } else {
+      alertEl.hidden = true;
+      alertEl.textContent = "";
+    }
+  }
 }
 
 function productDeleteConfirmModal(p) {
@@ -576,6 +600,49 @@ function readFileAsDataUrl(file) {
   });
 }
 
+function imageUrlKey(src) {
+  if (!src) return "";
+  const raw = String(src).trim();
+  try {
+    if (raw.startsWith("http://") || raw.startsWith("https://")) return new URL(raw).pathname;
+  } catch {
+    /* ignore */
+  }
+  return raw.split("?")[0];
+}
+
+function findImageIndex(list, src) {
+  const key = imageUrlKey(src);
+  const exact = list.indexOf(src);
+  if (exact >= 0) return exact;
+  return list.findIndex((item) => imageUrlKey(item) === key);
+}
+
+function normalizeProductImages(product) {
+  const raw =
+    Array.isArray(product?.images) && product.images.length
+      ? product.images.filter(Boolean)
+      : product?.image
+        ? [product.image]
+        : [];
+  const seen = new Set();
+  const images = raw.filter((src) => {
+    const key = imageUrlKey(src);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  const cover = String(product?.image || "").trim();
+  if (cover && images.length > 1) {
+    const idx = findImageIndex(images, cover);
+    if (idx > 0) {
+      const [item] = images.splice(idx, 1);
+      images.unshift(item);
+    }
+  }
+  return images;
+}
+
 function getProductImages() {
   const el = document.querySelector("[data-images-json]");
   if (!el) return [];
@@ -592,14 +659,15 @@ function setProductImages(list) {
   paintImagePreviews(list);
 }
 
-function setPrimaryProductImage(index) {
+function setPrimaryProductImage(src) {
   const list = getProductImages();
-  const i = Number(index);
+  const i = findImageIndex(list, src);
   if (i < 1 || i >= list.length) return;
   const [item] = list.splice(i, 1);
   list.unshift(item);
   setProductImages(list);
   setupProductEditor();
+  toast("تم تعيين الصورة الرئيسية");
 }
 
 function paintImagePreviews(list) {
@@ -610,9 +678,10 @@ function paintImagePreviews(list) {
     ? list
         .map(
           (src, i) => `
-    <figure class="img-preview${isEditor && i === 0 ? " is-primary" : ""}">
+    <figure class="img-preview${isEditor && i === 0 ? " is-primary" : ""}"${isEditor && i !== 0 ? ` data-set-primary-src="${esc(src)}"` : ""}>
+      <span class="img-order-badge" aria-hidden="true">${i + 1}</span>
       ${isEditor && i === 0 ? '<span class="img-primary-badge">الصورة الرئيسية</span>' : ""}
-      ${isEditor && i !== 0 ? `<button type="button" class="img-set-primary" data-set-primary-img="${i}">★ رئيسية</button>` : ""}
+      ${isEditor && i !== 0 ? '<span class="img-set-primary-hint">اضغط لتعيينها رئيسية</span>' : ""}
       <img src="${esc(resolveAdminAsset(src))}" alt="" />
       <button type="button" class="img-rm" data-rm-img="${i}" aria-label="حذف">×</button>
     </figure>`
@@ -697,6 +766,7 @@ function setupProductEditor() {
     const name = form.querySelector('[name="name"]')?.value || "اسم المنتج";
     const tag = form.querySelector('[name="tag"]')?.value || "جديد";
     const brand = form.querySelector('[name="brand"]')?.value || "—";
+    const condition = form.querySelector('[name="productCondition"]')?.value || "new";
     const price = parseMoneyInput(form.querySelector('[name="price"]')?.value);
     const oldPrice = parseMoneyInput(form.querySelector('[name="oldPrice"]')?.value);
     const stock = Number(form.querySelector('[name="stock"]')?.value) || 0;
@@ -714,7 +784,10 @@ function setupProductEditor() {
           ${stock <= 0 ? `<span class="oos-ribbon">غير متوفر</span>` : ""}
         </div>
         <div class="card-body">
-          <p class="pc-meta">${esc(brand)}</p>
+          <div class="pc-meta-row">
+            <p class="pc-meta">${esc(brand)}</p>
+            ${productConditionBadge(condition)}
+          </div>
           <h3>${esc(name)}</h3>
           <p class="muted pc-specs">${esc(specs)}</p>
           ${
@@ -784,12 +857,16 @@ function renderProductEditor(productId = null) {
   const brands = db()
     .brands.map((b) => `<option ${p.brand === b.name ? "selected" : ""}>${esc(b.name)}</option>`)
     .join("");
-  const images = Array.isArray(p.images) && p.images.length ? p.images : p.image ? [p.image] : [];
+  const images = normalizeProductImages(p);
   const autoSpecs = [p.gpu, p.cpu, p.ram, p.storage].filter(Boolean).join(" · ");
 
   const basics = `
     ${peField("اسم المنتج", `<input name="name" required value="${esc(p.name || "")}" placeholder="مثال: Apex 16 Pro" />`, 2)}
     ${peField("العلامة التجارية", `<select name="brand">${brands}</select>`)}
+    ${peField(
+      "حالة المنتج",
+      `<select name="productCondition" data-product-condition>${productConditionOptions(p.condition || "new")}</select>`
+    )}
     ${peField("التصنيف", `<select name="category">${cats}</select>`)}
     ${peField("وسم البطاقة", `<input name="tag" value="${esc(p.tag || "")}" placeholder="الأكثر مبيعاً · جديد" />`)}
     ${peField("العنوان التسويقي", `<input name="headline" value="${esc(p.headline || "")}" placeholder="سطر جذاب في صفحة المنتج" />`, 2)}
@@ -845,7 +922,7 @@ function renderProductEditor(productId = null) {
 
           <aside class="pe-aside">
             <section class="pe-aside-block">
-              ${peAsideBlock("4", "صور المنتج", "PNG أو JPG — انقر «رئيسية» على أي صورة لتعيينها غلاف المنتج.", `
+              ${peAsideBlock("4", "صور المنتج", "PNG أو JPG — الصورة 1 هي الغلاف. اضغط أي صورة أخرى لتعيينها رئيسية.", `
                 <label class="pe-upload">
                   <input type="file" accept="image/*" multiple data-product-files hidden />
                   <span class="pe-upload-icon" aria-hidden="true">↑</span>
@@ -913,7 +990,7 @@ function renderProducts() {
               (p) => `
             <tr>
               <td><img src="${esc(p.image)}" alt="" /></td>
-              <td><b>${esc(p.name)}</b><div class="muted">${esc(p.cpu)} · ${esc(p.gpu)}</div></td>
+              <td><b>${esc(p.name)}</b><div class="muted">${esc(p.cpu)} · ${esc(p.gpu)}</div><div class="product-row-meta">${productConditionBadge(p.condition)}</div></td>
               <td>${esc(p.category)}</td>
               <td>${money(p.price)}</td>
               <td><span class="pill ${p.stock ? "" : "danger"}">${p.stock}</span></td>
@@ -2226,9 +2303,10 @@ document.addEventListener("click", (e) => {
     setupProductEditor();
     return;
   }
-  const setPrimary = e.target.closest("[data-set-primary-img]");
-  if (setPrimary) {
-    setPrimaryProductImage(setPrimary.dataset.setPrimaryImg);
+  const setPrimary = e.target.closest("[data-set-primary-src]");
+  if (setPrimary && !e.target.closest("[data-rm-img]")) {
+    setPrimaryProductImage(setPrimary.dataset.setPrimarySrc);
+    return;
   }
 });
 
@@ -2359,11 +2437,13 @@ document.addEventListener("submit", (e) => {
         toast("أضف صورة واحدة على الأقل");
         return;
       }
+      images = normalizeProductImages({ images, image: images[0] });
       const isNew = !productFormEl.dataset.id;
       const item = {
         id,
         name: f.get("name"),
         brand: f.get("brand"),
+        condition: normalizeProductCondition(f.get("productCondition") || f.get("condition")),
         category: f.get("category"),
         price: parseMoneyInput(f.get("price")),
         oldPrice: f.get("oldPrice") ? parseMoneyInput(f.get("oldPrice")) : null,
@@ -2386,7 +2466,7 @@ document.addEventListener("submit", (e) => {
       try {
         await StoreDB.saveProduct(item);
         closeModal(true);
-        toast("تم حفظ المنتج");
+        publishToast("تم حفظ المنتج وحالته");
         location.hash = "#/products";
         render();
       } catch (err) {
