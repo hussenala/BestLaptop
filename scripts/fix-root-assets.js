@@ -11,7 +11,7 @@ const scriptBlock = `    <script src="/js/data.js?v=34"></script>
     <script src="/js/api-client.js?v=56"></script>
     <script src="/js/theme.js"></script>
     <script src="/js/routes.js?v=2"></script>
-    <script src="/js/app.js?v=66"></script>`;
+    <script src="/js/app.js?v=67"></script>`;
 
 function patchStoreHtml(file) {
   const filePath = path.join(root, file);

@@ -487,7 +487,7 @@ function serveStatic(req, res, pathname) {
   if (adminPageMatch) {
     const page = adminPageMatch[1];
     if (page !== "login" && page !== "index") {
-      res.writeHead(302, { Location: `/admin/index.html#/${page}` });
+      res.writeHead(302, { Location: `/admin/#/${page}` });
       res.end();
       return;
     }

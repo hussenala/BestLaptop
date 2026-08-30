@@ -3,13 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/admin/" />
     <title>دخول لوحة التحكم | BEST LAPTOP</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet" />
-    <link rel="icon" href="../img/logo.jpg" type="image/jpeg" />
-    <link rel="stylesheet" href="../css/styles.css?v=16" />
-    <link rel="stylesheet" href="css/admin.css?v=20" />
+    <link rel="icon" href="/img/logo.jpg" type="image/jpeg" />
+    <link rel="stylesheet" href="/css/styles.css?v=16" />
+    <link rel="stylesheet" href="/admin/css/admin.css?v=20" />
     <script>
       document.documentElement.dataset.theme =
         localStorage.getItem("bestlaptop-theme") === "light" ? "light" : "dark";
@@ -20,7 +21,7 @@
       <button class="icon-btn login-theme-btn" type="button" data-theme-toggle aria-label="تبديل المظهر">فاتح</button>
       <form class="login-card" data-login>
         <div class="login-brand">
-          <img src="../img/logo.jpg" alt="BEST LAPTOP" />
+          <img src="/img/logo.jpg" alt="BEST LAPTOP" />
           <div>
             <strong>BEST LAPTOP</strong>
             <small>بيست لابتوب</small>
@@ -47,14 +48,14 @@
         <a class="login-back" href="/">← العودة للمتجر</a>
       </form>
     </main>
-    <script src="../js/data.js?v=46"></script>
-    <script src="../js/api-client.js?v=55"></script>
-    <script src="../js/store-db.js?v=56"></script>
-    <script src="../js/theme.js"></script>
+        <script src="/js/data.js?v=34"></script>
+    <script src="/js/api-client.js?v=56"></script>
+    <script src="/js/store-db.js?v=56"></script>
+    <script src="/js/theme.js"></script>
     <script>
       if (StoreDB.session()) {
         StoreDB.verifySession().then((user) => {
-          if (user) location.replace("index.html");
+          if (user) location.replace("/admin/");
         });
       }
       document.querySelector("[data-toggle-pass]")?.addEventListener("click", (e) => {
@@ -74,7 +75,7 @@
         btn.disabled = true;
         err.hidden = true;
         StoreDB.login(e.target.username.value, e.target.password.value)
-          .then(() => location.replace("index.html"))
+          .then(() => location.replace("/admin/"))
           .catch((error) => {
             err.hidden = false;
             err.textContent =

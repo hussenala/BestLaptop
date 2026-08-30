@@ -19,7 +19,8 @@ RewriteRule ^order\.html$ /order [R=301,L]
 # Admin panel (Apache/static fallback when Node is not fronting requests)
 RewriteRule ^admin/login/?$ admin/login.html [L]
 RewriteRule ^admin/?$ admin/index.html [L]
-RewriteRule ^admin/([a-z0-9-]+)/?$ admin/index.html#/$1 [L,NE]
+RewriteRule ^admin/index\.html$ admin/index.html [L]
+RewriteRule ^admin/([a-z0-9-]+)/?$ /admin/#/$1 [R=302,L]
 
 # Clean URLs → static HTML pages
 RewriteRule ^products/?$ products.html [L]

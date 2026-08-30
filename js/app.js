@@ -1318,16 +1318,23 @@ function renderCatalog() {
 function renderProductPage() {
   const el = document.querySelector("[data-product]");
   if (!el) return;
-  const id = typeof SitePages !== "undefined" ? SitePages.productIdFromLocation() : new URLSearchParams(location.search).get("id");
-  const p = PRODUCTS.find((item) => item.id === id);
-  if (!p) {
-    el.innerHTML = `<p class="empty">الجهاز غير موجود. <a href="/products">العودة للمتجر</a></p>`;
-    return;
-  }
-  document.title = typeof SitePages !== "undefined" ? SitePages.documentTitle("product", p.name) : `${p.name} | BEST LAPTOP`;
-  const off = discount(p);
-  const oos = !inStock(p);
-  const images = (Array.isArray(p.images) && p.images.length ? p.images : [p.image]).filter(Boolean);
+  try {
+    const id =
+      typeof SitePages !== "undefined"
+        ? SitePages.productIdFromLocation()
+        : new URLSearchParams(location.search).get("id");
+    const p = PRODUCTS.find((item) => item.id === id);
+    if (!p) {
+      el.innerHTML = `<p class="empty">الجهاز غير موجود. <a href="/products">العودة للمتجر</a></p>`;
+      return;
+    }
+    document.title =
+      typeof SitePages !== "undefined" ? SitePages.documentTitle("product", p.name) : `${p.name} | BEST LAPTOP`;
+    const off = discount(p);
+    const oos = !inStock(p);
+    const images = (Array.isArray(p.images) && p.images.length ? p.images : [p.image])
+      .map((src) => resolveAsset(galleryImageSrc(src)))
+      .filter(Boolean);
   const addonHtml = oos
     ? ""
     : `<label class="pdp-addon">
@@ -1418,6 +1425,10 @@ function renderProductPage() {
   }
   setupPdpCarousel(images, p.name);
   setupPdpArabization(p);
+  } catch (err) {
+    console.error("renderProductPage", err);
+    el.innerHTML = `<p class="empty">تعذر عرض المنتج. <a href="/products">العودة للمتجر</a></p>`;
+  }
 }
 
 function setupPdpArabization(p) {

@@ -301,6 +301,17 @@ function pageId() {
 }
 
 function parseRoute() {
+  const pathMatch = location.pathname.match(/\/admin\/([a-z0-9-]+)\/?$/);
+  if (pathMatch) {
+    const slug = pathMatch[1];
+    if (slug === "login") return { page: "dashboard", mode: null, id: null };
+    if (slug === "index") return { page: "dashboard", mode: null, id: null };
+    if (slug === "products" && location.hash.includes("/new")) {
+      return { page: "product-editor", mode: "new", id: null };
+    }
+    if (NAV.some((n) => n.id === slug)) return { page: slug, mode: null, id: null };
+  }
+
   const raw = (location.hash || "#/dashboard").replace("#/", "") || "dashboard";
   const parts = raw.split("/").filter(Boolean);
   if (parts[0] === "products" && parts[1] === "new") return { page: "product-editor", mode: "new", id: null };
