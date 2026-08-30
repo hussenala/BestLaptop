@@ -916,8 +916,6 @@ function renderProductEditor(productId = null) {
     )}
     ${peField("التصنيف", `<select name="category">${cats}</select>`)}
     ${peField("وسم البطاقة", `<input name="tag" value="${esc(p.tag || "")}" placeholder="الأكثر مبيعاً · جديد" />`)}
-    ${peField("العنوان التسويقي", `<input name="headline" value="${esc(p.headline || "")}" placeholder="سطر جذاب في صفحة المنتج" />`, 2)}
-    ${peField("الوصف المختصر", `<textarea name="blurb" rows="3" placeholder="وصف قصير يظهر للزبون">${esc(p.blurb || "")}</textarea>`, 2)}
   `;
   const pricing = `
     ${peField("السعر (IQD)", `<input name="price" type="text" inputmode="numeric" class="money-input" data-money-input required value="${esc(formatMoneyInput(p.price))}" autocomplete="off" placeholder="مثال: 2,500,000" />`)}

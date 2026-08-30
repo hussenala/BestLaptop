@@ -1346,7 +1346,7 @@ function bindTouchPan(el) {
 }
 
 function initTouchPanStrips() {
-  document.querySelectorAll("[data-header-brands], .cat-grid, .pdp-thumbs").forEach(bindTouchPan);
+  document.querySelectorAll("[data-header-brands], .cat-grid").forEach(bindTouchPan);
 }
 
 function getStoreBrands() {
@@ -1610,12 +1610,18 @@ function renderProductPage() {
       <p class="muted pdp-zoom-hint">اضغط على الصورة للتكبير · يمكنك التنقل بين الصور</p>
       ${
         images.length > 1
-          ? `<div class="pdp-thumbs">${images
-              .map(
-                (src, i) =>
-                  `<button type="button" class="pdp-thumb ${i === 0 ? "on" : ""}" data-pdp-thumb="${src}" data-pdp-idx="${i}"><img src="${src}" alt="" /></button>`
-              )
-              .join("")}</div>`
+          ? `<div class="pdp-thumbs-slider" data-pdp-thumbs-slider>
+              <button type="button" class="pdp-thumbs-btn" data-pdp-thumbs-prev aria-label="الصور السابقة">‹</button>
+              <div class="pdp-thumbs-viewport">
+                <div class="pdp-thumbs-track" data-pdp-thumbs-track>${images
+                  .map(
+                    (src, i) =>
+                      `<button type="button" class="pdp-thumb ${i === 0 ? "on" : ""}" data-pdp-thumb="${src}" data-pdp-idx="${i}"><img src="${src}" alt="" /></button>`
+                  )
+                  .join("")}</div>
+              </div>
+              <button type="button" class="pdp-thumbs-btn" data-pdp-thumbs-next aria-label="الصور التالية">›</button>
+            </div>`
           : ""
       }
       ${addonHtml}
@@ -1666,6 +1672,7 @@ function renderProductPage() {
       .join("");
   }
   setupPdpCarousel(images, p.name);
+  setupPdpThumbSlider(images);
   setupPdpArabization(p);
   } catch (err) {
     console.error("renderProductPage", err);
@@ -1705,6 +1712,7 @@ function setupPdpCarousel(images, alt = "") {
       dot.classList.toggle("on", Number(dot.dataset.pdpDot) === idx);
     });
     if (window._pdpZoomSync) window._pdpZoomSync(idx);
+    document.querySelector("[data-pdp-thumbs-slider]")?._pdpThumbsGo?.(idx);
   }
 
   function play() {
@@ -1745,6 +1753,123 @@ function setupPdpCarousel(images, alt = "") {
 
   setupPdpZoom(images, () => idx, paint);
   play();
+}
+
+function setupPdpThumbSlider(images) {
+  const root = document.querySelector("[data-pdp-thumbs-slider]");
+  const track = document.querySelector("[data-pdp-thumbs-track]");
+  const viewport = root?.querySelector(".pdp-thumbs-viewport");
+  if (!root || !track || !viewport || images.length < 2) return;
+
+  if (root._pdpThumbsCleanup) root._pdpThumbsCleanup();
+
+  let offsetPx = 0;
+  let dragging = false;
+  let dragStartX = 0;
+  let dragStartOffset = 0;
+
+  function thumbStep() {
+    const thumb = track.firstElementChild;
+    if (!thumb) return 80;
+    const gap = Number.parseFloat(getComputedStyle(track).columnGap || getComputedStyle(track).gap || "8") || 8;
+    return thumb.offsetWidth + gap;
+  }
+
+  function visibleCount() {
+    const step = thumbStep();
+    if (!step) return 1;
+    return Math.max(1, Math.floor((viewport.clientWidth + 8) / step));
+  }
+
+  function maxOffset() {
+    return Math.max(0, (images.length - visibleCount()) * thumbStep());
+  }
+
+  function clampOffset(px) {
+    return Math.max(0, Math.min(px, maxOffset()));
+  }
+
+  function syncButtons() {
+    const prev = root.querySelector("[data-pdp-thumbs-prev]");
+    const next = root.querySelector("[data-pdp-thumbs-next]");
+    if (prev) prev.disabled = offsetPx <= 0;
+    if (next) next.disabled = offsetPx >= maxOffset() - 1;
+  }
+
+  function applyTransform(animate = true) {
+    offsetPx = clampOffset(offsetPx);
+    track.style.transition = animate && !dragging ? "transform 0.35s ease" : "none";
+    track.style.transform = `translate3d(-${offsetPx}px, 0, 0)`;
+    syncButtons();
+  }
+
+  function shiftBy(steps) {
+    offsetPx = clampOffset(offsetPx + steps * thumbStep());
+    applyTransform(true);
+  }
+
+  function scrollToIndex(idx) {
+    const step = thumbStep();
+    const vis = visibleCount();
+    const target = idx * step;
+    if (target < offsetPx) offsetPx = target;
+    else if (target + step > offsetPx + vis * step) offsetPx = target - (vis - 1) * step;
+    applyTransform(true);
+  }
+
+  const onPrev = () => shiftBy(-1);
+  const onNext = () => shiftBy(1);
+  const onResize = () => applyTransform(false);
+
+  const prevBtn = root.querySelector("[data-pdp-thumbs-prev]");
+  const nextBtn = root.querySelector("[data-pdp-thumbs-next]");
+  prevBtn?.addEventListener("click", onPrev);
+  nextBtn?.addEventListener("click", onNext);
+  window.addEventListener("resize", onResize);
+
+  const onPointerDown = (e) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    dragging = true;
+    dragStartX = e.clientX;
+    dragStartOffset = offsetPx;
+    viewport.classList.add("is-dragging");
+    try {
+      viewport.setPointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+  };
+  const onPointerMove = (e) => {
+    if (!dragging) return;
+    offsetPx = clampOffset(dragStartOffset - (e.clientX - dragStartX));
+    applyTransform(false);
+  };
+  const onPointerUp = () => {
+    if (!dragging) return;
+    dragging = false;
+    viewport.classList.remove("is-dragging");
+    const step = thumbStep();
+    if (step) offsetPx = clampOffset(Math.round(offsetPx / step) * step);
+    applyTransform(true);
+  };
+
+  viewport.addEventListener("pointerdown", onPointerDown);
+  viewport.addEventListener("pointermove", onPointerMove);
+  viewport.addEventListener("pointerup", onPointerUp);
+  viewport.addEventListener("pointercancel", onPointerUp);
+
+  root._pdpThumbsGo = scrollToIndex;
+  root._pdpThumbsCleanup = () => {
+    window.removeEventListener("resize", onResize);
+    prevBtn?.removeEventListener("click", onPrev);
+    nextBtn?.removeEventListener("click", onNext);
+    viewport.removeEventListener("pointerdown", onPointerDown);
+    viewport.removeEventListener("pointermove", onPointerMove);
+    viewport.removeEventListener("pointerup", onPointerUp);
+    viewport.removeEventListener("pointercancel", onPointerUp);
+  };
+
+  applyTransform(false);
 }
 
 function setupPdpZoom(images, getIndex, setIndex) {
