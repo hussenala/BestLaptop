@@ -386,25 +386,28 @@ function pageId() {
 }
 
 function parseRoute() {
+  const hashParts = (location.hash || "#/dashboard").replace(/^#\/?/, "").split("/").filter(Boolean);
+
+  if (hashParts[0] === "products" && hashParts[1] === "new") {
+    return { page: "product-editor", mode: "new", id: null };
+  }
+  if (hashParts[0] === "products" && hashParts[1] === "edit" && hashParts[2]) {
+    return { page: "product-editor", mode: "edit", id: decodeURIComponent(hashParts[2]) };
+  }
+  if (hashParts[0] && NAV.some((n) => n.id === hashParts[0])) {
+    return { page: hashParts[0], mode: null, id: null };
+  }
+
   const pathMatch = location.pathname.match(/\/admin\/([a-z0-9-]+)\/?$/);
   if (pathMatch) {
     const slug = pathMatch[1];
     if (slug === "login") return { page: "dashboard", mode: null, id: null };
-    if (slug === "index") return { page: "dashboard", mode: null, id: null };
-    if (slug === "products" && location.hash.includes("/new")) {
-      return { page: "product-editor", mode: "new", id: null };
+    if (slug !== "index" && NAV.some((n) => n.id === slug)) {
+      return { page: slug, mode: null, id: null };
     }
-    if (NAV.some((n) => n.id === slug)) return { page: slug, mode: null, id: null };
   }
 
-  const raw = (location.hash || "#/dashboard").replace("#/", "") || "dashboard";
-  const parts = raw.split("/").filter(Boolean);
-  if (parts[0] === "products" && parts[1] === "new") return { page: "product-editor", mode: "new", id: null };
-  if (parts[0] === "products" && parts[1] === "edit" && parts[2]) {
-    return { page: "product-editor", mode: "edit", id: decodeURIComponent(parts[2]) };
-  }
-  const page = NAV.some((n) => n.id === parts[0]) ? parts[0] : "dashboard";
-  return { page, mode: null, id: null };
+  return { page: "dashboard", mode: null, id: null };
 }
 
 function db() {
@@ -2494,6 +2497,7 @@ document.addEventListener("submit", (e) => {
       }
       images = normalizeProductImages({ images, image: images[0] });
       const isNew = !productFormEl.dataset.id;
+      const existing = isNew ? null : db().products.find((x) => x.id === productFormEl.dataset.id);
       const item = {
         id,
         name: f.get("name"),
@@ -2512,8 +2516,8 @@ document.addEventListener("submit", (e) => {
         images,
         image: images[0] || "",
         specs: f.get("specs") || `${f.get("gpu")} · ${f.get("ram")} · ${f.get("storage")}`,
-        headline: f.get("headline") || "",
-        blurb: f.get("blurb") || "",
+        headline: existing?.headline || "",
+        blurb: existing?.blurb || "",
         tgp: f.get("tgp") || "",
         cooling: f.get("cooling") || "",
         ...(isNew ? { createdAt: new Date().toISOString() } : {}),

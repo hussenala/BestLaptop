@@ -270,7 +270,7 @@ function getHealth() {
       ok: true,
       db: true,
       engine: "sqlite",
-      build: 103,
+      build: 106,
       users,
       hasAdmin: users > 0,
       version,

@@ -442,7 +442,7 @@ function version(PDO $pdo) {
 }
 
 function app_build() {
-  return 103;
+  return 106;
 }
 
 function normalize_upload_path($src) {
