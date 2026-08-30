@@ -796,10 +796,12 @@ function renderProducts() {
   const q = document.querySelector("[data-p-q]")?.value || "";
   const cat = document.querySelector("[data-p-cat]")?.value || "all";
   const stock = document.querySelector("[data-p-stock]")?.value || "all";
-  const list = db().products.filter((p) => {
-    const hay = `${p.name} ${p.brand} ${p.gpu}`.includes(q);
-    return (cat === "all" || p.category === cat) && (stock === "all" || (stock === "in" ? p.stock > 0 : p.stock <= 0)) && hay;
-  });
+  const list = db()
+    .products.filter((p) => {
+      const hay = `${p.name} ${p.brand} ${p.gpu}`.includes(q);
+      return (cat === "all" || p.category === cat) && (stock === "all" || (stock === "in" ? p.stock > 0 : p.stock <= 0)) && hay;
+    })
+    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
   return `
     <div class="toolbar-admin">
       <input data-p-q placeholder="بحث بالاسم أو الكرت..." value="${esc(q)}" />
@@ -2066,6 +2068,7 @@ document.addEventListener("submit", (e) => {
         toast("أضف صورة واحدة على الأقل");
         return;
       }
+      const isNew = !productFormEl.dataset.id;
       const item = {
         id,
         name: f.get("name"),
@@ -2087,6 +2090,7 @@ document.addEventListener("submit", (e) => {
         blurb: f.get("blurb") || "",
         tgp: f.get("tgp") || "",
         cooling: f.get("cooling") || "",
+        ...(isNew ? { createdAt: new Date().toISOString() } : {}),
       };
       try {
         await StoreDB.saveProduct(item);

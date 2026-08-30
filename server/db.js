@@ -689,7 +689,12 @@ function saveSettings(settings) {
 }
 
 function listProducts() {
-  return db.prepare("SELECT * FROM products ORDER BY name").all().map(rowToProduct);
+  return db
+    .prepare(
+      "SELECT * FROM products ORDER BY COALESCE(NULLIF(created_at, ''), '1970-01-01') DESC, name ASC"
+    )
+    .all()
+    .map(rowToProduct);
 }
 
 function getProduct(id) {

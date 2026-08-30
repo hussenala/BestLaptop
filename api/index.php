@@ -443,7 +443,12 @@ function product_from_row($row) {
 }
 
 function list_products(PDO $pdo) {
-  return array_map("product_from_row", $pdo->query("SELECT * FROM products ORDER BY name")->fetchAll());
+  return array_map(
+    "product_from_row",
+    $pdo->query(
+      "SELECT * FROM products ORDER BY COALESCE(NULLIF(created_at, ''), '1970-01-01') DESC, name ASC"
+    )->fetchAll()
+  );
 }
 
 function get_product(PDO $pdo, $id) {

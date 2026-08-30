@@ -1314,6 +1314,9 @@ function renderCatalog() {
     return matchCat && matchBrand && matchPrice && (!q || hay.includes(q));
   });
 
+  if (sort === "featured") {
+    list = [...list].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  }
   if (sort === "price-asc") list = [...list].sort((a, b) => a.price - b.price);
   if (sort === "price-desc") list = [...list].sort((a, b) => b.price - a.price);
 
