@@ -209,7 +209,13 @@ function checkout_options(array $s) {
   if (empty($s["shipping"])) $s["shipping"] = default_shipping();
   if (empty($s["payments"])) $s["payments"] = default_payments();
   $s["officeGallery"] = normalize_office_gallery($s["officeGallery"] ?? null);
+  $s["maintenanceMode"] = !empty($s["maintenanceMode"]);
+  if (empty($s["maintenanceMessage"])) $s["maintenanceMessage"] = "";
   return $s;
+}
+
+function is_maintenance_mode(PDO $pdo) {
+  return !empty(settings_raw($pdo)["maintenanceMode"]);
 }
 
 function normalize_gallery_image($value) {
@@ -682,6 +688,8 @@ function public_store(PDO $pdo) {
       "payments" => $s["payments"] ?? [],
       "featured" => $s["featured"] ?? ["eyebrow" => "الأكثر مبيعاً", "title" => "منتجات مميزة للقيمنق والمونتاج", "category" => "all", "limit" => 8, "productIds" => [], "autoplay" => true, "speedMs" => 4500],
       "officeGallery" => normalize_office_gallery($s["officeGallery"] ?? null),
+      "maintenanceMode" => !empty($s["maintenanceMode"]),
+      "maintenanceMessage" => $s["maintenanceMessage"] ?? "",
     ],
   ];
 }
@@ -697,6 +705,7 @@ try {
   if ($path === "/store" && $method === "GET") json_out(200, public_store($pdo));
 
   if ($path === "/orders" && $method === "POST") {
+    if (is_maintenance_mode($pdo)) json_out(503, ["error" => "الموقع تحت الصيانة حالياً"]);
     $body = read_json();
     if (empty($body["items"])) json_out(400, ["error" => "Empty order"]);
     $id = $body["id"] ?? ("BL-" . substr((string) time(), -6));

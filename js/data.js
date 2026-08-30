@@ -187,6 +187,8 @@ const STORE = {
   email: "support@bestlaptop.iq",
   hours: "السبت – الخميس: 9:30 ص – 8:30 م",
   warranty: "ضمان سنتين حقيقي معتمد",
+  maintenanceMode: false,
+  maintenanceMessage: "",
   currency: "IQD",
   cities: [
     "بغداد",

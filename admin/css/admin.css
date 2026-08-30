@@ -1377,3 +1377,34 @@
   .pe-footer-actions .btn { flex: 1; justify-content: center; }
   .pe-toolbar-row .btn { width: 100%; justify-content: center; }
 }
+
+.maintenance-admin-panel {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 18px 20px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.maintenance-admin-panel.is-on {
+  border-color: rgba(234, 179, 8, 0.55);
+  background: rgba(234, 179, 8, 0.08);
+}
+
+.maintenance-admin-panel h3,
+.settings-section-title {
+  margin: 0 0 12px;
+}
+
+.maintenance-admin-panel textarea {
+  width: 100%;
+  min-height: 96px;
+  resize: vertical;
+  margin-top: 8px;
+}
+
+.money-input {
+  direction: ltr;
+  text-align: start;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}

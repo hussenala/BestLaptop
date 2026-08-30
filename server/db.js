@@ -663,6 +663,8 @@ function getSettings() {
   const row = db.prepare("SELECT value FROM settings WHERE key='main'").get();
   const s = row ? JSON.parse(row.value) : {};
   if (!s.notice && s.city) s.notice = `${s.city} · ${s.address} · ${s.warranty}`;
+  s.maintenanceMode = !!s.maintenanceMode;
+  if (!s.maintenanceMessage) s.maintenanceMessage = "";
   if (!s.officeGallery || typeof s.officeGallery !== "object") {
     s.officeGallery = defaultOfficeGallery();
   } else {
@@ -1126,6 +1128,8 @@ function getPublicStore() {
       payments: settings.payments || [],
       featured: settings.featured || { eyebrow: "الأكثر مبيعاً", title: "منتجات مميزة للقيمنق والمونتاج", category: "all", limit: 8, productIds: [], autoplay: true, speedMs: 4500 },
       officeGallery: settings.officeGallery || defaultOfficeGallery(),
+      maintenanceMode: !!settings.maintenanceMode,
+      maintenanceMessage: settings.maintenanceMessage || "",
     },
   };
 }

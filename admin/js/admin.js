@@ -58,6 +58,43 @@ function money(n) {
   return `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(Number(n) || 0)} IQD`;
 }
 
+function formatMoneyInput(value) {
+  const digits = String(value ?? "").replace(/\D/g, "");
+  if (!digits) return "";
+  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(Number(digits));
+}
+
+function parseMoneyInput(value) {
+  const digits = String(value ?? "").replace(/\D/g, "");
+  return digits ? Number(digits) : 0;
+}
+
+function bindMoneyInput(el) {
+  if (!el || el.dataset.moneyBound === "1") return;
+  el.dataset.moneyBound = "1";
+  el.addEventListener("input", () => {
+    const start = el.selectionStart ?? el.value.length;
+    const digitsBefore = el.value.slice(0, start).replace(/\D/g, "").length;
+    const digits = el.value.replace(/\D/g, "");
+    el.value = digits ? formatMoneyInput(digits) : "";
+    let pos = 0;
+    let seen = 0;
+    for (let i = 0; i < el.value.length; i += 1) {
+      if (/\d/.test(el.value[i])) seen += 1;
+      if (seen >= digitsBefore) {
+        pos = i + 1;
+        break;
+      }
+    }
+    if (seen < digitsBefore) pos = el.value.length;
+    el.setSelectionRange(pos, pos);
+  });
+}
+
+function setupMoneyInputs(root = document) {
+  root.querySelectorAll("[data-money-input]").forEach(bindMoneyInput);
+}
+
 function phoneDigits(phone) {
   return (phone || "").replace(/\D/g, "");
 }
@@ -610,8 +647,8 @@ function setupProductEditor() {
     const name = form.querySelector('[name="name"]')?.value || "اسم المنتج";
     const tag = form.querySelector('[name="tag"]')?.value || "جديد";
     const brand = form.querySelector('[name="brand"]')?.value || "—";
-    const price = Number(form.querySelector('[name="price"]')?.value) || 0;
-    const oldPrice = Number(form.querySelector('[name="oldPrice"]')?.value) || 0;
+    const price = parseMoneyInput(form.querySelector('[name="price"]')?.value);
+    const oldPrice = parseMoneyInput(form.querySelector('[name="oldPrice"]')?.value);
     const stock = Number(form.querySelector('[name="stock"]')?.value) || 0;
     const images = getProductImages();
     const img = images[0] ? resolveAdminAsset(images[0]) : "../img/logo.jpg";
@@ -650,6 +687,7 @@ function setupProductEditor() {
       });
     });
   }
+  setupMoneyInputs(form);
   syncPreview();
 }
 
@@ -708,8 +746,8 @@ function renderProductEditor(productId = null) {
     ${peField("الوصف المختصر", `<textarea name="blurb" rows="3" placeholder="وصف قصير يظهر للزبون">${esc(p.blurb || "")}</textarea>`, 2)}
   `;
   const pricing = `
-    ${peField("السعر (IQD)", `<input name="price" type="number" min="0" step="1000" required value="${esc(p.price || "")}" />`)}
-    ${peField("السعر قبل الخصم", `<input name="oldPrice" type="number" min="0" step="1000" value="${esc(p.oldPrice || "")}" placeholder="اختياري" />`)}
+    ${peField("السعر (IQD)", `<input name="price" type="text" inputmode="numeric" class="money-input" data-money-input required value="${esc(formatMoneyInput(p.price))}" autocomplete="off" placeholder="مثال: 2,500,000" />`)}
+    ${peField("السعر قبل الخصم", `<input name="oldPrice" type="text" inputmode="numeric" class="money-input" data-money-input value="${esc(formatMoneyInput(p.oldPrice))}" autocomplete="off" placeholder="اختياري" />`)}
     ${peField("المخزون", `<input name="stock" type="number" min="0" required value="${esc(p.stock ?? (isNew ? 1 : 0))}" />`)}
   `;
   const specsFields = `
@@ -1454,7 +1492,20 @@ function setupSlideDragDrop() {
 
 function renderSettings() {
   const s = db().settings;
+  const maintenanceOn = !!s.maintenanceMode;
   return `<form class="panel admin-form" data-settings-form>
+    <section class="panel maintenance-admin-panel span-2 ${maintenanceOn ? "is-on" : ""}">
+      <h3>وضع الصيانة</h3>
+      <label class="check-row">
+        <input type="checkbox" name="maintenanceMode" value="1" ${maintenanceOn ? "checked" : ""} />
+        إيقاف واجهة المتجر وعرض صفحة «تحت الصيانة» للزوار
+      </label>
+      <p class="muted">لوحة التحكم تبقى متاحة لك وللفريق الإداري فقط.</p>
+      <label class="span-2">رسالة الصيانة للزوار
+        <textarea name="maintenanceMessage" rows="3" placeholder="نعمل على تحسين تجربتكم. سنعود قريباً.">${esc(s.maintenanceMessage || "")}</textarea>
+      </label>
+    </section>
+    <h3 class="span-2 settings-section-title">هوية المتجر</h3>
     <label>اسم المتجر EN<input name="name" value="${esc(s.name)}" /></label>
     <label>اسم المتجر AR<input name="nameAr" value="${esc(s.nameAr)}" /></label>
     <label>المدينة<input name="city" value="${esc(s.city)}" /></label>
@@ -2074,8 +2125,8 @@ document.addEventListener("submit", (e) => {
         name: f.get("name"),
         brand: f.get("brand"),
         category: f.get("category"),
-        price: Number(f.get("price")),
-        oldPrice: f.get("oldPrice") ? Number(f.get("oldPrice")) : null,
+        price: parseMoneyInput(f.get("price")),
+        oldPrice: f.get("oldPrice") ? parseMoneyInput(f.get("oldPrice")) : null,
         stock: Number(f.get("stock")),
         cpu: f.get("cpu"),
         gpu: f.get("gpu"),
@@ -2272,6 +2323,8 @@ document.addEventListener("submit", (e) => {
         hours: f.get("hours"),
         warranty: f.get("warranty"),
         notice: f.get("notice"),
+        maintenanceMode: f.get("maintenanceMode") === "1",
+        maintenanceMessage: String(f.get("maintenanceMessage") || "").trim(),
       };
       const finish = async () => {
         try {

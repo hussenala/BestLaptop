@@ -93,6 +93,9 @@ async function handleApi(req, res, pathname) {
   }
 
   if (pathname === "/api/orders" && method === "POST") {
+    if (db.getSettings()?.maintenanceMode) {
+      return send(res, 503, { error: "الموقع تحت الصيانة حالياً" });
+    }
     const body = await readBody(req);
     if (!body?.items?.length) return send(res, 400, { error: "Empty order" });
     const id = body.id || `BL-${String(Date.now()).slice(-6)}`;
@@ -473,14 +476,30 @@ const PAGE_ALIASES = {
   "/checkout": "/checkout.html",
   "/contact": "/contact.html",
   "/order": "/order.html",
+  "/maintenance": "/maintenance.html",
   "/admin": "/admin/index.html",
   "/admin/login": "/admin/login.html",
 };
+
+function isStorefrontHtmlPath(pathname) {
+  if (!pathname || pathname.startsWith("/admin") || pathname.startsWith("/api")) return false;
+  if (pathname === "/maintenance" || pathname === "/maintenance.html") return false;
+  if (/\.(js|css|png|jpe?g|gif|webp|svg|ico|woff2?|ttf|map|json|txt)$/i.test(pathname)) return false;
+  if (pathname.startsWith("/uploads/") || pathname.startsWith("/img/") || pathname.startsWith("/js/") || pathname.startsWith("/css/")) {
+    return false;
+  }
+  if (pathname === "/" || pathname.endsWith(".html") || PAGE_ALIASES[pathname]) return true;
+  return /^\/product\/[^/]+\/?$/.test(pathname);
+}
 
 function serveStatic(req, res, pathname) {
   const productMatch = pathname.match(/^\/product\/([^/]+)\/?$/);
   if (productMatch) {
     pathname = "/product.html";
+  }
+
+  if (db.getSettings()?.maintenanceMode && isStorefrontHtmlPath(pathname)) {
+    pathname = "/maintenance.html";
   }
 
   const adminPageMatch = pathname.match(/^\/admin\/([a-z0-9-]+)\/?$/);

@@ -21,6 +21,81 @@ const ICONS = {
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10 4a6 6 0 1 0 3.8 10.7L19 19.6 20.4 18l-5.2-5.2A6 6 0 0 0 10 4m0 2a4 4 0 1 1 0 8 4 4 0 0 1 0-8M4 20h16v2H4z"/></svg>',
 };
 
+function isMaintenanceMode() {
+  return Boolean(STORE?.maintenanceMode);
+}
+
+function formatPhoneDisplay(phone) {
+  const digits = phoneDigits(phone);
+  if (digits.length === 11 && digits.startsWith("07")) {
+    return `${digits.slice(0, 4)} ${digits.slice(4, 7)} ${digits.slice(7)}`;
+  }
+  if (digits.length === 10 && digits.startsWith("7")) {
+    return `0${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`;
+  }
+  return String(phone || "").trim();
+}
+
+function maintenancePageMarkup({ brand, logo, message, phone, email, hours }) {
+  const phoneDisplay = phone ? formatPhoneDisplay(phone) : "";
+  const tel = phone ? phoneDigits(phone) : "";
+  return `
+    <div class="maintenance-bg" aria-hidden="true">
+      <span class="maintenance-orb maintenance-orb-a"></span>
+      <span class="maintenance-orb maintenance-orb-b"></span>
+      <span class="maintenance-grid"></span>
+    </div>
+    <main class="maintenance-shell">
+      <div class="maintenance-status">
+        <span class="maintenance-pulse" aria-hidden="true"></span>
+        صيانة مؤقتة
+      </div>
+      <div class="maintenance-brand">
+        <img src="${logo}" alt="${brand}" class="maintenance-logo" />
+        <p class="maintenance-name">${brand}</p>
+      </div>
+      <h1>الموقع تحت الصيانة مؤقتاً</h1>
+      <p class="maintenance-message">${message}</p>
+      ${
+        phone || email
+          ? `<div class="maintenance-actions">
+        ${
+          phone
+            ? `<a class="maintenance-cta" href="tel:${tel}">
+          <span class="maintenance-cta-icon" aria-hidden="true">📞</span>
+          <span class="maintenance-cta-copy">
+            <small>اتصل بنا</small>
+            <strong class="maintenance-phone" dir="ltr">${phoneDisplay}</strong>
+          </span>
+        </a>`
+            : ""
+        }
+        ${email ? `<a class="maintenance-link" href="mailto:${email}">${email}</a>` : ""}
+      </div>`
+          : ""
+      }
+      ${hours ? `<p class="maintenance-hours">${hours}</p>` : ""}
+    </main>`;
+}
+
+function renderMaintenancePage() {
+  const message = (STORE.maintenanceMessage || "").trim() || "نعمل على تحسين تجربتكم. سنعود قريباً.";
+  const phone = STORE.phone || STORE.whatsapp || "";
+  const brand = STORE.nameAr || STORE.name || "BEST LAPTOP";
+  const logo = resolveAsset(STORE.logo || "/img/logo.jpg");
+  document.documentElement.dataset.page = "maintenance";
+  document.title = `تحت الصيانة | ${brand}`;
+  document.body.className = "maintenance-body";
+  document.body.innerHTML = maintenancePageMarkup({
+    brand,
+    logo,
+    message,
+    phone,
+    email: STORE.email || "",
+    hours: STORE.hours || "",
+  });
+}
+
 function money(n) {
   const value = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
   return `${value} IQD`;
@@ -2667,6 +2742,10 @@ async function bootStorefront() {
   } catch {
     showToast("تعذر تحميل بيانات المتجر");
   }
+  if (isMaintenanceMode()) {
+    renderMaintenancePage();
+    return;
+  }
   applyStoreBranding();
   renderHeaderBrands();
   renderCategoryFilter();
@@ -2690,6 +2769,10 @@ async function bootStorefront() {
 }
 
 window.addEventListener("store:updated", () => {
+  if (isMaintenanceMode()) {
+    renderMaintenancePage();
+    return;
+  }
   if (typeof SitePages !== "undefined") SitePages.paintLinks();
   applyStoreBranding();
   renderHeaderBrands();

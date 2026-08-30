@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <title>تحت الصيانة | BEST LAPTOP</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet" />
+    <link rel="icon" href="/img/logo.jpg" type="image/jpeg" />
+    <link rel="stylesheet" href="/css/styles.css?v=59" />
+    <script>
+      document.documentElement.dataset.theme =
+        localStorage.getItem("bestlaptop-theme") === "light" ? "light" : "dark";
+    </script>
+  </head>
+  <body class="maintenance-body">
+    <div class="maintenance-bg" aria-hidden="true">
+      <span class="maintenance-orb maintenance-orb-a"></span>
+      <span class="maintenance-orb maintenance-orb-b"></span>
+      <span class="maintenance-grid"></span>
+    </div>
+    <main class="maintenance-shell">
+      <div class="maintenance-status">
+        <span class="maintenance-pulse" aria-hidden="true"></span>
+        صيانة مؤقتة
+      </div>
+      <div class="maintenance-brand">
+        <img src="/img/logo.jpg" alt="BEST LAPTOP" class="maintenance-logo" data-maintenance-logo />
+        <p class="maintenance-name" data-maintenance-brand>BEST LAPTOP</p>
+      </div>
+      <h1>الموقع تحت الصيانة مؤقتاً</h1>
+      <p class="maintenance-message" data-maintenance-message>نعمل على تحسين تجربتكم. سنعود قريباً.</p>
+      <div class="maintenance-actions" data-maintenance-actions hidden>
+        <a class="maintenance-cta" data-maintenance-phone-link hidden>
+          <span class="maintenance-cta-icon" aria-hidden="true">📞</span>
+          <span class="maintenance-cta-copy">
+            <small>اتصل بنا</small>
+            <strong class="maintenance-phone" dir="ltr" data-maintenance-phone-text>0772 222 4489</strong>
+          </span>
+        </a>
+        <a class="maintenance-link" data-maintenance-email hidden></a>
+      </div>
+      <p class="maintenance-hours" data-maintenance-hours hidden></p>
+    </main>
+    <script src="/js/data.js?v=35"></script>
+    <script src="/js/api-client.js?v=56"></script>
+    <script>
+      function formatPhoneDisplay(phone) {
+        const digits = String(phone || "").replace(/\D/g, "");
+        if (digits.length === 11 && digits.startsWith("07")) {
+          return `${digits.slice(0, 4)} ${digits.slice(4, 7)} ${digits.slice(7)}`;
+        }
+        if (digits.length === 10 && digits.startsWith("7")) {
+          return `0${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`;
+        }
+        return String(phone || "").trim();
+      }
+
+      (async () => {
+        try {
+          await StoreAPI.bootstrap();
+          const brand = STORE.nameAr || STORE.name || "BEST LAPTOP";
+          document.title = `تحت الصيانة | ${brand}`;
+          document.querySelector("[data-maintenance-brand]").textContent = brand;
+          if (STORE.maintenanceMessage) {
+            document.querySelector("[data-maintenance-message]").textContent = STORE.maintenanceMessage;
+          }
+          if (STORE.logo) {
+            const logo = STORE.logo.startsWith("/") ? STORE.logo : `/${STORE.logo}`;
+            document.querySelector("[data-maintenance-logo]").src = logo;
+          }
+          const phone = STORE.phone || STORE.whatsapp;
+          if (phone) {
+            const display = formatPhoneDisplay(phone);
+            const tel = String(phone).replace(/\D/g, "");
+            const link = document.querySelector("[data-maintenance-phone-link]");
+            const text = document.querySelector("[data-maintenance-phone-text]");
+            link.href = `tel:${tel}`;
+            text.textContent = display;
+            link.hidden = false;
+            document.querySelector("[data-maintenance-actions]").hidden = false;
+          }
+          if (STORE.email) {
+            const email = document.querySelector("[data-maintenance-email]");
+            email.href = `mailto:${STORE.email}`;
+            email.textContent = STORE.email;
+            email.hidden = false;
+            document.querySelector("[data-maintenance-actions]").hidden = false;
+          }
+          if (STORE.hours) {
+            const hours = document.querySelector("[data-maintenance-hours]");
+            hours.textContent = STORE.hours;
+            hours.hidden = false;
+          }
+        } catch {
+          /* fallback copy */
+        }
+      })();
+    </script>
+  </body>
+</html>
