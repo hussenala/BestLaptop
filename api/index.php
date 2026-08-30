@@ -419,6 +419,10 @@ function version(PDO $pdo) {
   return $v ?: "0";
 }
 
+function app_build() {
+  return 91;
+}
+
 function health(PDO $pdo) {
   $users = (int) $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
   $products = (int) $pdo->query("SELECT COUNT(*) FROM products")->fetchColumn();
@@ -428,6 +432,8 @@ function health(PDO $pdo) {
     "ok" => true,
     "db" => true,
     "engine" => "sqlite-php",
+    "build" => app_build(),
+    "features" => ["cartEnabled", "showAddToCart", "headerSearchV2", "homeEffects", "adminModalFix"],
     "users" => $users,
     "hasAdmin" => $users > 0,
     "version" => version($pdo),
@@ -548,7 +554,7 @@ function list_slides(PDO $pdo, $activeOnly = false) {
       "imageOnly" => !empty($row["image_only"]),
       "hideSpecs" => !empty($row["hide_specs"]),
       "textPosition" => normalize_text_position($row["text_position"] ?? "default"),
-      "showAddToCart" => !isset($row["show_add_to_cart"]) || !empty($row["show_add_to_cart"]),
+      "showAddToCart" => normalize_bool_setting($row["show_add_to_cart"] ?? null, true),
     ];
   }
   return $out;
@@ -606,7 +612,7 @@ function upsert_slide(PDO $pdo, array $s) {
       !empty($s["imageOnly"]) ? 1 : 0,
       !empty($s["hideSpecs"]) ? 1 : 0,
       normalize_text_position($s["textPosition"] ?? "default"),
-      !isset($s["showAddToCart"]) || !empty($s["showAddToCart"]) ? 1 : 0,
+      normalize_bool_setting($s["showAddToCart"] ?? null, true) ? 1 : 0,
     ]);
   bump($pdo);
   return get_slide($pdo, $id);
