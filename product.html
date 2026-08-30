@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet" />
     <link rel="icon" href="/img/logo.jpg" type="image/jpeg" />
-    <link rel="stylesheet" href="/css/styles.css?v=106" />
+    <link rel="stylesheet" href="/css/styles.css?v=112" />
     <script>
       document.documentElement.dataset.theme =
         localStorage.getItem("bestlaptop-theme") === "light" ? "light" : "dark";
@@ -68,6 +68,7 @@
     </main>
 
     <footer class="site-footer">
+      <div class="footer-glow" aria-hidden="true"></div>
       <div class="container">
         <div class="footer-grid">
           <div class="footer-brand">
@@ -78,27 +79,34 @@
                 <small>بيست لابتوب</small>
               </span>
             </a>
-            <p class="footer-location" data-store-footer-location>بغداد · شارع الصناعة، مجمع النعمان، الطابق الثاني</p>
-            <p data-store-footer-about>بغداد — شارع الصناعة، مجمع النعمان، الطابق الثاني. ضمان سنتين حقيقي.</p>
+            <p class="footer-tagline" data-store-footer-about>متجر متخصص بلابتوبات القيمنق والإنتاج في العراق.</p>
+            <div class="footer-badges">
+              <span class="footer-badge" data-store-footer-warranty>ضمان سنتين</span>
+              <span class="footer-badge" data-store-footer-currency>أسعار IQD</span>
+            </div>
           </div>
-          <div>
-            <h3>روابط</h3>
-            <ul>
+          <div class="footer-col">
+            <h3 class="footer-heading">روابط سريعة</h3>
+            <ul class="footer-links">
               <li><a href="/">الرئيسية</a></li>
               <li><a data-page-link="products" href="/products">المنتجات</a></li>
               <li><a href="/cart">صفحة السلة</a></li>
               <li><a data-page-link="contact" href="/contact">التواصل</a></li>
             </ul>
           </div>
-          <div>
-            <h3>تواصل</h3>
-            <ul>
-              <li>0772 222 4489</li>
-              <li>support@bestlaptop.iq</li>
-            </ul>
+          <div class="footer-col footer-col-contact">
+            <h3 class="footer-heading">تواصل معنا</h3>
+            <ul class="footer-contact" data-store-footer-contact></ul>
+            <div class="footer-cta" data-store-footer-cta></div>
           </div>
         </div>
-        <p class="footer-copy">© 2026 بيست لابتوب. الأسعار بـ IQD.</p>
+        <div class="footer-bar">
+          <p class="footer-copy">© 2026 بيست لابتوب. جميع الحقوق محفوظة.</p>
+          <div class="footer-bar-links">
+            <a data-page-link="contact" href="/contact">التواصل</a>
+            <a href="/admin/login">لوحة التحكم</a>
+          </div>
+        </div>
       </div>
     </footer>
 
@@ -115,11 +123,11 @@
       </div>
     </aside>
     <div class="toast" data-toast></div>
-            <script src="/js/data.js?v=106"></script>
-    <script src="/js/api-client.js?v=106"></script>
-    <script src="/js/product-condition.js?v=106"></script>
-    <script src="/js/theme.js?v=106"></script>
-    <script src="/js/routes.js?v=106"></script>
-    <script src="/js/app.js?v=106"></script>
+            <script src="/js/data.js?v=112"></script>
+    <script src="/js/api-client.js?v=112"></script>
+    <script src="/js/product-condition.js?v=112"></script>
+    <script src="/js/theme.js?v=112"></script>
+    <script src="/js/routes.js?v=112"></script>
+    <script src="/js/app.js?v=112"></script>
   </body>
 </html>

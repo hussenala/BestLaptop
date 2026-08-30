@@ -246,6 +246,18 @@ function default_payments() {
   ];
 }
 
+function normalize_store_phone($value) {
+  $digits = preg_replace("/\D+/", "", (string) $value);
+  if (strlen($digits) === 11 && str_starts_with($digits, "07")) {
+    return substr($digits, 0, 4) . " " . substr($digits, 4, 3) . " " . substr($digits, 7);
+  }
+  if (strlen($digits) === 10 && str_starts_with($digits, "7")) {
+    $digits = "0" . $digits;
+    return substr($digits, 0, 4) . " " . substr($digits, 4, 3) . " " . substr($digits, 7);
+  }
+  return trim((string) $value);
+}
+
 function checkout_options(array $s) {
   if (empty($s["cities"])) $s["cities"] = default_cities();
   if (empty($s["shipping"])) $s["shipping"] = default_shipping();
@@ -255,6 +267,12 @@ function checkout_options(array $s) {
   if (empty($s["maintenanceMessage"])) $s["maintenanceMessage"] = "";
   if (!isset($s["homeLayout"]) || !is_array($s["homeLayout"])) $s["homeLayout"] = null;
   $s["cartEnabled"] = normalize_bool_setting($s["cartEnabled"] ?? null, true);
+  if (!empty($s["phone"])) $s["phone"] = normalize_store_phone($s["phone"]);
+  if (!empty($s["whatsapp"])) $s["whatsapp"] = normalize_store_phone($s["whatsapp"]);
+  elseif (!empty($s["phone"])) $s["whatsapp"] = $s["phone"];
+  if (empty($s["email"]) || trim((string) $s["email"]) === "\\") {
+    $s["email"] = "support@bestlaptop.iq";
+  }
   return $s;
 }
 

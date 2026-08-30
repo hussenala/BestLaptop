@@ -758,11 +758,28 @@ function getSettings() {
   return s;
 }
 
+function normalizeStorePhone(phone) {
+  const digits = String(phone || "").replace(/\D/g, "");
+  if (digits.length === 11 && digits.startsWith("07")) {
+    return `${digits.slice(0, 4)} ${digits.slice(4, 7)} ${digits.slice(7)}`;
+  }
+  if (digits.length === 10 && digits.startsWith("7")) {
+    return `0${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`;
+  }
+  return String(phone || "").trim();
+}
+
 function saveSettings(settings) {
   const normalized = {
     ...settings,
     cartEnabled: Object.prototype.hasOwnProperty.call(settings, "cartEnabled") ? settings.cartEnabled !== false : true,
   };
+  if (normalized.phone) normalized.phone = normalizeStorePhone(normalized.phone);
+  if (normalized.whatsapp) normalized.whatsapp = normalizeStorePhone(normalized.whatsapp);
+  else if (normalized.phone) normalized.whatsapp = normalized.phone;
+  if (!normalized.email || String(normalized.email).trim() === "\\") {
+    normalized.email = "support@bestlaptop.iq";
+  }
   db.prepare("INSERT INTO settings (key,value) VALUES ('main',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(
     JSON.stringify(normalized)
   );

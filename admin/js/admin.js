@@ -113,6 +113,22 @@ function phoneDigits(phone) {
   return (phone || "").replace(/\D/g, "");
 }
 
+function formatPhoneDisplay(phone) {
+  const digits = phoneDigits(phone);
+  if (digits.length === 11 && digits.startsWith("07")) {
+    return `${digits.slice(0, 4)} ${digits.slice(4, 7)} ${digits.slice(7)}`;
+  }
+  if (digits.length === 10 && digits.startsWith("7")) {
+    return `0${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`;
+  }
+  return String(phone || "").trim();
+}
+
+function normalizeStorePhone(phone) {
+  const formatted = formatPhoneDisplay(phone);
+  return formatted || String(phone || "").trim();
+}
+
 function storeWhatsAppDigits() {
   const s = db().settings || {};
   let digits = phoneDigits(s.whatsapp || s.phone);
@@ -2718,8 +2734,8 @@ document.addEventListener("submit", (e) => {
         name: f.get("name"),
         nameAr: f.get("nameAr"),
         city: f.get("city"),
-        phone: f.get("phone"),
-        whatsapp: f.get("whatsapp") || f.get("phone"),
+        phone: normalizeStorePhone(f.get("phone")),
+        whatsapp: normalizeStorePhone(f.get("whatsapp") || f.get("phone")),
         address: f.get("address"),
         fullAddress: f.get("fullAddress"),
         email: f.get("email"),

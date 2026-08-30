@@ -40,6 +40,78 @@ function formatPhoneDisplay(phone) {
   return String(phone || "").trim();
 }
 
+function phoneLinkHtml(phone) {
+  const digits = phoneDigits(phone);
+  if (!digits) return "";
+  return `<a href="tel:${digits}" dir="ltr" class="store-phone">${formatPhoneDisplay(phone)}</a>`;
+}
+
+function storeEmail(value) {
+  const email = String(value || "").trim();
+  if (!email || email === "\\" || !email.includes("@")) return "";
+  return email;
+}
+
+function footerWarrantyLabel(warranty) {
+  const w = String(warranty || "").trim();
+  if (!w || /شارع|بغداد|الطابق|مجمع|العراق/i.test(w)) return "ضمان سنتين";
+  return w;
+}
+
+function footerCurrencyLabel(currency) {
+  const c = String(currency || "IQD").trim();
+  if (!c || /شارع|بغداد|الطابق|مجمع|العراق/i.test(c)) return "أسعار IQD";
+  return `أسعار ${c}`;
+}
+
+function footerAddressLine(s) {
+  const line = s.fullAddress || [s.city, s.address].filter(Boolean).join(" · ");
+  return String(line).replace(/^العراق[،,\s·\-]+/i, "").trim();
+}
+
+function applyFooterChrome(s) {
+  const aboutText = `متجر متخصص بلابتوبات القيمنق والإنتاج في العراق، بأسعار ${footerCurrencyLabel(s.currency).replace(/^أسعار\s+/, "") || "IQD"}.`;
+  document.querySelectorAll("[data-store-footer-about]").forEach((el) => {
+    el.textContent = aboutText;
+  });
+  document.querySelectorAll("[data-store-footer-warranty]").forEach((el) => {
+    el.textContent = footerWarrantyLabel(s.warranty);
+  });
+  document.querySelectorAll("[data-store-footer-currency]").forEach((el) => {
+    el.textContent = footerCurrencyLabel(s.currency);
+  });
+
+  document.querySelectorAll("[data-store-footer-contact]").forEach((contact) => {
+    const address = footerAddressLine(s);
+    const email = storeEmail(s.email);
+    const items = [];
+    if (address) {
+      items.push(`<li class="footer-contact-item"><span class="footer-contact-label">العنوان</span><span class="footer-contact-value">${address}</span></li>`);
+    }
+    if (s.phone) {
+      items.push(`<li class="footer-contact-item"><span class="footer-contact-label">الجوال</span><span class="footer-contact-value">${phoneLinkHtml(s.phone)}</span></li>`);
+    }
+    if (email) {
+      items.push(`<li class="footer-contact-item"><span class="footer-contact-label">البريد</span><span class="footer-contact-value"><a href="mailto:${email}">${email}</a></span></li>`);
+    }
+    if (s.hours) {
+      items.push(`<li class="footer-contact-item"><span class="footer-contact-label">الدوام</span><span class="footer-contact-value">${s.hours}</span></li>`);
+    }
+    contact.innerHTML = items.join("");
+  });
+
+  document.querySelectorAll("[data-store-footer-cta]").forEach((cta) => {
+    const tel = phoneDigits(s.phone);
+    const wa = storeWhatsAppNumber();
+    cta.innerHTML = `
+      ${tel ? `<a class="btn btn-ghost btn-sm footer-cta-btn" href="tel:${tel}">اتصال</a>` : ""}
+      ${wa ? `<a class="btn btn-whatsapp btn-sm footer-cta-btn" href="https://wa.me/${wa}" target="_blank" rel="noopener">${ICONS.whatsapp}<span>واتساب</span></a>` : ""}`;
+  });
+
+  const copy = document.querySelector(".footer-copy");
+  if (copy) copy.textContent = `© ${new Date().getFullYear()} ${s.nameAr || s.name}. جميع الحقوق محفوظة.`;
+}
+
 function maintenancePageMarkup({ brand, logo, message, phone, email, hours }) {
   const phoneDisplay = phone ? formatPhoneDisplay(phone) : "";
   const tel = phone ? phoneDigits(phone) : "";
@@ -332,6 +404,33 @@ function isCartEnabled() {
   return STORE?.cartEnabled !== false;
 }
 
+function ensureCartBadges() {
+  document.querySelectorAll(".btn-cart").forEach((btn) => {
+    if (btn.querySelector("[data-cart-count]")) return;
+    const badge = document.createElement("span");
+    badge.className = "cart-count";
+    badge.dataset.cartCount = "";
+    badge.hidden = true;
+    badge.setAttribute("aria-label", "عدد المنتجات في السلة");
+    btn.appendChild(badge);
+  });
+}
+
+function updateCartBadge() {
+  if (!isCartEnabled()) return;
+  ensureCartBadges();
+  const count = getCart().reduce((sum, item) => sum + (Number(item.qty) || 0), 0);
+  document.querySelectorAll("[data-cart-count]").forEach((el) => {
+    if (count > 0) {
+      el.hidden = false;
+      el.textContent = count > 99 ? "99+" : String(count);
+    } else {
+      el.hidden = true;
+      el.textContent = "";
+    }
+  });
+}
+
 function applyStorefrontCartMode() {
   const on = isCartEnabled();
   document.documentElement.classList.toggle("cart-disabled", !on);
@@ -342,6 +441,7 @@ function applyStorefrontCartMode() {
   const overlay = document.querySelector("[data-overlay][data-close-cart]");
   if (drawer) drawer.hidden = !on;
   if (overlay) overlay.hidden = !on;
+  if (on) updateCartBadge();
 }
 
 function applyStoreBranding() {
@@ -365,44 +465,16 @@ function applyStoreBranding() {
   const fav = document.querySelector('link[rel="icon"]');
   if (fav && s.logo) fav.href = resolveAsset(s.logo);
 
-  const footerTitle = document.querySelector(".site-footer .footer-grid > div:first-child > h3");
-  if (footerTitle) footerTitle.textContent = s.nameAr || s.name;
-
-  document.querySelectorAll("[data-store-footer-location]").forEach((el) => {
-    el.textContent = s.fullAddress || [s.city, s.address].filter(Boolean).join(" · ");
-  });
-
-  const footerAbout = document.querySelector("[data-store-footer-about]");
-  const aboutText = `متجر متخصص بلابتوبات القيمنق والإنتاج في العراق، بأسعار ${s.currency || "IQD"} و${s.warranty}.`;
-  if (footerAbout) {
-    footerAbout.textContent = aboutText;
-  } else {
-    const footerDesc = document.querySelector(".site-footer .footer-grid > div:first-child p:not([data-store-footer-location])");
-    if (footerDesc) footerDesc.textContent = aboutText;
-  }
-
-  const footerContact = document.querySelector("[data-store-footer-contact]");
-  if (footerContact) {
-    footerContact.innerHTML = `
-      <li>${s.fullAddress || s.address}</li>
-      <li>${s.phone}</li>
-      <li>${s.email}</li>
-      <li>${s.hours}</li>
-      <li><a href="/contact" data-page-link="contact">${typeof SitePages !== "undefined" ? SitePages.label("contact") : "التواصل"}</a></li>
-      <li><a href="/admin/login">لوحة التحكم</a></li>
-    `;
-  }
-
-  const footerCopy = document.querySelector(".footer-copy");
-  if (footerCopy) footerCopy.textContent = `© ${new Date().getFullYear()} ${s.nameAr || s.name}. جميع الحقوق محفوظة.`;
+  applyFooterChrome(s);
 
   const contactBox = document.querySelector("[data-store-contact]");
   if (contactBox) {
+    const email = storeEmail(s.email);
     contactBox.innerHTML = `
       <h2>بيانات المعرض</h2>
       <p class="muted">${s.fullAddress || s.address}</p>
-      <p><strong>الجوال:</strong> ${s.phone}</p>
-      <p><strong>البريد:</strong> ${s.email}</p>
+      <p><strong>الجوال:</strong> ${phoneLinkHtml(s.phone)}</p>
+      <p><strong>البريد:</strong> ${email ? `<a href="mailto:${email}">${email}</a>` : "—"}</p>
       <p><strong>ساعات العمل:</strong> ${s.hours}</p>
       <p><strong>الضمان:</strong> ${s.warranty}</p>
       <a class="btn btn-ghost" href="/products" style="margin-top: 18px">العودة للمنتجات</a>
@@ -2035,6 +2107,7 @@ function renderCart() {
         .join("")
     : `<p class="empty">سلتك فارغة حالياً.</p>`;
   if (total) total.textContent = money(subtotal);
+  updateCartBadge();
 }
 
 function openCart() {
@@ -2118,6 +2191,7 @@ function paintMobileNav() {
       ];
   const phone = s.phone || "";
   const tel = phoneDigits(phone);
+  const phoneDisplay = formatPhoneDisplay(phone);
   const wa = storeWhatsAppNumber();
   const address = s.fullAddress || [s.city, s.address].filter(Boolean).join(" · ");
   const logo = resolveAsset(s.logo || "img/logo.jpg");
@@ -2156,7 +2230,7 @@ function paintMobileNav() {
       </div>
       <p class="mobile-nav-label">تواصل سريع</p>
       <div class="mobile-nav-actions">
-        ${tel ? `<a class="mobile-nav-link" href="tel:${tel}">اتصال · ${phone}</a>` : ""}
+        ${tel ? `<a class="mobile-nav-link" href="tel:${tel}" dir="ltr">اتصال · ${phoneDisplay}</a>` : ""}
         ${wa ? `<a class="mobile-nav-link" href="https://wa.me/${wa}" target="_blank" rel="noopener">واتساب</a>` : ""}
         <a class="mobile-nav-link" href="/contact">موقع المعرض</a>
       </div>
@@ -2365,7 +2439,7 @@ function renderCheckout() {
       </ul>
       ${summaryRows(pricing)}
       <button class="btn btn-primary btn-lg" type="submit" data-place-order form="checkout-form">تأكيد الطلب</button>
-      <p class="muted summary-note">سنتواصل معك لتأكيد التسليم على ${STORE.phone}</p>
+      <p class="muted summary-note">سنتواصل معك لتأكيد التسليم على <span dir="ltr">${formatPhoneDisplay(STORE.phone)}</span></p>
     `;
   }
 }
