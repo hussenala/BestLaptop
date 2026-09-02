@@ -119,6 +119,12 @@ const StoreAPI = (() => {
       const cartFromSettings = payload.settings?.cartEnabled;
       if (cartFromStore !== undefined) STORE.cartEnabled = cartFromStore !== false;
       else if (cartFromSettings !== undefined) STORE.cartEnabled = cartFromSettings !== false;
+      const hiddenFromStore = payload.store?.hideAllProducts;
+      const hiddenFromSettings = payload.settings?.hideAllProducts;
+      if (hiddenFromStore !== undefined) STORE.hideAllProducts = !!hiddenFromStore;
+      else if (hiddenFromSettings !== undefined) STORE.hideAllProducts = !!hiddenFromSettings;
+      const hiddenMsg = payload.store?.productsHiddenMessage ?? payload.settings?.productsHiddenMessage;
+      if (hiddenMsg !== undefined) STORE.productsHiddenMessage = String(hiddenMsg || "");
     }
     if (typeof STORE !== "undefined" && payload.settings) {
       if ("homeLayout" in payload.settings) {

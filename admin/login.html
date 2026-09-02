@@ -9,8 +9,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet" />
     <link rel="icon" href="/img/logo.jpg" type="image/jpeg" />
-    <link rel="stylesheet" href="/css/styles.css?v=109" />
-    <link rel="stylesheet" href="/admin/css/admin.css?v=109" />
+    <link rel="stylesheet" href="/css/styles.css?v=110" />
+    <link rel="stylesheet" href="/admin/css/admin.css?v=110" />
     <script>
       document.documentElement.dataset.theme =
         localStorage.getItem("bestlaptop-theme") === "light" ? "light" : "dark";
@@ -48,15 +48,15 @@
         <a class="login-back" href="/">← العودة للمتجر</a>
       </form>
     </main>
-        <script src="/js/data.js?v=109"></script>
-    <script src="/js/api-client.js?v=109"></script>
-    <script src="/js/product-condition.js?v=109"></script>
-    <script src="/js/store-db.js?v=109"></script>
-    <script src="/js/theme.js?v=109"></script>
+        <script src="/js/data.js?v=110"></script>
+    <script src="/js/api-client.js?v=110"></script>
+    <script src="/js/product-condition.js?v=110"></script>
+    <script src="/js/store-db.js?v=110"></script>
+    <script src="/js/theme.js?v=110"></script>
     <script>
       if (StoreDB.session()) {
         StoreDB.verifySession().then((user) => {
-          if (user) location.replace("/admin/");
+          if (user) location.replace("/admin");
         });
       }
       document.querySelector("[data-toggle-pass]")?.addEventListener("click", (e) => {
@@ -76,7 +76,7 @@
         btn.disabled = true;
         err.hidden = true;
         StoreDB.login(e.target.username.value, e.target.password.value)
-          .then(() => location.replace("/admin/"))
+          .then(() => location.replace("/admin"))
           .catch((error) => {
             err.hidden = false;
             err.textContent =

@@ -190,6 +190,8 @@ const STORE = {
   maintenanceMode: false,
   maintenanceMessage: "",
   cartEnabled: true,
+  hideAllProducts: false,
+  productsHiddenMessage: "",
   currency: "IQD",
   cities: [
     "بغداد",

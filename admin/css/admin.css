@@ -1712,7 +1712,27 @@
   background: rgba(234, 179, 8, 0.08);
 }
 
+.hide-products-panel {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 18px 20px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.hide-products-panel.is-on {
+  border-color: rgba(96, 165, 250, 0.55);
+  background: rgba(96, 165, 250, 0.08);
+}
+
+.hide-products-panel textarea {
+  width: 100%;
+  min-height: 96px;
+  resize: vertical;
+  margin-top: 8px;
+}
+
 .maintenance-admin-panel h3,
+.hide-products-panel h3,
 .settings-section-title {
   margin: 0 0 12px;
 }

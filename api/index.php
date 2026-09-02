@@ -267,6 +267,8 @@ function checkout_options(array $s) {
   if (empty($s["maintenanceMessage"])) $s["maintenanceMessage"] = "";
   if (!isset($s["homeLayout"]) || !is_array($s["homeLayout"])) $s["homeLayout"] = null;
   $s["cartEnabled"] = normalize_bool_setting($s["cartEnabled"] ?? null, true);
+  $s["hideAllProducts"] = !empty($s["hideAllProducts"]);
+  if (empty($s["productsHiddenMessage"])) $s["productsHiddenMessage"] = "";
   if (!empty($s["phone"])) $s["phone"] = normalize_store_phone($s["phone"]);
   if (!empty($s["whatsapp"])) $s["whatsapp"] = normalize_store_phone($s["whatsapp"]);
   elseif (!empty($s["phone"])) $s["whatsapp"] = $s["phone"];
@@ -285,6 +287,10 @@ function normalize_bool_setting($value, $default = true) {
 
 function is_maintenance_mode(PDO $pdo) {
   return !empty(settings_raw($pdo)["maintenanceMode"]);
+}
+
+function is_products_hidden(PDO $pdo) {
+  return !empty(settings_raw($pdo)["hideAllProducts"]);
 }
 
 function normalize_text_position($value) {
@@ -460,7 +466,7 @@ function version(PDO $pdo) {
 }
 
 function app_build() {
-  return 109;
+  return 110;
 }
 
 function normalize_upload_path($src) {
@@ -533,7 +539,7 @@ function health(PDO $pdo) {
   $uploads = dirname(__DIR__) . DIRECTORY_SEPARATOR . "uploads";
   [$galleryDir, $galleryError] = ensure_upload_dir("gallery");
   $conditionReady = products_have_condition_column($pdo);
-  $features = ["cartEnabled", "showAddToCart", "headerSearchV2", "homeEffects", "adminModalFix"];
+  $features = ["cartEnabled", "showAddToCart", "headerSearchV2", "homeEffects", "adminModalFix", "hideAllProducts"];
   if ($conditionReady) $features[] = "productCondition";
   return [
     "ok" => true,
@@ -827,7 +833,7 @@ function public_store(PDO $pdo) {
   $s = settings($pdo);
   return [
     "version" => version($pdo),
-    "products" => list_products($pdo),
+    "products" => is_products_hidden($pdo) ? [] : list_products($pdo),
     "categories" => list_categories($pdo),
     "brands" => list_brands($pdo),
     "settings" => $s,
@@ -855,6 +861,8 @@ function public_store(PDO $pdo) {
       "maintenanceMode" => !empty($s["maintenanceMode"]),
       "maintenanceMessage" => $s["maintenanceMessage"] ?? "",
       "cartEnabled" => normalize_bool_setting($s["cartEnabled"] ?? null, true),
+      "hideAllProducts" => !empty($s["hideAllProducts"]),
+      "productsHiddenMessage" => $s["productsHiddenMessage"] ?? "",
     ],
   ];
 }
@@ -871,6 +879,7 @@ try {
 
   if ($path === "/orders" && $method === "POST") {
     if (is_maintenance_mode($pdo)) json_out(503, ["error" => "الموقع تحت الصيانة حالياً"]);
+    if (is_products_hidden($pdo)) json_out(503, ["error" => "المنتجات مخفية حالياً"]);
     $body = read_json();
     if (empty($body["items"])) json_out(400, ["error" => "Empty order"]);
     $id = $body["id"] ?? ("BL-" . substr((string) time(), -6));

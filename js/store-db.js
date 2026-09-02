@@ -95,6 +95,8 @@ const StoreDB = (() => {
         officeGallery: cache.settings.officeGallery || STORE.officeGallery,
         homeLayout: cache.settings.homeLayout ?? null,
         cartEnabled: cache.settings.cartEnabled !== false,
+        hideAllProducts: !!cache.settings.hideAllProducts,
+        productsHiddenMessage: cache.settings.productsHiddenMessage || "",
         city: cache.settings.city,
         address: cache.settings.address,
         fullAddress: cache.settings.fullAddress,

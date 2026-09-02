@@ -272,7 +272,7 @@ function getHealth() {
       ok: true,
       db: true,
       engine: "sqlite",
-      build: 109,
+      build: 110,
       users,
       hasAdmin: users > 0,
       version,
@@ -741,6 +741,8 @@ function getSettings() {
   s.maintenanceMode = !!s.maintenanceMode;
   if (!s.maintenanceMessage) s.maintenanceMessage = "";
   s.cartEnabled = s.cartEnabled !== false;
+  s.hideAllProducts = !!s.hideAllProducts;
+  if (!s.productsHiddenMessage) s.productsHiddenMessage = "";
   if (!Array.isArray(s.homeLayout)) s.homeLayout = null;
   if (!s.officeGallery || typeof s.officeGallery !== "object") {
     s.officeGallery = defaultOfficeGallery();
@@ -775,6 +777,7 @@ function saveSettings(settings) {
   const normalized = {
     ...settings,
     cartEnabled: Object.prototype.hasOwnProperty.call(settings, "cartEnabled") ? settings.cartEnabled !== false : true,
+    hideAllProducts: !!settings.hideAllProducts,
   };
   if (normalized.phone) normalized.phone = normalizeStorePhone(normalized.phone);
   if (normalized.whatsapp) normalized.whatsapp = normalizeStorePhone(normalized.whatsapp);
@@ -1219,7 +1222,7 @@ function getPublicStore() {
   const settings = getSettings();
   return {
     version: getVersion(),
-    products: listProducts(),
+    products: settings.hideAllProducts ? [] : listProducts(),
     categories: listCategories(),
     brands: listBrands(),
     settings,
@@ -1247,6 +1250,8 @@ function getPublicStore() {
       maintenanceMode: !!settings.maintenanceMode,
       maintenanceMessage: settings.maintenanceMessage || "",
       cartEnabled: settings.cartEnabled !== false,
+      hideAllProducts: !!settings.hideAllProducts,
+      productsHiddenMessage: settings.productsHiddenMessage || "",
     },
   };
 }

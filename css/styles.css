@@ -841,6 +841,13 @@ html.cart-disabled [data-overlay][data-close-cart] {
   display: none !important;
 }
 
+html.products-hidden [data-home-products],
+html.products-hidden [data-new-products],
+html.products-hidden [data-related],
+html.products-hidden .header-brands {
+  display: none !important;
+}
+
 .pdp-cta {
   display: grid;
   gap: 10px;

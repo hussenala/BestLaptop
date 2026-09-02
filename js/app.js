@@ -404,6 +404,44 @@ function isCartEnabled() {
   return STORE?.cartEnabled !== false;
 }
 
+function isProductsVisible() {
+  return STORE?.hideAllProducts !== true;
+}
+
+function productsHiddenNotice() {
+  const msg = String(STORE?.productsHiddenMessage || "").trim();
+  return msg || "المنتجات مخفية مؤقتاً من المتجر. تواصل معنا للاستفسار.";
+}
+
+function productsHiddenState(context = "catalog") {
+  const isProduct = context === "product";
+  return `
+    <section class="catalog-empty products-hidden-state" role="status" aria-live="polite">
+      <div class="catalog-empty-card">
+        <div class="catalog-empty-main">
+          <div class="catalog-empty-visual" aria-hidden="true">
+            <div class="catalog-empty-glow"></div>
+            <div class="catalog-empty-icon">${ICONS.searchEmpty}</div>
+          </div>
+          <div class="catalog-empty-body">
+            <p class="eyebrow">غير متاح</p>
+            <h2>${isProduct ? "هذا المنتج غير متاح حالياً" : "المنتجات مخفية حالياً"}</h2>
+            <p class="catalog-empty-lead">${productsHiddenNotice()}</p>
+            <div class="catalog-empty-actions">
+              <a class="btn btn-primary btn-lg" href="/contact">تواصل معنا</a>
+              <a class="btn btn-ghost btn-lg" href="/">العودة للرئيسية</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>`;
+}
+
+function applyStorefrontProductsMode() {
+  const visible = isProductsVisible();
+  document.documentElement.classList.toggle("products-hidden", !visible);
+}
+
 function ensureCartBadges() {
   document.querySelectorAll(".btn-cart").forEach((btn) => {
     if (btn.querySelector("[data-cart-count]")) return;
@@ -928,6 +966,7 @@ function clearProductSliderCaches() {
 }
 
 function getSliderProducts(cfg = {}) {
+  if (!isProductsVisible()) return [];
   const ids = Array.isArray(cfg.productIds) ? cfg.productIds.filter(Boolean) : [];
   if (ids.length) {
     return ids.map((id) => PRODUCTS.find((p) => p.id === id)).filter(Boolean);
@@ -1780,6 +1819,12 @@ function catalogEmptyState() {
 function renderCatalog() {
   const el = document.querySelector("[data-catalog]");
   if (!el) return;
+  if (!isProductsVisible()) {
+    el.innerHTML = productsHiddenState("catalog");
+    const countEl = document.querySelector("[data-results-count]");
+    if (countEl) countEl.textContent = "0 جهاز";
+    return;
+  }
   const { q, cat, sort, min, max, brands } = getCatalogFilterState();
 
   let list = PRODUCTS.filter((p) => {
@@ -1812,6 +1857,13 @@ function renderCatalog() {
 function renderProductPage() {
   const el = document.querySelector("[data-product]");
   if (!el) return;
+  if (!isProductsVisible()) {
+    el.innerHTML = productsHiddenState("product");
+    document.title = typeof SitePages !== "undefined" ? SitePages.documentTitle("product") : "المنتج | BEST LAPTOP";
+    const related = document.querySelector("[data-related]");
+    if (related) related.innerHTML = "";
+    return;
+  }
   el.querySelector("[data-pdp-gallery]")?._pdpCarouselCleanup?.();
   el.querySelector("[data-pdp-thumbs-slider]")?._pdpThumbsCleanup?.();
   try {
@@ -2890,6 +2942,7 @@ function heroSlidesSource() {
   if (typeof SLIDES !== "undefined" && (fromApi || SLIDES.length)) {
     return SLIDES.filter((s) => s.active !== false).map((s) => slidePayload(s));
   }
+  if (!isProductsVisible()) return [];
   return PRODUCTS.filter((p) => p.slide).map((s) => (s.title ? slidePayload(s) : s));
 }
 
@@ -3504,6 +3557,7 @@ async function bootStorefront() {
   }
   applyStoreBranding();
   applyStorefrontCartMode();
+  applyStorefrontProductsMode();
   initMobileCheckoutBar();
   renderHeaderBrands();
   renderCategoryFilter();
@@ -3534,6 +3588,7 @@ window.refreshStorefrontViews = function refreshStorefrontViews() {
   if (typeof SitePages !== "undefined") SitePages.paintLinks();
   applyStoreBranding();
   applyStorefrontCartMode();
+  applyStorefrontProductsMode();
   initMobileCheckoutBar();
   renderHeaderBrands();
   renderCategoryFilter();

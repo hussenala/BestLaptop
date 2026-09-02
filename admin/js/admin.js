@@ -1873,6 +1873,7 @@ function setupSlideDragDrop() {
 function renderSettings() {
   const s = db().settings;
   const maintenanceOn = !!s.maintenanceMode;
+  const productsHidden = !!s.hideAllProducts;
   return `<form class="panel admin-form" data-settings-form>
     <section class="panel maintenance-admin-panel span-2 ${maintenanceOn ? "is-on" : ""}">
       <h3>وضع الصيانة</h3>
@@ -1883,6 +1884,17 @@ function renderSettings() {
       <p class="muted">لوحة التحكم تبقى متاحة لك وللفريق الإداري فقط.</p>
       <label class="span-2">رسالة الصيانة للزوار
         <textarea name="maintenanceMessage" rows="3" placeholder="نعمل على تحسين تجربتكم. سنعود قريباً.">${esc(s.maintenanceMessage || "")}</textarea>
+      </label>
+    </section>
+    <section class="panel hide-products-panel span-2 ${productsHidden ? "is-on" : ""}">
+      <h3>إظهار المنتجات</h3>
+      <label class="check-row">
+        <input type="checkbox" name="hideAllProducts" value="1" ${productsHidden ? "checked" : ""} />
+        إخفاء جميع المنتجات عن زوار الموقع
+      </label>
+      <p class="muted">عند التفعيل لن تظهر المنتجات في المتجر أو الصفحة الرئيسية أو صفحات الأجهزة. لوحة التحكم تبقى كما هي.</p>
+      <label class="span-2">رسالة للزوار عند إخفاء المنتجات
+        <textarea name="productsHiddenMessage" rows="3" placeholder="المنتجات مخفية مؤقتاً. تواصل معنا للاستفسار.">${esc(s.productsHiddenMessage || "")}</textarea>
       </label>
     </section>
     <section class="panel storefront-cart-panel span-2">
@@ -2037,6 +2049,8 @@ const PAGES = {
 function render(opts = {}) {
   const user = session();
   if (!user) return;
+  const data = db();
+  if (!data) return;
   const route = parseRoute();
   if (route.page === "product-editor" && !StoreDB.can(user.role, "products")) {
     location.hash = "#/dashboard";
@@ -2049,7 +2063,7 @@ function render(opts = {}) {
   }
   document.querySelector("[data-user-name]").textContent = user.name;
   document.querySelector("[data-user-role]").textContent = user.role === "admin" ? "أدمن" : "مدير";
-  const s = db().settings;
+  const s = data.settings || {};
   const logo = document.querySelector("[data-admin-logo]");
   if (logo && s.logo) logo.src = resolveAdminAsset(s.logo);
   renderNav(user);
@@ -2060,7 +2074,7 @@ function render(opts = {}) {
     document.querySelector("[data-page-title]").textContent = route.mode === "new" ? "إضافة منتج" : "تعديل منتج";
     document.querySelector("[data-admin-view]").innerHTML = renderProductEditor(route.mode === "edit" ? route.id : null);
     const hidden = document.querySelector("[data-images-json]");
-    const existing = route.id ? db().products.find((x) => x.id === route.id) : null;
+    const existing = route.id ? data.products.find((x) => x.id === route.id) : null;
     const images = normalizeProductImages(existing || {});
     if (hidden) hidden.value = JSON.stringify(images);
     paintImagePreviews(images);
@@ -2749,6 +2763,8 @@ document.addEventListener("submit", (e) => {
         notice: f.get("notice"),
         maintenanceMode: f.get("maintenanceMode") === "1",
         maintenanceMessage: String(f.get("maintenanceMessage") || "").trim(),
+        hideAllProducts: f.get("hideAllProducts") === "1",
+        productsHiddenMessage: String(f.get("productsHiddenMessage") || "").trim(),
         cartEnabled: f.get("cartEnabled") === "1",
       };
       const finish = async () => {
@@ -2854,8 +2870,11 @@ async function bootAdmin() {
     location.replace("/admin/login");
     return;
   }
+  window.__adminReady = true;
   render();
 }
 
-window.addEventListener("hashchange", () => render());
+window.addEventListener("hashchange", () => {
+  if (window.__adminReady) render();
+});
 bootAdmin();

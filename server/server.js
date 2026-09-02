@@ -93,8 +93,12 @@ async function handleApi(req, res, pathname) {
   }
 
   if (pathname === "/api/orders" && method === "POST") {
-    if (db.getSettings()?.maintenanceMode) {
+    const settings = db.getSettings();
+    if (settings?.maintenanceMode) {
       return send(res, 503, { error: "الموقع تحت الصيانة حالياً" });
+    }
+    if (settings?.hideAllProducts) {
+      return send(res, 503, { error: "المنتجات مخفية حالياً" });
     }
     const body = await readBody(req);
     if (!body?.items?.length) return send(res, 400, { error: "Empty order" });
@@ -478,7 +482,9 @@ const PAGE_ALIASES = {
   "/order": "/order.html",
   "/maintenance": "/maintenance.html",
   "/admin": "/admin/index.html",
+  "/admin/": "/admin/index.html",
   "/admin/login": "/admin/login.html",
+  "/admin/login/": "/admin/login.html",
 };
 
 function isStorefrontHtmlPath(pathname) {
@@ -493,6 +499,10 @@ function isStorefrontHtmlPath(pathname) {
 }
 
 function serveStatic(req, res, pathname) {
+  if (pathname.length > 1 && pathname.endsWith("/") && !pathname.includes(".")) {
+    pathname = pathname.replace(/\/+$/, "") || "/";
+  }
+
   const productMatch = pathname.match(/^\/product\/([^/]+)\/?$/);
   if (productMatch) {
     pathname = "/product.html";
