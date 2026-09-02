@@ -1559,10 +1559,12 @@ body.nav-open { overflow: hidden; }
   grid-template-columns: auto 1fr auto;
   gap: 12px;
   align-items: center;
+  min-width: 0;
 }
 .product-slider-viewport {
   overflow: hidden;
   width: 100%;
+  min-width: 0;
   touch-action: pan-y;
   cursor: grab;
   user-select: none;
@@ -1617,13 +1619,26 @@ body.nav-open { overflow: hidden; }
   .product-slider-viewport {
     grid-row: 1;
     grid-column: 1;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
     touch-action: pan-x;
+    cursor: auto;
   }
+  .product-slider-viewport::-webkit-scrollbar { display: none; }
   .product-slider-btn { display: none; }
+  .product-slider-track {
+    transform: none !important;
+    transition: none !important;
+  }
   .product-slider-track .product-card {
-    flex: 0 0 82vw;
-    width: 82vw;
-    min-width: 82vw;
+    flex: 0 0 min(82vw, calc(100% - 12px));
+    width: min(82vw, calc(100% - 12px));
+    min-width: min(82vw, calc(100% - 12px));
+    scroll-snap-align: start;
   }
 }
 .cat-grid {

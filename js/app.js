@@ -1022,6 +1022,10 @@ function productSliderSectionHtml(cfg) {
     </section>`;
 }
 
+function productSliderTouchMode() {
+  return window.matchMedia("(max-width: 760px)").matches;
+}
+
 function initProductSlider(root, products, cfg) {
   const track = root.querySelector("[data-product-track]");
   const viewport = root.querySelector(".product-slider-viewport");
@@ -1039,6 +1043,7 @@ function initProductSlider(root, products, cfg) {
   root._productSliderProducts = products;
 
   function visibleCount() {
+    if (productSliderTouchMode()) return 1;
     const w = viewport.clientWidth || root.clientWidth;
     if (w < 560) return 1;
     if (w < 900) return 2;
@@ -1062,11 +1067,24 @@ function initProductSlider(root, products, cfg) {
   function syncButtons() {
     const prev = root.querySelector("[data-ps-prev]");
     const next = root.querySelector("[data-ps-next]");
+    if (productSliderTouchMode()) {
+      const maxScroll = Math.max(0, viewport.scrollWidth - viewport.clientWidth);
+      const pos = Math.abs(viewport.scrollLeft);
+      if (prev) prev.disabled = pos <= 1;
+      if (next) next.disabled = pos >= maxScroll - 1;
+      return;
+    }
     if (prev) prev.disabled = offsetPx <= 0;
     if (next) next.disabled = offsetPx >= maxOffset() - 1;
   }
 
   function applyTransform(instant) {
+    if (productSliderTouchMode()) {
+      track.style.transition = "none";
+      track.style.transform = "none";
+      syncButtons();
+      return;
+    }
     offsetPx = clampOffset(offsetPx);
     root._productSliderOffset = offsetPx;
     track.style.transition =
@@ -1076,6 +1094,10 @@ function initProductSlider(root, products, cfg) {
   }
 
   function snapToNearest(instant = false) {
+    if (productSliderTouchMode()) {
+      applyTransform(true);
+      return;
+    }
     const step = stepPx();
     if (!step) return;
     offsetPx = clampOffset(Math.round(offsetPx / step) * step);
@@ -1083,6 +1105,13 @@ function initProductSlider(root, products, cfg) {
   }
 
   function shiftBy(steps) {
+    if (productSliderTouchMode()) {
+      const step = stepPx();
+      if (!step) return;
+      const rtl = getComputedStyle(viewport).direction === "rtl";
+      viewport.scrollBy({ left: steps * step * (rtl ? -1 : 1), behavior: "smooth" });
+      return;
+    }
     offsetPx = clampOffset(offsetPx + steps * stepPx());
     applyTransform(false);
   }
@@ -1100,9 +1129,11 @@ function initProductSlider(root, products, cfg) {
   root._productSliderShift = shiftBy;
   root._productSliderPlay = play;
   root._productSliderPause = pauseAuto;
+  const onScroll = () => syncButtons();
   root._productSliderCleanup = () => {
     clearInterval(root._productSliderTimer);
     if (root._productSliderResize) window.removeEventListener("resize", root._productSliderResize);
+    viewport.removeEventListener("scroll", onScroll);
   };
 
   bindAutoplayEngagePause(root, {
@@ -1144,6 +1175,7 @@ function initProductSlider(root, products, cfg) {
     });
 
     viewport.addEventListener("pointerdown", (e) => {
+      if (productSliderTouchMode()) return;
       if (e.pointerType === "mouse" && e.button !== 0) return;
       if (e.target.closest("[data-add], [data-ps-prev], [data-ps-next]")) return;
       dragging = false;
@@ -1156,6 +1188,7 @@ function initProductSlider(root, products, cfg) {
     });
 
     viewport.addEventListener("pointermove", (e) => {
+      if (productSliderTouchMode()) return;
       if (!viewport._dragArmed && !dragging) return;
       if (viewport._dragPointerId != null && e.pointerId !== viewport._dragPointerId) return;
       const dx = e.clientX - dragStartX;
@@ -1176,6 +1209,7 @@ function initProductSlider(root, products, cfg) {
     });
 
     const endDrag = (e) => {
+      if (productSliderTouchMode()) return;
       if (viewport._dragPointerId != null && e.pointerId !== viewport._dragPointerId) return;
       const wasDragging = dragging;
       viewport._dragArmed = false;
@@ -1217,7 +1251,14 @@ function initProductSlider(root, products, cfg) {
     window.addEventListener("resize", root._productSliderResize);
   }
 
-  snapToNearest(true);
+  viewport.addEventListener("scroll", onScroll, { passive: true });
+  if (productSliderTouchMode()) {
+    bindTouchPan(viewport);
+    applyTransform(true);
+    syncButtons();
+  } else {
+    snapToNearest(true);
+  }
   if (!root._productSliderHover && !root._productSliderPress) play();
 }
 
