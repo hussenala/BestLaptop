@@ -1022,20 +1022,97 @@ function productSliderSectionHtml(cfg) {
     </section>`;
 }
 
-function productSliderRtl() {
-  return document.documentElement.getAttribute("dir") === "rtl";
+function productSliderNativeMode() {
+  return window.matchMedia("(max-width: 760px), (pointer: coarse)").matches;
 }
 
-function productSliderDragDelta(dx) {
-  return productSliderRtl() ? dx : -dx;
+function productSliderTrackGap(track) {
+  const style = getComputedStyle(track);
+  return Number.parseFloat(style.columnGap || style.gap || "16") || 16;
 }
 
-function initProductSlider(root, products, cfg) {
+function productSliderStepPx(track) {
+  const card = track?.firstElementChild;
+  return card ? card.offsetWidth + productSliderTrackGap(track) : 0;
+}
+
+function productSliderScrollPos(viewport) {
+  return Math.abs(viewport.scrollLeft);
+}
+
+function initProductSliderNative(root, products, cfg) {
   const track = root.querySelector("[data-product-track]");
   const viewport = root.querySelector(".product-slider-viewport");
   if (!track || !viewport || !products.length) return;
 
-  if (root._productSliderCleanup) root._productSliderCleanup();
+  track.style.transform = "none";
+  track.style.transition = "none";
+  viewport.classList.add("is-native-scroll");
+
+  root._productSliderCfg = cfg;
+  root._productSliderProducts = products;
+  root._productSliderMode = "native";
+
+  function syncButtons() {
+    const maxScroll = Math.max(0, viewport.scrollWidth - viewport.clientWidth);
+    const pos = productSliderScrollPos(viewport);
+    const prev = root.querySelector("[data-ps-prev]");
+    const next = root.querySelector("[data-ps-next]");
+    if (prev) prev.disabled = pos <= 2;
+    if (next) next.disabled = pos >= maxScroll - 2;
+  }
+
+  function shiftBy(steps) {
+    const step = productSliderStepPx(track);
+    if (!step) return;
+    viewport.scrollBy({ left: steps * step, behavior: "smooth" });
+  }
+
+  const onScroll = () => syncButtons();
+  viewport.addEventListener("scroll", onScroll, { passive: true });
+
+  root._productSliderShift = shiftBy;
+  root._productSliderPlay = () => {};
+  root._productSliderPause = () => {};
+  root._productSliderCleanup = () => {
+    viewport.removeEventListener("scroll", onScroll);
+    viewport.classList.remove("is-native-scroll");
+    track.style.transform = "";
+    track.style.transition = "";
+    if (root._productSliderResize) window.removeEventListener("resize", root._productSliderResize);
+  };
+
+  if (!root.dataset.productSliderBound) {
+    root.dataset.productSliderBound = "1";
+    root.addEventListener("click", (e) => {
+      if (e.target.closest("[data-ps-prev]")) root._productSliderShift(-1);
+      if (e.target.closest("[data-ps-next]")) root._productSliderShift(1);
+    });
+  }
+
+  if (!root._productSliderResize) {
+    root._productSliderResize = () => {
+      if (!productSliderNativeMode()) {
+        initProductSlider(root, products, cfg);
+        return;
+      }
+      syncButtons();
+    };
+    window.addEventListener("resize", root._productSliderResize);
+  }
+
+  requestAnimationFrame(syncButtons);
+  window.setTimeout(syncButtons, 120);
+}
+
+function initProductSliderTransform(root, products, cfg) {
+  const track = root.querySelector("[data-product-track]");
+  const viewport = root.querySelector(".product-slider-viewport");
+  if (!track || !viewport || !products.length) return;
+
+  viewport.classList.remove("is-native-scroll");
+  track.style.transform = "";
+  track.style.transition = "";
 
   let offsetPx = root._productSliderOffset || 0;
   let dragging = false;
@@ -1045,6 +1122,7 @@ function initProductSlider(root, products, cfg) {
 
   root._productSliderCfg = cfg;
   root._productSliderProducts = products;
+  root._productSliderMode = "transform";
 
   function visibleCount() {
     const w = viewport.clientWidth || root.clientWidth;
@@ -1055,8 +1133,7 @@ function initProductSlider(root, products, cfg) {
   }
 
   function stepPx() {
-    const card = track.firstElementChild;
-    return card ? card.offsetWidth + 16 : 0;
+    return productSliderStepPx(track);
   }
 
   function maxOffset() {
@@ -1130,13 +1207,12 @@ function initProductSlider(root, products, cfg) {
     root.dataset.productSliderBound = "1";
     root.tabIndex = 0;
     root.addEventListener("keydown", (e) => {
-      const rtl = productSliderRtl();
       if (e.key === "ArrowLeft") {
-        shiftBy(rtl ? 1 : -1);
+        shiftBy(-1);
         e.preventDefault();
       }
       if (e.key === "ArrowRight") {
-        shiftBy(rtl ? -1 : 1);
+        shiftBy(1);
         e.preventDefault();
       }
     });
@@ -1188,7 +1264,7 @@ function initProductSlider(root, products, cfg) {
           }
           viewport.classList.add("is-dragging");
         }
-        offsetPx = clampOffset(dragStartOffset + productSliderDragDelta(dx));
+        offsetPx = clampOffset(dragStartOffset - dx);
         applyTransform(true);
         if (dragging) e.preventDefault();
       },
@@ -1233,12 +1309,40 @@ function initProductSlider(root, products, cfg) {
   }
 
   if (!root._productSliderResize) {
-    root._productSliderResize = () => snapToNearest(true);
+    root._productSliderResize = () => {
+      if (productSliderNativeMode()) {
+        initProductSlider(root, products, cfg);
+        return;
+      }
+      snapToNearest(true);
+    };
     window.addEventListener("resize", root._productSliderResize);
   }
 
   snapToNearest(true);
   if (!root._productSliderHover && !root._productSliderPress) play();
+}
+
+function initProductSlider(root, products, cfg) {
+  const track = root.querySelector("[data-product-track]");
+  const viewport = root.querySelector(".product-slider-viewport");
+  if (!track || !viewport || !products.length) return;
+
+  const mode = productSliderNativeMode() ? "native" : "transform";
+  if (root._productSliderMode && root._productSliderMode !== mode) {
+    root._productSliderCleanup?.();
+    delete root.dataset.productSliderBound;
+    delete root._productSliderResize;
+  }
+
+  if (root._productSliderCleanup) root._productSliderCleanup();
+
+  if (mode === "native") {
+    initProductSliderNative(root, products, cfg);
+    return;
+  }
+
+  initProductSliderTransform(root, products, cfg);
 }
 
 function renderOfficeGallery() {
