@@ -1812,6 +1812,8 @@ function renderCatalog() {
 function renderProductPage() {
   const el = document.querySelector("[data-product]");
   if (!el) return;
+  el.querySelector("[data-pdp-gallery]")?._pdpCarouselCleanup?.();
+  el.querySelector("[data-pdp-thumbs-slider]")?._pdpThumbsCleanup?.();
   try {
     const id = productIdFromUrl();
     const p = PRODUCTS.find((item) => item.id === id);
@@ -1871,7 +1873,7 @@ function renderProductPage() {
                 <div class="pdp-thumbs-track" data-pdp-thumbs-track>${images
                   .map(
                     (src, i) =>
-                      `<button type="button" class="pdp-thumb ${i === 0 ? "on" : ""}" data-pdp-thumb="${src}" data-pdp-idx="${i}"><img src="${src}" alt="" /></button>`
+                      `<button type="button" class="pdp-thumb ${i === 0 ? "on" : ""}" data-pdp-thumb="${src}" data-pdp-idx="${i}" aria-label="عرض الصورة ${i + 1}"><img src="${src}" alt="" draggable="false" /></button>`
                   )
                   .join("")}</div>
               </div>
@@ -1955,15 +1957,16 @@ function setupPdpCarousel(images, alt = "") {
   let idx = 0;
   let timer = null;
   let paused = false;
+  let userLocked = false;
 
   function paint(i) {
     idx = (i + images.length) % images.length;
     main.src = images[idx];
     main.alt = alt;
-    document.querySelectorAll(".pdp-thumb").forEach((btn) => {
+    gallery.querySelectorAll(".pdp-thumb").forEach((btn) => {
       btn.classList.toggle("on", Number(btn.dataset.pdpIdx) === idx);
     });
-    document.querySelectorAll(".pdp-dot").forEach((dot) => {
+    gallery.querySelectorAll(".pdp-dot").forEach((dot) => {
       dot.classList.toggle("on", Number(dot.dataset.pdpDot) === idx);
     });
     if (window._pdpZoomSync) window._pdpZoomSync(idx);
@@ -1982,13 +1985,15 @@ function setupPdpCarousel(images, alt = "") {
   }
 
   function resume() {
+    if (userLocked) return;
     paused = false;
     play();
   }
 
   gallery._pdpGo = (n) => {
+    userLocked = true;
+    pause();
     paint(n);
-    play();
   };
   gallery._pdpIndex = () => idx;
   gallery._pdpImages = images;
@@ -2018,10 +2023,13 @@ function setupPdpThumbSlider(images) {
 
   if (root._pdpThumbsCleanup) root._pdpThumbsCleanup();
 
-  let offsetPx = 0;
+  track.style.transform = "";
+  track.style.transition = "";
+
+  let thumbMoved = false;
   let dragging = false;
   let dragStartX = 0;
-  let dragStartOffset = 0;
+  let dragStartScroll = 0;
 
   function thumbStep() {
     const thumb = track.firstElementChild;
@@ -2030,63 +2038,68 @@ function setupPdpThumbSlider(images) {
     return thumb.offsetWidth + gap;
   }
 
-  function visibleCount() {
-    const step = thumbStep();
-    if (!step) return 1;
-    return Math.max(1, Math.floor((viewport.clientWidth + 8) / step));
-  }
-
-  function maxOffset() {
-    return Math.max(0, (images.length - visibleCount()) * thumbStep());
-  }
-
-  function clampOffset(px) {
-    return Math.max(0, Math.min(px, maxOffset()));
-  }
-
   function syncButtons() {
     const prev = root.querySelector("[data-pdp-thumbs-prev]");
     const next = root.querySelector("[data-pdp-thumbs-next]");
-    if (prev) prev.disabled = offsetPx <= 0;
-    if (next) next.disabled = offsetPx >= maxOffset() - 1;
+    const max = Math.max(0, viewport.scrollWidth - viewport.clientWidth);
+    const x = viewport.scrollLeft;
+    if (prev) prev.disabled = x <= 2;
+    if (next) next.disabled = x >= max - 2;
   }
 
-  function applyTransform(animate = true) {
-    offsetPx = clampOffset(offsetPx);
-    track.style.transition = animate && !dragging ? "transform 0.35s ease" : "none";
-    track.style.transform = `translate3d(-${offsetPx}px, 0, 0)`;
-    syncButtons();
-  }
-
-  function shiftBy(steps) {
-    offsetPx = clampOffset(offsetPx + steps * thumbStep());
-    applyTransform(true);
+  function scrollBySteps(steps) {
+    viewport.scrollBy({ left: steps * thumbStep(), behavior: "smooth" });
   }
 
   function scrollToIndex(idx) {
-    const step = thumbStep();
-    const vis = visibleCount();
-    const target = idx * step;
-    if (target < offsetPx) offsetPx = target;
-    else if (target + step > offsetPx + vis * step) offsetPx = target - (vis - 1) * step;
-    applyTransform(true);
+    const thumb = track.querySelector(`[data-pdp-idx="${idx}"]`);
+    if (!thumb) return;
+    thumb.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
   }
 
-  const onPrev = () => shiftBy(-1);
-  const onNext = () => shiftBy(1);
-  const onResize = () => applyTransform(false);
+  function selectThumb(thumb) {
+    const gallery = document.querySelector("[data-pdp-gallery]");
+    const idx = Number(thumb?.dataset.pdpIdx);
+    if (!Number.isFinite(idx)) return;
+    if (gallery?._pdpGo) gallery._pdpGo(idx);
+    else {
+      const main = document.querySelector("[data-pdp-main]");
+      if (main && thumb.dataset.pdpThumb) main.src = thumb.dataset.pdpThumb;
+      track.querySelectorAll(".pdp-thumb").forEach((btn) => btn.classList.toggle("on", btn === thumb));
+    }
+    scrollToIndex(idx);
+  }
 
-  const prevBtn = root.querySelector("[data-pdp-thumbs-prev]");
-  const nextBtn = root.querySelector("[data-pdp-thumbs-next]");
-  prevBtn?.addEventListener("click", onPrev);
-  nextBtn?.addEventListener("click", onNext);
-  window.addEventListener("resize", onResize);
+  const onPrev = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    scrollBySteps(-1);
+  };
+  const onNext = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    scrollBySteps(1);
+  };
+  const onScroll = () => syncButtons();
+  const onResize = () => syncButtons();
+  const onThumbActivate = (e) => {
+    if (thumbMoved) {
+      thumbMoved = false;
+      return;
+    }
+    const thumb = e.target.closest("[data-pdp-thumb]");
+    if (!thumb || !root.contains(thumb)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    selectThumb(thumb);
+  };
 
   const onPointerDown = (e) => {
-    if (e.pointerType === "mouse" && e.button !== 0) return;
+    if (e.pointerType !== "mouse" || e.button !== 0) return;
     dragging = true;
+    thumbMoved = false;
     dragStartX = e.clientX;
-    dragStartOffset = offsetPx;
+    dragStartScroll = viewport.scrollLeft;
     viewport.classList.add("is-dragging");
     try {
       viewport.setPointerCapture(e.pointerId);
@@ -2096,35 +2109,49 @@ function setupPdpThumbSlider(images) {
   };
   const onPointerMove = (e) => {
     if (!dragging) return;
-    offsetPx = clampOffset(dragStartOffset - (e.clientX - dragStartX));
-    applyTransform(false);
+    const dx = e.clientX - dragStartX;
+    if (Math.abs(dx) > 4) thumbMoved = true;
+    viewport.scrollLeft = dragStartScroll - dx;
   };
-  const onPointerUp = () => {
+  const onPointerUp = (e) => {
     if (!dragging) return;
     dragging = false;
     viewport.classList.remove("is-dragging");
-    const step = thumbStep();
-    if (step) offsetPx = clampOffset(Math.round(offsetPx / step) * step);
-    applyTransform(true);
+    try {
+      viewport.releasePointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
   };
 
+  const prevBtn = root.querySelector("[data-pdp-thumbs-prev]");
+  const nextBtn = root.querySelector("[data-pdp-thumbs-next]");
+  prevBtn?.addEventListener("click", onPrev);
+  nextBtn?.addEventListener("click", onNext);
+  root.addEventListener("click", onThumbActivate);
+  viewport.addEventListener("scroll", onScroll, { passive: true });
   viewport.addEventListener("pointerdown", onPointerDown);
   viewport.addEventListener("pointermove", onPointerMove);
   viewport.addEventListener("pointerup", onPointerUp);
   viewport.addEventListener("pointercancel", onPointerUp);
+  window.addEventListener("resize", onResize);
+  bindTouchPan(viewport);
 
   root._pdpThumbsGo = scrollToIndex;
   root._pdpThumbsCleanup = () => {
     window.removeEventListener("resize", onResize);
     prevBtn?.removeEventListener("click", onPrev);
     nextBtn?.removeEventListener("click", onNext);
+    root.removeEventListener("click", onThumbActivate);
+    viewport.removeEventListener("scroll", onScroll);
     viewport.removeEventListener("pointerdown", onPointerDown);
     viewport.removeEventListener("pointermove", onPointerMove);
     viewport.removeEventListener("pointerup", onPointerUp);
     viewport.removeEventListener("pointercancel", onPointerUp);
+    delete viewport.dataset.touchPanBound;
   };
 
-  applyTransform(false);
+  syncButtons();
 }
 
 function setupPdpZoom(images, getIndex, setIndex) {
