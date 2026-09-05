@@ -2234,8 +2234,25 @@ function ensureZoomLayer() {
   const img = box.querySelector("[data-zoom-img]");
   const state = { scale: 1, panX: 0, panY: 0, dragging: false, startX: 0, startY: 0 };
 
+  function fitZoomImage() {
+    const maxW = Math.max(120, stage.clientWidth || Math.floor(window.innerWidth * 0.96));
+    const maxH = Math.max(120, stage.clientHeight || Math.floor(window.innerHeight - 100));
+    img.style.maxWidth = `${maxW}px`;
+    img.style.maxHeight = `${maxH}px`;
+    img.style.width = "auto";
+    img.style.height = "auto";
+  }
+
   function applyTransform() {
     img.style.transform = `translate(${state.panX}px, ${state.panY}px) scale(${state.scale})`;
+  }
+
+  function resetZoomView() {
+    state.scale = 1;
+    state.panX = 0;
+    state.panY = 0;
+    fitZoomImage();
+    applyTransform();
   }
 
   box.querySelector(".pdp-zoom-close").addEventListener("click", closeImageZoom);
@@ -2279,6 +2296,12 @@ function ensureZoomLayer() {
   stage.addEventListener("pointerup", () => {
     state.dragging = false;
   });
+  img.addEventListener("load", () => {
+    if (box.classList.contains("open")) fitZoomImage();
+  });
+  window.addEventListener("resize", () => {
+    if (box.classList.contains("open")) fitZoomImage();
+  });
 
   box._open = (imageList, startIndex = 0, onChange) => {
     box._images = Array.isArray(imageList) ? imageList : [imageList];
@@ -2293,22 +2316,16 @@ function ensureZoomLayer() {
       counter.textContent = showNav ? `${box._index + 1} / ${box._images.length}` : "";
     }
     img.src = box._images[box._index];
-    state.scale = 1;
-    state.panX = 0;
-    state.panY = 0;
-    applyTransform();
     box.classList.add("open");
     document.body.classList.add("zoom-open");
+    requestAnimationFrame(() => resetZoomView());
   };
 
   box._step = (delta) => {
     if (!box._images?.length) return;
     box._index = (box._index + delta + box._images.length) % box._images.length;
     img.src = box._images[box._index];
-    state.scale = 1;
-    state.panX = 0;
-    state.panY = 0;
-    applyTransform();
+    resetZoomView();
     const counter = box.querySelector("[data-zoom-counter]");
     if (counter && box._images.length > 1) counter.textContent = `${box._index + 1} / ${box._images.length}`;
     box._onChange?.(box._index);
@@ -2319,10 +2336,7 @@ function ensureZoomLayer() {
     if (!box.classList.contains("open") || !box._images?.length) return;
     box._index = i;
     img.src = box._images[i];
-    state.scale = 1;
-    state.panX = 0;
-    state.panY = 0;
-    applyTransform();
+    resetZoomView();
     const counter = box.querySelector("[data-zoom-counter]");
     if (counter) counter.textContent = `${i + 1} / ${box._images.length}`;
   };
