@@ -641,6 +641,154 @@ function readFileAsDataUrl(file) {
   });
 }
 
+function loadImageFromDataUrl(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("تعذر قراءة الصورة"));
+    img.src = dataUrl;
+  });
+}
+
+/** هل البكسل خلفية استوديو فاتحة (أبيض / رمادي فاتح)؟ */
+function isStudioBackground(r, g, b, a, floor = 195) {
+  if (a < 12) return true;
+  const min = Math.min(r, g, b);
+  const max = Math.max(r, g, b);
+  return min >= floor && max - min <= 32;
+}
+
+/**
+ * يفرّغ الخلفية الفاتحة المتصلة بالحواف، يقص الهوامش الشفافة،
+ * ويُصدَّر PNG شفاف بحجم متناسق للابتوب.
+ */
+async function removeWhiteBackground(dataUrl) {
+  const img = await loadImageFromDataUrl(dataUrl);
+  const srcW = img.naturalWidth || img.width;
+  const srcH = img.naturalHeight || img.height;
+  if (!srcW || !srcH) return dataUrl;
+
+  const maxDim = 2400;
+  const scale = Math.min(1, maxDim / Math.max(srcW, srcH));
+  const w = Math.max(1, Math.round(srcW * scale));
+  const h = Math.max(1, Math.round(srcH * scale));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return dataUrl;
+  ctx.drawImage(img, 0, 0, w, h);
+
+  const imageData = ctx.getImageData(0, 0, w, h);
+  const data = imageData.data;
+  const total = w * h;
+  const visited = new Uint8Array(total);
+  const queue = new Int32Array(total);
+  let qHead = 0;
+  let qTail = 0;
+
+  const tryEnqueue = (x, y) => {
+    if (x < 0 || y < 0 || x >= w || y >= h) return;
+    const i = y * w + x;
+    if (visited[i]) return;
+    const o = i * 4;
+    if (!isStudioBackground(data[o], data[o + 1], data[o + 2], data[o + 3])) return;
+    visited[i] = 1;
+    queue[qTail++] = i;
+  };
+
+  for (let x = 0; x < w; x++) {
+    tryEnqueue(x, 0);
+    tryEnqueue(x, h - 1);
+  }
+  for (let y = 0; y < h; y++) {
+    tryEnqueue(0, y);
+    tryEnqueue(w - 1, y);
+  }
+
+  while (qHead < qTail) {
+    const i = queue[qHead++];
+    const x = i % w;
+    const y = (i / w) | 0;
+    tryEnqueue(x - 1, y);
+    tryEnqueue(x + 1, y);
+    tryEnqueue(x, y - 1);
+    tryEnqueue(x, y + 1);
+  }
+
+  // لا خلفية فاتحة متصلة بالحواف → نترك الصورة كما هي
+  if (qTail === 0) return dataUrl;
+
+  for (let i = 0; i < total; i++) {
+    if (visited[i]) data[i * 4 + 3] = 0;
+  }
+
+  // تنعيم الحواف حول الخلفية المفرّغة
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const i = y * w + x;
+      if (visited[i]) continue;
+      const o = i * 4;
+      const a = data[o + 3];
+      if (a < 12) continue;
+      const min = Math.min(data[o], data[o + 1], data[o + 2]);
+      if (min < 170) continue;
+      let nearClear = false;
+      for (const [dx, dy] of [
+        [-1, 0],
+        [1, 0],
+        [0, -1],
+        [0, 1],
+      ]) {
+        const ni = (y + dy) * w + (x + dx);
+        if (visited[ni] || data[ni * 4 + 3] < 12) {
+          nearClear = true;
+          break;
+        }
+      }
+      if (!nearClear) continue;
+      const t = Math.min(1, (min - 170) / 85);
+      data[o + 3] = Math.round(a * (1 - t * 0.95));
+    }
+  }
+
+  // قصّ الهوامش الشفافة حتى يظهر اللابتوب أكبر ومتناسق
+  let minX = w;
+  let minY = h;
+  let maxX = 0;
+  let maxY = 0;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (data[(y * w + x) * 4 + 3] >= 16) {
+        if (x < minX) minX = x;
+        if (y < minY) minY = y;
+        if (x > maxX) maxX = x;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+  if (maxX <= minX || maxY <= minY) {
+    ctx.putImageData(imageData, 0, 0);
+    return canvas.toDataURL("image/png");
+  }
+
+  const pad = Math.max(4, Math.round(Math.max(maxX - minX, maxY - minY) * 0.025));
+  minX = Math.max(0, minX - pad);
+  minY = Math.max(0, minY - pad);
+  maxX = Math.min(w - 1, maxX + pad);
+  maxY = Math.min(h - 1, maxY + pad);
+  const cw = maxX - minX + 1;
+  const ch = maxY - minY + 1;
+
+  ctx.putImageData(imageData, 0, 0);
+  const out = document.createElement("canvas");
+  out.width = cw;
+  out.height = ch;
+  out.getContext("2d").drawImage(canvas, minX, minY, cw, ch, 0, 0, cw, ch);
+  return out.toDataURL("image/png");
+}
+
 function imageUrlKey(src) {
   if (!src) return "";
   const raw = String(src).trim();
@@ -1016,7 +1164,7 @@ function renderProductEditor(productId = null) {
                   <input type="file" accept="image/*" multiple data-product-files hidden />
                   <span class="pe-upload-icon" aria-hidden="true">↑</span>
                   <strong>رفع صور المنتج</strong>
-                  <small>انقر أو اسحب الملفات هنا — PNG أو JPG أو WEBP</small>
+                  <small>انقر أو اسحب — تُزال الخلفية البيضاء تلقائياً (PNG / JPG / WEBP)</small>
                 </label>
                 <div class="pe-gallery" data-image-previews></div>
                 <textarea name="imagesJson" data-images-json hidden aria-hidden="true"></textarea>
@@ -2099,12 +2247,31 @@ function render(opts = {}) {
   }
 }
 
+function closeAdminNav() {
+  document.querySelector(".admin-app")?.classList.remove("nav-open");
+  document.body.classList.remove("admin-nav-open");
+}
+
+function openAdminNav() {
+  document.querySelector(".admin-app")?.classList.add("nav-open");
+  document.body.classList.add("admin-nav-open");
+}
+
+function toggleAdminNav() {
+  const app = document.querySelector(".admin-app");
+  if (!app) return;
+  if (app.classList.contains("nav-open")) closeAdminNav();
+  else openAdminNav();
+}
+
 document.addEventListener("click", (e) => {
   if (e.target.closest("[data-logout]")) {
     StoreDB.logout();
     location.replace("login.html");
   }
-  if (e.target.closest("[data-sidebar-toggle]")) document.querySelector(".admin-app").classList.toggle("nav-open");
+  if (e.target.closest("[data-sidebar-toggle]")) toggleAdminNav();
+  if (e.target.closest("[data-sidebar-backdrop]")) closeAdminNav();
+  if (e.target.closest(".admin-nav a")) closeAdminNav();
   const delP = e.target.closest("[data-del-product]");
   if (delP) {
     const product = db().products.find((x) => x.id === delP.dataset.delProduct);
@@ -2452,15 +2619,17 @@ document.addEventListener("change", (e) => {
       if (!files.length) return;
       const list = getProductImages();
       try {
+        toast("جاري تفريغ الخلفيات البيضاء…");
         for (const file of files) {
           const dataUrl = await readFileAsDataUrl(file);
-          const url = normalizeImagePath(await StoreDB.uploadImage(dataUrl, "products"));
+          const cutout = await removeWhiteBackground(dataUrl);
+          const url = normalizeImagePath(await StoreDB.uploadImage(cutout, "products"));
           list.push(url);
         }
         setProductImages(list);
         e.target.value = "";
         syncProductEditorPreview();
-        toast("تم رفع الصور");
+        toast("تم رفع الصور بخلفية شفافة");
       } catch (err) {
         toast(err.message || "تعذر رفع الصورة");
       }
@@ -2876,5 +3045,8 @@ async function bootAdmin() {
 
 window.addEventListener("hashchange", () => {
   if (window.__adminReady) render();
+});
+window.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeAdminNav();
 });
 bootAdmin();
