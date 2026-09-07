@@ -119,6 +119,10 @@ button, input, select, textarea { font-family: inherit; }
 }
 .topbar-actions { display: flex; gap: 8px; align-items: center; }
 
+@media (max-width: 760px) {
+  .topbar { display: none; }
+}
+
 .site-header {
   position: sticky;
   top: 0;
@@ -2224,13 +2228,35 @@ body.nav-open .mobile-nav,
   padding: 16px 16px 14px;
   border-bottom: 1px solid var(--line);
 }
+.mobile-nav-head .logo { min-width: 0; }
 .mobile-nav-head .logo img { height: 44px; }
+.mobile-nav-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.mobile-nav-theme,
 .mobile-nav-close {
   width: 42px;
   min-width: 42px;
   height: 42px;
   padding: 0;
   border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.mobile-nav-theme {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--line));
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-elevated));
+}
+.mobile-nav-theme svg {
+  width: 20px;
+  height: 20px;
+}
+.mobile-nav-close {
   font-size: 1.4rem;
   line-height: 1;
 }
@@ -2326,19 +2352,64 @@ body.nav-open .mobile-nav,
   gap: 8px;
 }
 .mobile-nav-foot {
-  padding: 14px 16px 18px;
+  padding: 12px 12px calc(12px + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--line);
   display: grid;
   gap: 10px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--accent) 7%, var(--drawer)) 0%,
+    var(--drawer) 42%
+  );
 }
-.mobile-nav-meta {
-  color: var(--muted);
+.mobile-nav-facts {
+  display: grid;
+  gap: 8px;
+}
+.mobile-nav-fact {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--bg-elevated);
+}
+.mobile-nav-fact-ico {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
+.mobile-nav-fact-ico svg {
+  width: 16px;
+  height: 16px;
+}
+.mobile-nav-fact-body {
+  min-width: 0;
+  padding-top: 1px;
+}
+.mobile-nav-fact-label {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+.mobile-nav-fact-value {
+  display: block;
+  color: var(--text);
   font-size: 13px;
   font-weight: 700;
-  line-height: 1.6;
+  line-height: 1.45;
 }
-.mobile-nav-theme {
-  width: 100%;
+.mobile-nav-fact-value bdi {
+  unicode-bidi: isolate;
 }
 
 @media (max-width: 1020px) {

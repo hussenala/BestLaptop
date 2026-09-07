@@ -23,6 +23,8 @@ const ICONS = {
     '<svg class="search-toggle-ico search-ico-open" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10.5 3a7.5 7.5 0 1 0 4.74 13.38l4.26 4.26 1.06-1.06-4.26-4.26A7.47 7.47 0 0 0 10.5 3m0 2a5.5 5.5 0 1 1 0 11 5.5 5.5 0 0 1 0-11"/></svg>',
   close:
     '<svg class="search-close-ico" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12 19 6.4 17.6 5 12 10.6z"/></svg>',
+  pin: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 14.5 9 2.5 2.5 0 0 1 12 11.5z"/></svg>',
+  clock: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 5h-2v6.2l4.4 2.6.9-1.6-3.3-1.9z"/></svg>',
 };
 
 function isMaintenanceMode() {
@@ -2481,7 +2483,10 @@ function paintMobileNav() {
           <small>${s.nameAr || "بيست لابتوب"}</small>
         </span>
       </a>
-      <button class="icon-btn mobile-nav-close" type="button" data-close-nav aria-label="إغلاق القائمة">×</button>
+      <div class="mobile-nav-head-actions">
+        <button class="icon-btn mobile-nav-theme" data-theme-toggle data-theme-icon type="button" aria-label="تبديل المظهر"></button>
+        <button class="icon-btn mobile-nav-close" type="button" data-close-nav aria-label="إغلاق القائمة">×</button>
+      </div>
     </div>
     <div class="mobile-nav-body">
       <form class="mobile-nav-search" action="/products" method="get">
@@ -2512,8 +2517,22 @@ function paintMobileNav() {
       </div>
     </div>
     <div class="mobile-nav-foot">
-      <p class="mobile-nav-meta">${address || ""}${s.hours ? `<br>${s.hours}` : ""}</p>
-      <button class="btn btn-ghost mobile-nav-theme" data-theme-toggle type="button" aria-label="تبديل المظهر">فاتح</button>
+      ${(address || s.hours) ? `<div class="mobile-nav-facts">
+        ${address ? `<div class="mobile-nav-fact">
+          <span class="mobile-nav-fact-ico">${ICONS.pin}</span>
+          <div class="mobile-nav-fact-body">
+            <span class="mobile-nav-fact-label">العنوان</span>
+            <span class="mobile-nav-fact-value"><bdi>${address}</bdi></span>
+          </div>
+        </div>` : ""}
+        ${s.hours ? `<div class="mobile-nav-fact">
+          <span class="mobile-nav-fact-ico">${ICONS.clock}</span>
+          <div class="mobile-nav-fact-body">
+            <span class="mobile-nav-fact-label">الدوام</span>
+            <span class="mobile-nav-fact-value"><bdi>${s.hours}</bdi></span>
+          </div>
+        </div>` : ""}
+      </div>` : ""}
     </div>`;
 
   if (typeof applyTheme === "function") applyTheme(currentTheme());
