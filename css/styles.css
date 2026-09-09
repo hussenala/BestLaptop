@@ -1567,7 +1567,7 @@ body.nav-open { overflow: hidden; }
   gap: 16px;
 }
 
-.product-slider-section { overflow: hidden; }
+.product-slider-section { overflow: visible; }
 .product-slider-section:focus-within { outline: none; }
 .product-slider-wrap {
   display: grid;
@@ -1575,15 +1575,19 @@ body.nav-open { overflow: hidden; }
   gap: 12px;
   align-items: center;
   min-width: 0;
+  max-width: 100%;
 }
 .product-slider-section .container {
   min-width: 0;
+  max-width: 100%;
   width: min(1600px, calc(100% - 32px));
 }
 .product-slider-viewport {
   overflow: hidden;
   width: 100%;
   min-width: 0;
+  padding-block: 8px;
+  margin-block: -8px;
   touch-action: pan-y;
   cursor: grab;
   user-select: none;
@@ -1634,6 +1638,8 @@ body.nav-open { overflow: hidden; }
   flex: 0 0 clamp(260px, 25vw, 320px);
   width: clamp(260px, 25vw, 320px);
   min-width: clamp(260px, 25vw, 320px);
+  max-width: clamp(260px, 25vw, 320px);
+  contain: inline-size;
   cursor: pointer;
 }
 .product-slider-viewport a,
@@ -1669,6 +1675,7 @@ body.nav-open { overflow: hidden; }
     flex: 0 0 min(82vw, calc(100% - 12px));
     width: min(82vw, calc(100% - 12px));
     min-width: min(82vw, calc(100% - 12px));
+    max-width: min(82vw, calc(100% - 12px));
   }
 }
 .cat-grid {
@@ -3726,7 +3733,14 @@ body[data-page="home"].home-ready .hero-inner .spec-card {
   animation: home-spec-in 0.85s cubic-bezier(0.22, 1, 0.36, 1) 0.35s both,
     home-spec-glow 5s ease-in-out 1.2s infinite;
 }
+body[data-page="home"] [data-home-block="product-slider"],
+body[data-page="home"] [data-home-block="new-products"] {
+  width: 100%;
+  max-width: 100%;
+}
 body[data-page="home"] .home-reveal {
+  width: 100%;
+  max-width: 100%;
   opacity: 0;
   transform: translateY(28px);
   transition:

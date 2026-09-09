@@ -3562,13 +3562,15 @@ function initHomeEffects() {
           initHomeEffects._io.unobserve(entry.target);
         });
       },
-      { threshold: 0.1, rootMargin: "0px 0px -32px 0px" }
+      { threshold: 0.01, rootMargin: "0px 0px -8% 0px" }
     );
   }
 
-  targets.forEach((el) => {
-    if (el.dataset.homeBlock === "hero" || el.classList.contains("is-visible")) return;
-    initHomeEffects._io.observe(el);
+  requestAnimationFrame(() => {
+    targets.forEach((el) => {
+      if (el.dataset.homeBlock === "hero" || el.classList.contains("is-visible")) return;
+      initHomeEffects._io.observe(el);
+    });
   });
 }
 
