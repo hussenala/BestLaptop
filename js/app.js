@@ -2080,10 +2080,13 @@ function setupPdpThumbSlider(images) {
   track.style.transform = "";
   track.style.transition = "";
 
-  let thumbMoved = false;
-  let dragging = false;
-  let dragStartX = 0;
-  let dragStartScroll = 0;
+  const TAP_PX = 10;
+  let pointerId = null;
+  let startX = 0;
+  let startScroll = 0;
+  let dragged = false;
+  let startThumb = null;
+  let ignoreClick = false;
 
   function thumbStep() {
     const thumb = track.firstElementChild;
@@ -2136,46 +2139,74 @@ function setupPdpThumbSlider(images) {
   };
   const onScroll = () => syncButtons();
   const onResize = () => syncButtons();
-  const onThumbActivate = (e) => {
-    if (thumbMoved) {
-      thumbMoved = false;
-      return;
-    }
-    const thumb = e.target.closest("[data-pdp-thumb]");
-    if (!thumb || !root.contains(thumb)) return;
-    e.preventDefault();
-    e.stopPropagation();
-    selectThumb(thumb);
-  };
+
+  function thumbFromEvent(e) {
+    const fromTarget = e.target?.closest?.("[data-pdp-thumb]");
+    if (fromTarget && root.contains(fromTarget)) return fromTarget;
+    const node = document.elementFromPoint(e.clientX, e.clientY);
+    const fromPoint = node?.closest?.("[data-pdp-thumb]");
+    if (fromPoint && root.contains(fromPoint)) return fromPoint;
+    return startThumb && root.contains(startThumb) ? startThumb : null;
+  }
 
   const onPointerDown = (e) => {
-    if (e.pointerType !== "mouse" || e.button !== 0) return;
-    dragging = true;
-    thumbMoved = false;
-    dragStartX = e.clientX;
-    dragStartScroll = viewport.scrollLeft;
-    viewport.classList.add("is-dragging");
-    try {
-      viewport.setPointerCapture(e.pointerId);
-    } catch {
-      /* ignore */
-    }
+    if (e.button != null && e.button !== 0) return;
+    pointerId = e.pointerId;
+    startX = e.clientX;
+    startScroll = viewport.scrollLeft;
+    dragged = false;
+    startThumb = e.target.closest("[data-pdp-thumb]");
   };
   const onPointerMove = (e) => {
-    if (!dragging) return;
-    const dx = e.clientX - dragStartX;
-    if (Math.abs(dx) > 4) thumbMoved = true;
-    viewport.scrollLeft = dragStartScroll - dx;
+    if (pointerId == null || e.pointerId !== pointerId) return;
+    const dx = e.clientX - startX;
+    if (!dragged && Math.abs(dx) > TAP_PX) {
+      dragged = true;
+      if (e.pointerType === "mouse") {
+        viewport.classList.add("is-dragging");
+        try {
+          viewport.setPointerCapture(e.pointerId);
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+    if (dragged && e.pointerType === "mouse") {
+      viewport.scrollLeft = startScroll - dx;
+    }
   };
   const onPointerUp = (e) => {
-    if (!dragging) return;
-    dragging = false;
+    if (pointerId == null || e.pointerId !== pointerId) return;
+    const wasDrag = dragged;
     viewport.classList.remove("is-dragging");
     try {
       viewport.releasePointerCapture(e.pointerId);
     } catch {
       /* ignore */
     }
+    pointerId = null;
+    dragged = false;
+    if (wasDrag) {
+      ignoreClick = true;
+      startThumb = null;
+      return;
+    }
+    const thumb = thumbFromEvent(e);
+    startThumb = null;
+    if (thumb) selectThumb(thumb);
+  };
+
+  const onThumbActivate = (e) => {
+    if (ignoreClick) {
+      ignoreClick = false;
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    const thumb = e.target.closest("[data-pdp-thumb]");
+    if (!thumb || !root.contains(thumb)) return;
+    e.stopPropagation();
+    selectThumb(thumb);
   };
 
   const prevBtn = root.querySelector("[data-pdp-thumbs-prev]");
@@ -2189,7 +2220,6 @@ function setupPdpThumbSlider(images) {
   viewport.addEventListener("pointerup", onPointerUp);
   viewport.addEventListener("pointercancel", onPointerUp);
   window.addEventListener("resize", onResize);
-  bindTouchPan(viewport);
 
   root._pdpThumbsGo = scrollToIndex;
   root._pdpThumbsCleanup = () => {
@@ -2202,7 +2232,6 @@ function setupPdpThumbSlider(images) {
     viewport.removeEventListener("pointermove", onPointerMove);
     viewport.removeEventListener("pointerup", onPointerUp);
     viewport.removeEventListener("pointercancel", onPointerUp);
-    delete viewport.dataset.touchPanBound;
   };
 
   syncButtons();

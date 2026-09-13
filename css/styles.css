@@ -3127,16 +3127,18 @@ body.nav-open .mobile-nav,
 
 @media (max-width: 768px) {
   .pdp-thumbs-slider {
-    gap: 6px;
+    grid-template-columns: 1fr;
+    gap: 0;
   }
   .pdp-thumbs-btn {
-    width: 32px;
-    height: 32px;
+    display: none;
   }
   .pdp-thumb {
-    width: 64px;
-    height: 64px;
-    flex-basis: 64px;
+    width: 92px;
+    height: 92px;
+    flex: 0 0 92px;
+    min-width: 92px;
+    max-width: 92px;
   }
 }
 
