@@ -1612,6 +1612,7 @@ body.nav-open { overflow: hidden; }
   transform: none !important;
   transition: none !important;
   width: max-content;
+  min-width: max-content;
 }
 .product-slider-viewport.is-native-scroll .product-card {
   scroll-snap-align: start;
@@ -1672,10 +1673,11 @@ body.nav-open { overflow: hidden; }
   }
   .product-slider-btn { display: none; }
   .product-slider-track .product-card {
-    flex: 0 0 min(82vw, calc(100% - 12px));
-    width: min(82vw, calc(100% - 12px));
-    min-width: min(82vw, calc(100% - 12px));
-    max-width: min(82vw, calc(100% - 12px));
+    flex: 0 0 min(82vw, calc(100vw - 48px));
+    width: min(82vw, calc(100vw - 48px));
+    min-width: min(82vw, calc(100vw - 48px));
+    max-width: min(82vw, calc(100vw - 48px));
+    flex-shrink: 0;
   }
 }
 .cat-grid {
