@@ -1854,6 +1854,7 @@ function renderCatalog() {
     ? list.map((p) => productCard(p, { catalog: true })).join("")
     : catalogEmptyState();
   updateFilterUi();
+  bindLaptopCardTilt(el);
 }
 
 function renderProductPage() {
@@ -3561,6 +3562,78 @@ document.querySelector("[data-checkout-form]")?.addEventListener("submit", (e) =
   placeOrder(e.target);
 });
 
+function laptopFxAllowed() {
+  return window.matchMedia("(pointer: fine)").matches;
+}
+
+function laptopMotionAllowed() {
+  return window.matchMedia("(prefers-reduced-motion: no-preference)").matches;
+}
+
+function bindLaptopCardTilt(scope = document) {
+  if (!laptopFxAllowed() || !laptopMotionAllowed()) return;
+  scope.querySelectorAll(".product-card:not([data-tilt-bound])").forEach((card) => {
+    const media = card.querySelector(".pc-media");
+    if (!media) return;
+    card.dataset.tiltBound = "1";
+    const reset = () => {
+      card.classList.remove("is-tilting");
+      media.style.transform = "";
+    };
+    card.addEventListener("pointerenter", () => {
+      if (card.closest(".product-slider-viewport.is-dragging")) return;
+      card.classList.add("is-tilting");
+    });
+    card.addEventListener("pointerleave", reset);
+    card.addEventListener("pointermove", (e) => {
+      if (e.pointerType !== "mouse") return;
+      if (card.closest(".product-slider-viewport.is-dragging")) {
+        reset();
+        return;
+      }
+      const r = card.getBoundingClientRect();
+      if (!r.width || !r.height) return;
+      const x = (e.clientX - r.left) / r.width - 0.5;
+      const y = (e.clientY - r.top) / r.height - 0.5;
+      media.style.transform = `perspective(700px) rotateY(${(x * 12).toFixed(2)}deg) rotateX(${(-y * 9).toFixed(2)}deg) scale(1.03)`;
+    });
+  });
+}
+
+function bindHomeLaptopSpot() {
+  if (document.body.dataset.page !== "home") return;
+  const hero = document.querySelector(".hero-slider");
+  const grid = hero?.querySelector(".home-grid-glow");
+  if (!hero || !grid || hero.dataset.spotBound === "1") return;
+  if (!laptopFxAllowed() || !laptopMotionAllowed()) return;
+  hero.dataset.spotBound = "1";
+  let raf = 0;
+  let px = 50;
+  let py = 45;
+  const apply = () => {
+    raf = 0;
+    grid.style.setProperty("--spot-x", `${px}%`);
+    grid.style.setProperty("--spot-y", `${py}%`);
+  };
+  hero.addEventListener(
+    "pointermove",
+    (e) => {
+      if (e.pointerType !== "mouse") return;
+      const r = hero.getBoundingClientRect();
+      if (!r.width || !r.height) return;
+      px = ((e.clientX - r.left) / r.width) * 100;
+      py = ((e.clientY - r.top) / r.height) * 100;
+      if (!raf) raf = requestAnimationFrame(apply);
+    },
+    { passive: true }
+  );
+}
+
+function initLaptopFx() {
+  bindHomeLaptopSpot();
+  bindLaptopCardTilt();
+}
+
 function initHomeEffects() {
   if (document.body.dataset.page !== "home") return;
   const root = document.querySelector("[data-home-root]");
@@ -3635,6 +3708,7 @@ async function bootStorefront() {
   initHomeEffects();
   renderCatalog();
   renderProductPage();
+  initLaptopFx();
   setupCheckoutForm();
   renderCart();
   renderCartPage();
@@ -3664,6 +3738,7 @@ window.refreshStorefrontViews = function refreshStorefrontViews() {
   initHomeEffects();
   renderCatalog();
   renderProductPage();
+  initLaptopFx();
   setupMobileNav();
   renderSlider();
   renderCart();
