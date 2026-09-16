@@ -2193,6 +2193,18 @@ body.nav-open { overflow: hidden; }
   gap: 28px;
   align-items: start;
 }
+.pdp-related {
+  margin-top: 42px;
+}
+.pdp-related-head {
+  margin-bottom: 18px;
+}
+.pdp-related-slider {
+  overflow: hidden;
+}
+.pdp-related-slider .product-slider-wrap {
+  margin-inline: 0;
+}
 .pdp-media {
   position: relative;
   border-radius: 24px;

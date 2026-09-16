@@ -1864,7 +1864,11 @@ function renderProductPage() {
     el.innerHTML = productsHiddenState("product");
     document.title = typeof SitePages !== "undefined" ? SitePages.documentTitle("product") : "المنتج | BEST LAPTOP";
     const related = document.querySelector("[data-related]");
-    if (related) related.innerHTML = "";
+    if (related) {
+      related.querySelector("[data-product-slider]")?._productSliderCleanup?.();
+      related.innerHTML = "";
+      related.hidden = true;
+    }
     return;
   }
   el.querySelector("[data-pdp-gallery]")?._pdpCarouselCleanup?.();
@@ -1977,12 +1981,7 @@ function renderProductPage() {
     </div>
   `;
   const related = document.querySelector("[data-related]");
-  if (related) {
-    related.innerHTML = PRODUCTS.filter((item) => item.id !== p.id && item.category === p.category)
-      .slice(0, 4)
-      .map(productCard)
-      .join("");
-  }
+  if (related) renderRelatedProductsSlider(p);
   setupPdpCarousel(images, p.name);
   setupPdpThumbSlider(images);
   setupPdpArabization(p);
@@ -1990,6 +1989,65 @@ function renderProductPage() {
     console.error("renderProductPage", err);
     el.innerHTML = `<p class="empty">تعذر عرض المنتج. <a href="/products">العودة للمتجر</a></p>`;
   }
+}
+
+function renderRelatedProductsSlider(p) {
+  const mount = document.querySelector("[data-related]");
+  if (!mount) return;
+
+  const old = mount.querySelector("[data-product-slider]");
+  old?._productSliderCleanup?.();
+  old?._engagePauseDestroy?.();
+
+  let related = PRODUCTS.filter((item) => item.id !== p.id && item.category === p.category);
+  if (related.length < 4) {
+    const seen = new Set(related.map((item) => item.id));
+    seen.add(p.id);
+    const extras = PRODUCTS.filter((item) => !seen.has(item.id));
+    related = [...related, ...extras];
+  }
+  related = related.slice(0, 10);
+
+  if (!related.length) {
+    mount.hidden = true;
+    mount.innerHTML = "";
+    return;
+  }
+
+  mount.hidden = false;
+  const cfg = {
+    id: "pdp-related",
+    eyebrow: "أجهزة مشابهة",
+    title: "قد تناسبك أيضاً",
+    autoplay: false,
+    speedMs: 4200,
+    linkUrl: "/products",
+  };
+
+  mount.innerHTML = `
+    <div class="section-head pdp-related-head">
+      <div>
+        <p class="eyebrow">${cfg.eyebrow}</p>
+        <h2>${cfg.title}</h2>
+      </div>
+      <a class="btn btn-ghost" href="${cfg.linkUrl}">كل المنتجات</a>
+    </div>
+    <section class="product-slider-section pdp-related-slider" data-product-slider="${cfg.id}">
+      <div class="product-slider-wrap">
+        <button class="product-slider-btn icon-btn" type="button" data-ps-prev aria-label="السابق">‹</button>
+        <div class="product-slider-viewport">
+          <div class="product-slider-track" data-product-track></div>
+        </div>
+        <button class="product-slider-btn icon-btn" type="button" data-ps-next aria-label="التالي">›</button>
+      </div>
+    </section>`;
+
+  const root = mount.querySelector(`[data-product-slider="${cfg.id}"]`);
+  const track = root?.querySelector("[data-product-track]");
+  if (!root || !track) return;
+  track.innerHTML = related.map(productCard).join("");
+  initProductSlider(root, related, cfg);
+  bindLaptopCardTilt(mount);
 }
 
 function setupPdpArabization(p) {
