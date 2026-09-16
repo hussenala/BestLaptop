@@ -3132,6 +3132,8 @@ body.nav-open .mobile-nav,
   overflow-y: hidden;
   min-width: 0;
   direction: ltr;
+  display: flex;
+  justify-content: safe center;
   scroll-snap-type: x proximity;
   scroll-padding-inline: 4px;
   -webkit-overflow-scrolling: touch;
@@ -3139,6 +3141,10 @@ body.nav-open .mobile-nav,
   scrollbar-width: none;
   touch-action: pan-x;
   cursor: grab;
+}
+.pdp-thumbs-viewport.is-centered {
+  justify-content: center;
+  cursor: default;
 }
 .pdp-thumbs-viewport.is-dragging,
 .pdp-thumbs-viewport.is-panning {
@@ -3153,7 +3159,13 @@ body.nav-open .mobile-nav,
   flex-wrap: nowrap;
   gap: 8px;
   width: max-content;
+  flex: 0 0 auto;
   direction: ltr;
+  margin-inline: auto;
+}
+.pdp-thumbs-slider.thumbs-fit .pdp-thumbs-btn {
+  visibility: hidden;
+  pointer-events: none;
 }
 .pdp-thumbs-btn {
   width: 36px;

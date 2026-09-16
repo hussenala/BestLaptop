@@ -2123,9 +2123,12 @@ function setupPdpThumbSlider(images) {
     const prev = root.querySelector("[data-pdp-thumbs-prev]");
     const next = root.querySelector("[data-pdp-thumbs-next]");
     const max = Math.max(0, viewport.scrollWidth - viewport.clientWidth);
+    const fits = max <= 2;
     const x = viewport.scrollLeft;
-    if (prev) prev.disabled = x <= 2;
-    if (next) next.disabled = x >= max - 2;
+    viewport.classList.toggle("is-centered", fits);
+    root.classList.toggle("thumbs-fit", fits);
+    if (prev) prev.disabled = fits || x <= 2;
+    if (next) next.disabled = fits || x >= max - 2;
   }
 
   function scrollBySteps(steps) {
