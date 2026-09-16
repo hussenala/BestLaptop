@@ -2013,8 +2013,10 @@ function setupPdpCarousel(images, alt = "") {
   let timer = null;
   let paused = false;
   let userLocked = false;
+  let inView = true;
+  let io = null;
 
-  function paint(i) {
+  function paint(i, { syncThumbs = true } = {}) {
     idx = (i + images.length) % images.length;
     main.src = images[idx];
     main.alt = alt;
@@ -2025,12 +2027,15 @@ function setupPdpCarousel(images, alt = "") {
       dot.classList.toggle("on", Number(dot.dataset.pdpDot) === idx);
     });
     if (window._pdpZoomSync) window._pdpZoomSync(idx);
-    document.querySelector("[data-pdp-thumbs-slider]")?._pdpThumbsGo?.(idx);
+    // لا تمرّر الصفحة عمودياً أثناء التدوير التلقائي على الموبايل
+    if (syncThumbs) {
+      document.querySelector("[data-pdp-thumbs-slider]")?._pdpThumbsGo?.(idx, { pageScroll: false });
+    }
   }
 
   function play() {
     clearInterval(timer);
-    if (images.length < 2 || paused) return;
+    if (images.length < 2 || paused || userLocked || !inView) return;
     timer = setInterval(() => paint(idx + 1), 4500);
   }
 
@@ -2048,7 +2053,8 @@ function setupPdpCarousel(images, alt = "") {
   gallery._pdpGo = (n) => {
     userLocked = true;
     pause();
-    paint(n);
+    paint(n, { syncThumbs: true });
+    document.querySelector("[data-pdp-thumbs-slider]")?._pdpThumbsGo?.(idx, { pageScroll: false });
   };
   gallery._pdpIndex = () => idx;
   gallery._pdpImages = images;
@@ -2058,15 +2064,32 @@ function setupPdpCarousel(images, alt = "") {
   gallery.addEventListener("focusin", pause);
   gallery.addEventListener("focusout", resume);
 
+  // عند التمرير لأسفل لرؤية المواصفات: أوقف التدوير حتى لا تقفز الصفحة للصورة
+  if (typeof IntersectionObserver !== "undefined") {
+    io = new IntersectionObserver(
+      ([entry]) => {
+        inView = entry.isIntersecting && entry.intersectionRatio >= 0.35;
+        if (!inView) {
+          clearInterval(timer);
+        } else if (!paused && !userLocked) {
+          play();
+        }
+      },
+      { threshold: [0, 0.35, 0.6] }
+    );
+    io.observe(gallery);
+  }
+
   gallery._pdpCarouselCleanup = () => {
     clearInterval(timer);
+    io?.disconnect();
     gallery.removeEventListener("mouseenter", pause);
     gallery.removeEventListener("mouseleave", resume);
     gallery.removeEventListener("focusin", pause);
     gallery.removeEventListener("focusout", resume);
   };
 
-  setupPdpZoom(images, () => idx, paint);
+  setupPdpZoom(images, () => idx, (i) => paint(i, { syncThumbs: true }));
   play();
 }
 
@@ -2109,10 +2132,23 @@ function setupPdpThumbSlider(images) {
     viewport.scrollBy({ left: steps * thumbStep(), behavior: "smooth" });
   }
 
-  function scrollToIndex(idx) {
+  function scrollToIndex(idx, { pageScroll = false } = {}) {
     const thumb = track.querySelector(`[data-pdp-idx="${idx}"]`);
     if (!thumb) return;
-    thumb.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+
+    // تمرير أفقي داخل شريط الصور فقط — بدون scrollIntoView حتى لا ترجع الصفحة لأعلى على الموبايل
+    const thumbRect = thumb.getBoundingClientRect();
+    const viewRect = viewport.getBoundingClientRect();
+    const delta = thumbRect.left + thumbRect.width / 2 - (viewRect.left + viewRect.width / 2);
+    if (typeof viewport.scrollBy === "function") {
+      viewport.scrollBy({ left: delta, behavior: "smooth" });
+    } else {
+      viewport.scrollLeft += delta;
+    }
+
+    if (pageScroll) {
+      thumb.scrollIntoView({ behavior: "smooth", inline: "nearest", block: "nearest" });
+    }
   }
 
   function selectThumb(thumb) {
@@ -2125,7 +2161,7 @@ function setupPdpThumbSlider(images) {
       if (main && thumb.dataset.pdpThumb) main.src = thumb.dataset.pdpThumb;
       track.querySelectorAll(".pdp-thumb").forEach((btn) => btn.classList.toggle("on", btn === thumb));
     }
-    scrollToIndex(idx);
+    scrollToIndex(idx, { pageScroll: false });
   }
 
   const onPrev = (e) => {
