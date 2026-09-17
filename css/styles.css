@@ -2197,13 +2197,21 @@ body.nav-open { overflow: hidden; }
   display: block;
 }
 .pdp-related {
-  margin-top: 42px;
+  margin-top: 18px;
+  width: 100%;
 }
 .pdp-related-head {
   margin-bottom: 18px;
 }
 .pdp-related-slider {
-  overflow: hidden;
+  padding-block: 24px 8px;
+  overflow: visible;
+}
+.pdp-related-slider .container {
+  width: min(1600px, calc(100% - 32px));
+}
+.pdp-related-skel .container {
+  width: min(1600px, calc(100% - 32px));
 }
 .pdp-related-slider .product-slider-wrap {
   margin-inline: 0;

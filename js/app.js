@@ -1907,17 +1907,19 @@ function pdpSkeletonHtml() {
 function relatedSkeletonHtml() {
   return `
     <div class="pdp-related-skel" aria-hidden="true">
-      <div class="section-head pdp-related-head">
-        <div>
-          <span class="skel-block skel-line w30"></span>
-          <span class="skel-block skel-title w45"></span>
+      <div class="container">
+        <div class="section-head pdp-related-head">
+          <div>
+            <span class="skel-block skel-line w30"></span>
+            <span class="skel-block skel-title w45"></span>
+          </div>
         </div>
-      </div>
-      <div class="pdp-related-skel-row">
-        <span class="skel-block skel-card"></span>
-        <span class="skel-block skel-card"></span>
-        <span class="skel-block skel-card"></span>
-        <span class="skel-block skel-card"></span>
+        <div class="pdp-related-skel-row">
+          <span class="skel-block skel-card"></span>
+          <span class="skel-block skel-card"></span>
+          <span class="skel-block skel-card"></span>
+          <span class="skel-block skel-card"></span>
+        </div>
       </div>
     </div>`;
 }
@@ -2339,20 +2341,22 @@ function renderRelatedProductsSlider(p) {
   };
 
   mount.innerHTML = `
-    <div class="section-head pdp-related-head">
-      <div>
-        <p class="eyebrow">${cfg.eyebrow}</p>
-        <h2>${cfg.title}</h2>
-      </div>
-      <a class="btn btn-ghost" href="${cfg.linkUrl}">كل المنتجات</a>
-    </div>
-    <section class="product-slider-section pdp-related-slider" data-product-slider="${cfg.id}">
-      <div class="product-slider-wrap">
-        <button class="product-slider-btn icon-btn" type="button" data-ps-prev aria-label="السابق">‹</button>
-        <div class="product-slider-viewport">
-          <div class="product-slider-track" data-product-track></div>
+    <section class="section product-slider-section pdp-related-slider" data-product-slider="${cfg.id}">
+      <div class="container">
+        <div class="section-head pdp-related-head">
+          <div>
+            <p class="eyebrow">${cfg.eyebrow}</p>
+            <h2>${cfg.title}</h2>
+          </div>
+          <a class="btn btn-ghost" href="${cfg.linkUrl}">كل المنتجات</a>
         </div>
-        <button class="product-slider-btn icon-btn" type="button" data-ps-next aria-label="التالي">›</button>
+        <div class="product-slider-wrap">
+          <button class="product-slider-btn icon-btn" type="button" data-ps-prev aria-label="السابق">‹</button>
+          <div class="product-slider-viewport">
+            <div class="product-slider-track" data-product-track></div>
+          </div>
+          <button class="product-slider-btn icon-btn" type="button" data-ps-next aria-label="التالي">›</button>
+        </div>
       </div>
     </section>`;
 
