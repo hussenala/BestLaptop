@@ -1827,6 +1827,12 @@ function renderCatalog() {
     if (countEl) countEl.textContent = "0 جهاز";
     return;
   }
+  if (typeof StoreAPI !== "undefined" && !StoreAPI.isStoreReady?.()) {
+    el.innerHTML = catalogSkeletonHtml(8);
+    const countEl = document.querySelector("[data-results-count]");
+    if (countEl) countEl.textContent = "…";
+    return;
+  }
   const { q, cat, sort, min, max, brands } = getCatalogFilterState();
 
   let list = PRODUCTS.filter((p) => {
@@ -1857,6 +1863,300 @@ function renderCatalog() {
   bindLaptopCardTilt(el);
 }
 
+function pdpSkeletonHtml() {
+  return `
+    <div class="pdp-skeleton" aria-busy="true" aria-live="polite">
+      <div class="pdp-skel-back skel-block"></div>
+      <div class="pdp-skel-layout">
+        <div class="pdp-skel-gallery">
+          <div class="pdp-skel-media skel-block">
+            <div class="pdp-skel-mark">
+              <span class="pdp-skel-pulse-ring" aria-hidden="true"></span>
+              <strong>BEST LAPTOP</strong>
+              <small>جاري تجهيز الجهاز…</small>
+            </div>
+          </div>
+          <div class="pdp-skel-thumbs">
+            <span class="skel-block"></span>
+            <span class="skel-block"></span>
+            <span class="skel-block"></span>
+            <span class="skel-block"></span>
+          </div>
+        </div>
+        <div class="pdp-skel-info">
+          <span class="skel-block skel-chip"></span>
+          <span class="skel-block skel-title"></span>
+          <span class="skel-block skel-line w55"></span>
+          <span class="skel-block skel-price"></span>
+          <div class="pdp-skel-cta">
+            <span class="skel-block"></span>
+            <span class="skel-block"></span>
+          </div>
+          <div class="pdp-skel-specs">
+            <span class="skel-block skel-line"></span>
+            <span class="skel-block skel-line"></span>
+            <span class="skel-block skel-line"></span>
+            <span class="skel-block skel-line"></span>
+            <span class="skel-block skel-line"></span>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function relatedSkeletonHtml() {
+  return `
+    <div class="pdp-related-skel" aria-hidden="true">
+      <div class="section-head pdp-related-head">
+        <div>
+          <span class="skel-block skel-line w30"></span>
+          <span class="skel-block skel-title w45"></span>
+        </div>
+      </div>
+      <div class="pdp-related-skel-row">
+        <span class="skel-block skel-card"></span>
+        <span class="skel-block skel-card"></span>
+        <span class="skel-block skel-card"></span>
+        <span class="skel-block skel-card"></span>
+      </div>
+    </div>`;
+}
+
+function catalogSkeletonHtml(count = 8) {
+  return Array.from({ length: count }, () => `
+    <article class="product-card skel-product-card" aria-hidden="true">
+      <div class="skel-block skel-card-media"></div>
+      <div class="card-body skel-card-body">
+        <span class="skel-block skel-chip"></span>
+        <span class="skel-block skel-title"></span>
+        <span class="skel-block skel-line w55"></span>
+        <span class="skel-block skel-price"></span>
+        <div class="pdp-skel-cta">
+          <span class="skel-block"></span>
+          <span class="skel-block"></span>
+        </div>
+      </div>
+    </article>`).join("");
+}
+
+function homeSectionSkeletonHtml() {
+  return `
+    <section class="section product-slider-section site-skel-section" aria-busy="true">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <span class="skel-block skel-line w30"></span>
+            <span class="skel-block skel-title w45"></span>
+          </div>
+        </div>
+        <div class="site-skel-row">
+          <span class="skel-block skel-card"></span>
+          <span class="skel-block skel-card"></span>
+          <span class="skel-block skel-card"></span>
+          <span class="skel-block skel-card"></span>
+        </div>
+      </div>
+    </section>`;
+}
+
+function pageShellSkeletonHtml(page) {
+  const title =
+    page === "cart"
+      ? "جاري تجهيز السلة…"
+      : page === "checkout"
+        ? "جاري تجهيز الدفع…"
+        : page === "contact"
+          ? "جاري تجهيز التواصل…"
+          : page === "order"
+            ? "جاري تجهيز الطلب…"
+            : "جاري التحميل…";
+  return `
+    <div class="page-shell-skel" aria-busy="true">
+      <div class="page-shell-skel-mark">
+        <span class="pdp-skel-pulse-ring" aria-hidden="true"></span>
+        <strong>BEST LAPTOP</strong>
+        <small>${title}</small>
+      </div>
+      <div class="page-shell-skel-stack">
+        <span class="skel-block skel-line w45"></span>
+        <span class="skel-block skel-title w70"></span>
+        <span class="skel-block skel-panel"></span>
+        <span class="skel-block skel-panel short"></span>
+      </div>
+    </div>`;
+}
+
+function transitMessageForUrl(href) {
+  try {
+    const u = new URL(href, window.location.origin);
+    const path = u.pathname.replace(/\.html$/i, "").replace(/\/$/, "") || "/";
+    if (path === "/" || path.endsWith("/index")) return "جاري فتح الرئيسية…";
+    if (path.startsWith("/product/") || path === "/product") return "جاري فتح المنتج…";
+    if (path.endsWith("/products") || path.includes("/products")) return "جاري فتح المنتجات…";
+    if (path.includes("/contact")) return "جاري فتح التواصل…";
+    if (path.includes("/cart")) return "جاري فتح السلة…";
+    if (path.includes("/checkout")) return "جاري فتح الدفع…";
+    if (path.includes("/order")) return "جاري فتح الطلب…";
+    if (path.includes("/admin")) return "جاري فتح لوحة التحكم…";
+  } catch {
+    /* ignore */
+  }
+  return "جاري التحميل…";
+}
+
+function ensurePageTransit() {
+  let box = document.getElementById("page-transit");
+  if (box) return box;
+  box = document.createElement("div");
+  box.id = "page-transit";
+  box.className = "page-transit";
+  box.innerHTML = `
+    <div class="page-transit-card">
+      <span class="page-transit-ring" aria-hidden="true"></span>
+      <strong>BEST LAPTOP</strong>
+      <small data-transit-msg>جاري التحميل…</small>
+    </div>`;
+  document.body.append(box);
+  return box;
+}
+
+function navigateWithTransit(url) {
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduce) {
+    location.href = url;
+    return;
+  }
+  const box = ensurePageTransit();
+  const msg = box.querySelector("[data-transit-msg]");
+  if (msg) msg.textContent = transitMessageForUrl(url);
+  box.classList.add("open");
+  document.body.classList.add("page-transit-open");
+  window.setTimeout(() => {
+    location.href = url;
+  }, 280);
+}
+
+function ensureSiteBoot() {
+  let box = document.getElementById("site-boot");
+  if (box) return box;
+  box = document.createElement("div");
+  box.id = "site-boot";
+  box.className = "site-boot";
+  box.innerHTML = `
+    <div class="site-boot-card">
+      <span class="page-transit-ring" aria-hidden="true"></span>
+      <strong>BEST LAPTOP</strong>
+      <small data-boot-msg>جاري تحميل المتجر…</small>
+      <div class="site-boot-bar" aria-hidden="true"><i></i></div>
+    </div>`;
+  document.body.append(box);
+  return box;
+}
+
+function showSiteBoot() {
+  if (document.body.dataset.page === "maintenance") return;
+  document.body.classList.add("site-booting");
+  const page = document.body.dataset.page || "";
+
+  document.querySelector("[data-slider]")?.classList.add("is-booting");
+  document.querySelector("main")?.classList.add("site-main-booting");
+
+  const catalog = document.querySelector("[data-catalog]");
+  if (catalog) catalog.innerHTML = catalogSkeletonHtml(8);
+
+  const newMount = document.querySelector("[data-new-products]");
+  if (newMount && !newMount.querySelector("[data-product-slider]")) {
+    newMount.innerHTML = homeSectionSkeletonHtml();
+  }
+
+  const homeRoot = document.querySelector("[data-home-root]");
+  if (homeRoot && !homeRoot.querySelector("[data-boot-featured-skel]")) {
+    const holder = document.createElement("div");
+    holder.dataset.bootFeaturedSkel = "1";
+    holder.innerHTML = homeSectionSkeletonHtml();
+    const cats = homeRoot.querySelector('[data-home-block="categories"]');
+    if (cats) homeRoot.insertBefore(holder, cats);
+    else homeRoot.append(holder);
+  }
+
+  if (page === "cart") {
+    const host = document.querySelector("[data-cart-page]");
+    if (host) host.innerHTML = pageShellSkeletonHtml("cart");
+  } else if (page === "order") {
+    const host = document.querySelector("[data-order-page]");
+    if (host) host.innerHTML = pageShellSkeletonHtml("order");
+  } else if (page === "checkout") {
+    const summary = document.querySelector("[data-checkout-summary]");
+    if (summary && !summary.querySelector(".page-shell-skel")) {
+      summary.innerHTML = pageShellSkeletonHtml("checkout");
+    }
+  } else if (page === "contact") {
+    const host = document.querySelector("main .container");
+    if (host && !host.querySelector("[data-boot-shell]")) {
+      const wrap = document.createElement("div");
+      wrap.dataset.bootShell = "1";
+      wrap.innerHTML = pageShellSkeletonHtml("contact");
+      host.prepend(wrap);
+    }
+  }
+
+  clearTimeout(window._siteBootTimer);
+  window._siteBootTimer = window.setTimeout(() => {
+    const boot = ensureSiteBoot();
+    const msg = boot.querySelector("[data-boot-msg]");
+    const labels = {
+      home: "جاري تجهيز الرئيسية…",
+      products: "جاري تجهيز المنتجات…",
+      product: "جاري تجهيز المنتج…",
+      cart: "جاري تجهيز السلة…",
+      checkout: "جاري تجهيز الدفع…",
+      contact: "جاري تجهيز التواصل…",
+      order: "جاري تجهيز الطلب…",
+    };
+    if (msg) msg.textContent = labels[page] || "جاري تحميل المتجر…";
+    boot.classList.add("open");
+  }, 160);
+}
+
+function hideSiteBoot() {
+  clearTimeout(window._siteBootTimer);
+  document.body.classList.remove("site-booting");
+  document.querySelector("[data-slider]")?.classList.remove("is-booting");
+  document.querySelector("main")?.classList.remove("site-main-booting");
+  document.querySelectorAll("[data-boot-featured-skel], [data-boot-shell]").forEach((el) => el.remove());
+  const boot = document.getElementById("site-boot");
+  if (boot) {
+    boot.classList.remove("open");
+    boot.classList.add("leaving");
+    window.setTimeout(() => boot.remove(), 360);
+  }
+  const main = document.querySelector("main");
+  if (main) {
+    main.classList.remove("page-enter");
+    void main.offsetWidth;
+    main.classList.add("page-enter");
+  }
+}
+
+function bindPdpImageReveal(root = document) {
+  root.querySelectorAll("[data-pdp-media]").forEach((media) => {
+    const img = media.querySelector("[data-pdp-main], img");
+    if (!img) return;
+    const finish = () => {
+      media.classList.remove("is-loading");
+      media.classList.add("is-ready");
+      img.classList.add("is-shown");
+    };
+    if (img.complete && img.naturalWidth > 0) {
+      finish();
+      return;
+    }
+    media.classList.add("is-loading");
+    img.addEventListener("load", finish, { once: true });
+    img.addEventListener("error", finish, { once: true });
+  });
+}
+
 function renderProductPage() {
   const el = document.querySelector("[data-product]");
   if (!el) return;
@@ -1877,11 +2177,21 @@ function renderProductPage() {
     const id = productIdFromUrl();
     const p = PRODUCTS.find((item) => item.id === id);
     if (!p && id && typeof StoreAPI !== "undefined" && !StoreAPI.isStoreReady?.()) {
-      el.innerHTML = `<p class="muted">جاري تحميل المنتج...</p>`;
+      el.innerHTML = pdpSkeletonHtml();
+      const related = document.querySelector("[data-related]");
+      if (related) {
+        related.hidden = false;
+        related.innerHTML = relatedSkeletonHtml();
+      }
       return;
     }
     if (!p) {
       el.innerHTML = `<p class="empty">الجهاز غير موجود. <a href="/products">العودة للمتجر</a></p>`;
+      const related = document.querySelector("[data-related]");
+      if (related) {
+        related.innerHTML = "";
+        related.hidden = true;
+      }
       return;
     }
     document.title =
@@ -1985,6 +2295,10 @@ function renderProductPage() {
   setupPdpCarousel(images, p.name);
   setupPdpThumbSlider(images);
   setupPdpArabization(p);
+  el.classList.remove("pdp-enter");
+  void el.offsetWidth;
+  el.classList.add("pdp-enter");
+  bindPdpImageReveal(el);
   } catch (err) {
     console.error("renderProductPage", err);
     el.innerHTML = `<p class="empty">تعذر عرض المنتج. <a href="/products">العودة للمتجر</a></p>`;
@@ -2085,6 +2399,13 @@ function setupPdpCarousel(images, alt = "") {
       dot.classList.toggle("on", Number(dot.dataset.pdpDot) === idx);
     });
     if (window._pdpZoomSync) window._pdpZoomSync(idx);
+    const media = main.closest("[data-pdp-media]");
+    if (media) {
+      media.classList.remove("is-ready");
+      main.classList.remove("is-shown");
+      media.classList.add("is-loading");
+      bindPdpImageReveal(media.parentElement || document);
+    }
     // لا تمرّر الصفحة عمودياً أثناء التدوير التلقائي على الموبايل
     if (syncThumbs) {
       document.querySelector("[data-pdp-thumbs-slider]")?._pdpThumbsGo?.(idx, { pageScroll: false });
@@ -3484,9 +3805,35 @@ document.addEventListener("click", (e) => {
   }
   if (!e.target.closest("a, button, input, select, textarea")) {
     const card = e.target.closest("[data-product-link]");
-    if (card) location.href = productUrl(card.dataset.productLink);
+    if (card) {
+      e.preventDefault();
+      navigateWithTransit(productUrl(card.dataset.productLink));
+    }
   }
 });
+
+document.addEventListener("click", (e) => {
+  const a = e.target.closest("a[href]");
+  if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  if (a.target && a.target !== "_self") return;
+  if (a.hasAttribute("download")) return;
+  let url;
+  try {
+    url = new URL(a.href, window.location.origin);
+  } catch {
+    return;
+  }
+  if (url.origin !== window.location.origin) return;
+  if (url.protocol !== "http:" && url.protocol !== "https:") return;
+  if (url.hash && url.pathname === window.location.pathname && url.search === window.location.search) return;
+  // تجاهل روابط الجافاسكربت والفراغ
+  const raw = a.getAttribute("href") || "";
+  if (!raw || raw === "#" || raw.startsWith("javascript:")) return;
+  // لا تعِق إغلاق الأدراج/الأزرار داخل الصفحة
+  if (a.closest("[data-close-cart], [data-overlay]")) return;
+  e.preventDefault();
+  navigateWithTransit(url.href);
+}, true);
 
 document.addEventListener("input", (e) => {
   if (e.target.matches("[data-search], [data-sort], [data-price-min], [data-price-max]")) {
@@ -3778,6 +4125,7 @@ async function bootStorefront() {
   setupHeaderSearch();
   setupMobileNav();
   initTouchPanStrips();
+  showSiteBoot();
   if (document.querySelector("[data-catalog]")) renderCatalog();
   if (document.querySelector("[data-product]")) renderProductPage();
   try {
@@ -3786,6 +4134,7 @@ async function bootStorefront() {
     showToast("تعذر تحميل بيانات المتجر");
   }
   if (isMaintenanceMode()) {
+    hideSiteBoot();
     renderMaintenancePage();
     return;
   }
@@ -3812,6 +4161,7 @@ async function bootStorefront() {
   renderCheckout();
   renderOrderPage();
   applyStoreBranding();
+  hideSiteBoot();
 }
 
 window.refreshStorefrontViews = function refreshStorefrontViews() {
