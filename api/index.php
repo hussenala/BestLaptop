@@ -847,6 +847,8 @@ function public_store(PDO $pdo) {
       "city" => $s["city"] ?? "",
       "address" => $s["address"] ?? "",
       "fullAddress" => $s["fullAddress"] ?? "",
+      "mapEmbedUrl" => $s["mapEmbedUrl"] ?? "",
+      "mapActive" => normalize_bool_setting($s["mapActive"] ?? null, true),
       "phone" => $s["phone"] ?? "",
       "whatsapp" => $s["whatsapp"] ?? ($s["phone"] ?? ""),
       "email" => $s["email"] ?? "",

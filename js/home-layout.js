@@ -3,6 +3,7 @@ const HomeLayout = (() => {
     { id: "hero", type: "hero", label: "بانر الموقع (السلايدر الرئيسي)" },
     { id: "new-products", type: "new-products", label: "أحدث المنتجات" },
     { id: "office-gallery", type: "office-gallery", label: "معرض المكتب" },
+    { id: "office-map", type: "office-map", label: "موقع المكتب (الخريطة)" },
     { id: "categories", type: "categories", label: "فئات الاستخدام" },
   ];
 
@@ -90,6 +91,7 @@ const HomeLayout = (() => {
       "product-slider": "سلايدر منتجات",
       "new-products": "أحدث المنتجات",
       "office-gallery": "معرض",
+      "office-map": "خريطة",
       categories: "فئات",
     };
     return map[type] || type;

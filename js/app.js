@@ -71,6 +71,156 @@ function footerAddressLine(s) {
   return String(line).replace(/^العراق[،,\s·\-]+/i, "").trim();
 }
 
+function storeMapQuery(s = STORE) {
+  return footerAddressLine(s) || [s?.city, s?.address].filter(Boolean).join(" · ") || "";
+}
+
+function extractMapUrlCandidate(raw) {
+  const text = String(raw || "").trim();
+  if (!text) return "";
+  const iframeSrc = text.match(/src\s*=\s*["']([^"']+)["']/i);
+  if (iframeSrc?.[1]) return iframeSrc[1].trim();
+  const bare = text.match(/https?:\/\/[^\s"'<>]+/i);
+  return (bare?.[0] || text).trim();
+}
+
+function isAllowedMapHost(hostname) {
+  const host = String(hostname || "").replace(/^www\./i, "").toLowerCase();
+  return (
+    host === "google.com" ||
+    host.endsWith(".google.com") ||
+    host === "maps.google.com" ||
+    host === "goo.gl" ||
+    host === "maps.app.goo.gl" ||
+    host === "openstreetmap.org" ||
+    host.endsWith(".openstreetmap.org")
+  );
+}
+
+function mapsSearchEmbedUrl(query) {
+  const q = String(query || "").trim();
+  if (!q) return "";
+  return `https://maps.google.com/maps?q=${encodeURIComponent(q)}&z=16&hl=ar&output=embed`;
+}
+
+function mapsOpenUrl(query, preferred) {
+  const preferredUrl = extractMapUrlCandidate(preferred);
+  if (preferredUrl) {
+    try {
+      const u = new URL(preferredUrl);
+      if (isAllowedMapHost(u.hostname)) {
+        if (u.pathname.includes("/embed") || u.searchParams.get("output") === "embed") {
+          u.pathname = u.pathname.replace(/\/embed\/?/, "/");
+          u.searchParams.delete("output");
+          return u.toString();
+        }
+        return u.toString();
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  const q = String(query || "").trim();
+  return q ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}` : "";
+}
+
+function normalizeMapEmbedUrl(raw, fallbackQuery = "") {
+  const candidate = extractMapUrlCandidate(raw);
+  if (candidate) {
+    try {
+      const u = new URL(candidate);
+      if (!isAllowedMapHost(u.hostname)) return mapsSearchEmbedUrl(fallbackQuery);
+      const host = u.hostname.replace(/^www\./i, "").toLowerCase();
+      if (host === "maps.app.goo.gl" || host === "goo.gl") {
+        return mapsSearchEmbedUrl(fallbackQuery);
+      }
+      if (u.pathname.includes("/embed") || u.searchParams.get("output") === "embed") {
+        return u.toString();
+      }
+      if (host.includes("openstreetmap")) return u.toString();
+      u.searchParams.set("output", "embed");
+      if (!u.searchParams.has("hl")) u.searchParams.set("hl", "ar");
+      return u.toString();
+    } catch {
+      /* fall through */
+    }
+  }
+  return mapsSearchEmbedUrl(fallbackQuery);
+}
+
+function getOfficeMapConfig(s = STORE) {
+  const query = storeMapQuery(s);
+  const embed = normalizeMapEmbedUrl(s?.mapEmbedUrl, query);
+  const openUrl = mapsOpenUrl(query, s?.mapEmbedUrl);
+  return {
+    active: s?.mapActive !== false,
+    query,
+    embed,
+    openUrl,
+    title: "موقع المكتب",
+    subtitle: query || "زورنا في المعرض",
+  };
+}
+
+function officeMapSectionHtml(cfg, { compact = false } = {}) {
+  if (!cfg?.embed) return "";
+  const safeTitle = String(cfg.title || "موقع المكتب").replace(/</g, "&lt;");
+  const safeSub = String(cfg.subtitle || "").replace(/</g, "&lt;");
+  const safeEmbed = String(cfg.embed).replace(/"/g, "&quot;");
+  const safeOpen = cfg.openUrl ? String(cfg.openUrl).replace(/"/g, "&quot;") : "";
+  const openBtn = safeOpen
+    ? `<a class="btn btn-ghost" href="${safeOpen}" target="_blank" rel="noopener noreferrer">فتح في خرائط Google</a>`
+    : "";
+  return `
+    <div class="container">
+      <div class="office-map-head">
+        <div>
+          <p class="eyebrow">لوكيشن المعرض</p>
+          <h2>${safeTitle}</h2>
+          <p class="muted office-map-address">${safeSub}</p>
+        </div>
+        ${openBtn}
+      </div>
+      <div class="office-map-frame${compact ? " is-compact" : ""}">
+        <iframe
+          title="خريطة موقع مكتب بيست لابتوب"
+          src="${safeEmbed}"
+          loading="lazy"
+          referrerpolicy="no-referrer-when-downgrade"
+          allowfullscreen
+        ></iframe>
+      </div>
+    </div>`;
+}
+
+function renderOfficeMap() {
+  const mount = document.querySelector("[data-office-map]");
+  if (!mount) return;
+  const layout = getHomeLayout();
+  const block = layout.find((b) => b.type === "office-map");
+  const cfg = getOfficeMapConfig();
+  if (block?.active === false || !cfg.active || !cfg.embed) {
+    mount.hidden = true;
+    mount.innerHTML = "";
+    return;
+  }
+  mount.hidden = false;
+  mount.innerHTML = officeMapSectionHtml(cfg);
+}
+
+function renderContactMap() {
+  const host = document.querySelector("[data-contact-map]");
+  if (!host) return;
+  const cfg = getOfficeMapConfig();
+  if (!cfg.active || !cfg.embed) {
+    host.hidden = true;
+    host.innerHTML = "";
+    return;
+  }
+  host.hidden = false;
+  host.innerHTML = officeMapSectionHtml(cfg, { compact: true });
+}
+
 function applyFooterChrome(s) {
   const aboutText = `متجر متخصص بلابتوبات القيمنق والإنتاج في العراق، بأسعار ${footerCurrencyLabel(s.currency).replace(/^أسعار\s+/, "") || "IQD"}.`;
   document.querySelectorAll("[data-store-footer-about]").forEach((el) => {
@@ -4154,6 +4304,8 @@ async function bootStorefront() {
   renderNewProductsSlider();
   renderFeatured();
   renderOfficeGallery();
+  renderOfficeMap();
+  renderContactMap();
   applyHomeLayout();
   initHomeEffects();
   renderCatalog();
@@ -4185,6 +4337,8 @@ window.refreshStorefrontViews = function refreshStorefrontViews() {
   renderNewProductsSlider();
   renderFeatured();
   renderOfficeGallery();
+  renderOfficeMap();
+  renderContactMap();
   applyHomeLayout();
   initHomeEffects();
   renderCatalog();

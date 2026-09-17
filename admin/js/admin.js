@@ -1914,6 +1914,11 @@ function renderSettings() {
     <p class="muted span-2">رقم واتساب المدير يستقبل رسالة تأكيد الطلب التلقائية من الزبون بعد إتمام الشراء.</p>
     <label class="span-2">العنوان<input name="address" value="${esc(s.address)}" /></label>
     <label class="span-2">العنوان الكامل<input name="fullAddress" value="${esc(s.fullAddress)}" /></label>
+    <label class="span-2 check-row"><input type="checkbox" name="mapActive" value="1" ${s.mapActive !== false ? "checked" : ""} /> إظهار خريطة المكتب على الرئيسية وصفحة التواصل</label>
+    <label class="span-2">رابط / كود خريطة Google (اختياري)
+      <textarea name="mapEmbedUrl" rows="3" placeholder="الصق هنا كود التضمين من Google Maps، أو اتركه فاضي ونستخدم العنوان تلقائياً">${esc(s.mapEmbedUrl || "")}</textarea>
+    </label>
+    <p class="muted span-2">كيف تجيب الرابط: افتح موقع المكتب على Google Maps → <strong>مشاركة</strong> → <strong>تضمين خريطة</strong> → انسخ والصق هنا. إذا ما لصقت شيء، الخريطة تطلع من العنوان الكامل أعلاه.</p>
     <label>البريد<input name="email" value="${esc(s.email)}" /></label>
     <label>ساعات العمل<input name="hours" value="${esc(s.hours)}" /></label>
     <label class="span-2">الضمان<input name="warranty" value="${esc(s.warranty)}" /></label>
@@ -2777,6 +2782,8 @@ document.addEventListener("submit", (e) => {
         whatsapp: normalizeStorePhone(f.get("whatsapp") || f.get("phone")),
         address: f.get("address"),
         fullAddress: f.get("fullAddress"),
+        mapEmbedUrl: String(f.get("mapEmbedUrl") || "").trim(),
+        mapActive: f.get("mapActive") === "1",
         email: f.get("email"),
         hours: f.get("hours"),
         warranty: f.get("warranty"),

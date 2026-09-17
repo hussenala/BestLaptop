@@ -180,6 +180,8 @@ function getSeedData() {
     city: "بغداد",
     address: "شارع الصناعة، مجمع النعمان، الطابق الثاني",
     fullAddress: "العراق، بغداد — شارع الصناعة، مجمع النعمان، الطابق الثاني",
+    mapEmbedUrl: "",
+    mapActive: true,
     phone: "0772 222 4489",
     whatsapp: "0772 222 4489",
     email: "support@bestlaptop.iq",
