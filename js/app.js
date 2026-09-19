@@ -1824,6 +1824,21 @@ function catalogPriceBounds() {
   return { min: Math.min(...prices), max: Math.max(...prices) };
 }
 
+function parsePriceInput(raw) {
+  if (raw == null) return null;
+  let text = String(raw).trim();
+  if (!text) return null;
+  text = text
+    .replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d)))
+    .replace(/[۰-۹]/g, (d) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(d)))
+    .replace(/,/g, "")
+    .replace(/\s+/g, "")
+    .replace(/[^\d.]/g, "");
+  if (!text) return null;
+  const n = Number(text);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
 function getCatalogFilterState() {
   const params = new URLSearchParams(location.search);
   const q = (document.querySelector("[data-search]")?.value || params.get("q") || "").trim();
@@ -1831,10 +1846,17 @@ function getCatalogFilterState() {
   const sort = document.querySelector("[data-sort]")?.value || "featured";
   const minRaw = document.querySelector("[data-price-min]")?.value || params.get("min") || "";
   const maxRaw = document.querySelector("[data-price-max]")?.value || params.get("max") || "";
-  const min = minRaw ? Number(minRaw) : 0;
-  const max = maxRaw ? Number(maxRaw) : Infinity;
-  const urlBrands = params.get("brand") ? params.get("brand").split(",").filter(Boolean) : [];
-  const checked = [...document.querySelectorAll("[data-brand-filter]:checked")].map((el) => el.value);
+  let min = parsePriceInput(minRaw);
+  let max = parsePriceInput(maxRaw);
+  if (min == null) min = 0;
+  if (max == null) max = Infinity;
+  if (min > max) {
+    const swap = min;
+    min = max;
+    max = swap;
+  }
+  const urlBrands = params.get("brand") ? params.get("brand").split(",").map((b) => b.trim()).filter(Boolean) : [];
+  const checked = [...document.querySelectorAll("[data-brand-filter]:checked")].map((el) => el.value.trim());
   const brands = checked.length ? checked : urlBrands;
   return { q, cat, sort, min, max, brands };
 }
@@ -1968,6 +1990,17 @@ function catalogEmptyState() {
     </section>`;
 }
 
+function normalizePriceInputs() {
+  const minInput = document.querySelector("[data-price-min]");
+  const maxInput = document.querySelector("[data-price-max]");
+  if (!minInput || !maxInput) return;
+  const min = parsePriceInput(minInput.value);
+  const max = parsePriceInput(maxInput.value);
+  if (min == null || max == null || min <= max) return;
+  minInput.value = String(max);
+  maxInput.value = String(min);
+}
+
 function renderCatalog() {
   const el = document.querySelector("[data-catalog]");
   if (!el) return;
@@ -1983,18 +2016,22 @@ function renderCatalog() {
     if (countEl) countEl.textContent = "…";
     return;
   }
+  normalizePriceInputs();
   const { q, cat, sort, min, max, brands } = getCatalogFilterState();
 
   let list = PRODUCTS.filter((p) => {
     const matchCat =
       cat === "all" ||
       p.category === cat ||
-      (cat === "oled" && /OLED|DCI|Adobe/i.test(p.screen)) ||
-      (cat === "workstation" && p.tag === "محطة عمل");
-    const matchBrand = !brands.length || brands.includes(p.brand);
-    const matchPrice = p.price >= min && p.price <= max;
-    const hay = `${p.name} ${p.specs} ${p.brand} ${catLabel(p.category)}`;
-    return matchCat && matchBrand && matchPrice && (!q || hay.includes(q));
+      (cat === "oled" && (p.category === "oled" || /OLED|DCI|Adobe/i.test(p.screen || ""))) ||
+      (cat === "workstation" && (p.category === "workstation" || /محطة\s*عمل/i.test(p.tag || "") || /workstation/i.test(p.name || "")));
+    const brandName = String(p.brand || "").trim();
+    const matchBrand = !brands.length || brands.some((b) => b.toLowerCase() === brandName.toLowerCase());
+    const price = Number(p.price) || 0;
+    const matchPrice = price >= min && price <= max;
+    const hay = `${p.name} ${p.specs || ""} ${p.brand || ""} ${catLabel(p.category)}`.toLowerCase();
+    const query = q.toLowerCase();
+    return matchCat && matchBrand && matchPrice && (!query || hay.includes(query));
   });
 
   if (sort === "featured") {
@@ -3944,6 +3981,9 @@ document.addEventListener("click", (e) => {
     });
     const filter = document.querySelector("[data-filter]");
     if (filter) filter.value = "all";
+    if (location.search && document.body.dataset.page === "products") {
+      history.replaceState({}, "", location.pathname);
+    }
     renderCatalog();
     closeFiltersDrawer();
   }
@@ -4275,6 +4315,8 @@ function initHomeEffects() {
 }
 
 async function bootStorefront() {
+  document.body.classList.remove("page-transit-open", "filters-open", "nav-open");
+  document.getElementById("page-transit")?.remove();
   if (typeof SitePages !== "undefined") SitePages.init();
   setupHeaderSearch();
   setupMobileNav();
