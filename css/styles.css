@@ -1247,12 +1247,13 @@ html.products-hidden .header-brands {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.42);
-  z-index: 45;
-  backdrop-filter: blur(1px);
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 10040;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
 }
 body.filters-open .filter-backdrop { display: block; }
-body.filters-open,
+body.filters-open { overflow: hidden; }
 body.nav-open { overflow: hidden; }
 
 .btn-sm { padding: 6px 12px; font-size: 13px; }
@@ -1574,18 +1575,28 @@ body.nav-open { overflow: hidden; }
     width: min(340px, 92vw);
     height: 100dvh;
     max-height: none;
-    z-index: 50;
+    z-index: 10050;
     transform: translateX(-105%);
     transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
     border-inline-end: none;
     border-inline-start: 1px solid var(--line);
-    box-shadow: var(--shadow);
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.45);
+    pointer-events: auto;
+    -webkit-overflow-scrolling: touch;
   }
   html[dir="rtl"] .shop-filters {
     transform: translateX(105%);
   }
   body.filters-open .shop-filters {
     transform: none;
+  }
+  /* منع أي أنيميشن/فلتر على الصفحة يغطّي درج الفلاتر */
+  body.filters-open main.catalog-page,
+  body.filters-open main.page-enter,
+  body.filters-open .catalog-shell {
+    transform: none !important;
+    animation: none !important;
+    filter: none !important;
   }
   .filter-close-btn { display: inline-grid; place-items: center; }
   .filter-panel-foot { display: grid; }

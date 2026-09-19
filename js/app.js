@@ -1884,9 +1884,68 @@ function updateFilterUi() {
   if (countEl) countEl.textContent = String(PRODUCTS.length);
 }
 
+let filtersMountHome = null;
+
+function filtersDrawerMode() {
+  return window.matchMedia("(max-width: 900px)").matches;
+}
+
+function mountFiltersDrawerToBody() {
+  const panel = document.querySelector(".shop-filters");
+  const backdrop = document.querySelector(".filter-backdrop");
+  if (!panel) return;
+  if (!filtersMountHome) {
+    filtersMountHome = {
+      parent: panel.parentElement,
+      next: panel.nextElementSibling,
+    };
+  }
+  if (backdrop && backdrop.parentElement !== document.body) {
+    document.body.appendChild(backdrop);
+  }
+  if (panel.parentElement !== document.body) {
+    document.body.appendChild(panel);
+  }
+}
+
+function restoreFiltersDrawerMount() {
+  const panel = document.querySelector(".shop-filters");
+  const backdrop = document.querySelector(".filter-backdrop");
+  if (!panel || !filtersMountHome?.parent) return;
+  const { parent, next } = filtersMountHome;
+  if (next && next.parentElement === parent) parent.insertBefore(panel, next);
+  else parent.insertBefore(panel, parent.firstChild);
+  const main = document.querySelector("main.catalog-page");
+  if (backdrop && main) main.before(backdrop);
+  else if (backdrop && parent) parent.before(backdrop);
+}
+
+function openFiltersDrawer() {
+  if (filtersDrawerMode()) mountFiltersDrawerToBody();
+  document.body.classList.add("filters-open");
+  document.body.style.overflow = "hidden";
+}
+
 function closeFiltersDrawer() {
   document.body.classList.remove("filters-open");
+  document.body.style.overflow = "";
+  if (filtersMountHome) restoreFiltersDrawerMount();
 }
+
+function toggleFiltersDrawer() {
+  if (document.body.classList.contains("filters-open")) closeFiltersDrawer();
+  else openFiltersDrawer();
+}
+
+window.addEventListener("resize", () => {
+  if (!document.body.classList.contains("filters-open")) return;
+  if (filtersDrawerMode()) mountFiltersDrawerToBody();
+  else {
+    restoreFiltersDrawerMount();
+    document.body.classList.remove("filters-open");
+    document.body.style.overflow = "";
+  }
+});
 
 function renderShopFilters() {
   const listEl = document.querySelector("[data-brand-filters]");
@@ -3988,7 +4047,7 @@ document.addEventListener("click", (e) => {
     closeFiltersDrawer();
   }
   if (e.target.closest("[data-filter-toggle]")) {
-    document.body.classList.toggle("filters-open");
+    toggleFiltersDrawer();
   }
   if (e.target.closest("[data-filter-close]")) {
     closeFiltersDrawer();
