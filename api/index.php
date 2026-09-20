@@ -1111,12 +1111,15 @@ try {
   if ($path === "/admin/upload" && $method === "POST") {
     require_auth($pdo);
     $body = read_json();
-    if (!preg_match("#^data:image/(\\w+);base64,(.+)$#", (string) ($body["data"] ?? ""), $mm)) {
-      json_out(400, ["error" => "Invalid image data"]);
+    if (!preg_match("#^data:image/(jpeg|jpg|png|webp|gif);base64,([A-Za-z0-9+/=\s]+)$#i", (string) ($body["data"] ?? ""), $mm)) {
+      json_out(400, ["error" => "صيغة الصورة غير مدعومة. استخدم JPG أو PNG أو WEBP"]);
     }
-    $ext = $mm[1] === "jpeg" ? "jpg" : $mm[1];
-    $bin = base64_decode($mm[2], true);
-    if ($bin === false || strlen($bin) > 8 * 1024 * 1024) json_out(400, ["error" => "Image too large (max 8MB)"]);
+    $extRaw = strtolower($mm[1]);
+    $ext = ($extRaw === "jpeg" || $extRaw === "jpg") ? "jpg" : $extRaw;
+    $bin = base64_decode(preg_replace("/\s+/", "", $mm[2]), true);
+    if ($bin === false || strlen($bin) > 8 * 1024 * 1024) {
+      json_out(400, ["error" => "الصورة كبيرة جدًا (الحد 8MB)"]);
+    }
     $folder = in_array($body["folder"] ?? "", ["logo", "slides", "gallery"], true) ? $body["folder"] : "products";
     [$dir, $uploadError] = ensure_upload_dir($folder);
     if (!$dir) {

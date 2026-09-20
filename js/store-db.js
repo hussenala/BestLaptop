@@ -365,11 +365,21 @@ const StoreDB = (() => {
   }
 
   async function uploadImage(dataUrl, folder = "products") {
-    const data = await api("/api/admin/upload", {
-      method: "POST",
-      body: JSON.stringify({ data: dataUrl, folder }),
-    });
-    return normalizeImagePath(data.url);
+    try {
+      const data = await api("/api/admin/upload", {
+        method: "POST",
+        body: JSON.stringify({ data: dataUrl, folder }),
+      });
+      return normalizeImagePath(data.url);
+    } catch (err) {
+      const raw = String(err?.message || "");
+      if (/too large|8MB/i.test(raw)) throw new Error("الصورة كبيرة جدًا (الحد 8MB). جرّب صورة أصغر");
+      if (/Invalid image|image data/i.test(raw)) throw new Error("صيغة الصورة غير مدعومة. استخدم JPG أو PNG أو WEBP");
+      if (/not writable|Upload folder/i.test(raw)) throw new Error("مجلد الرفع غير قابل للكتابة على السيرفر — راجع صلاحيات uploads");
+      if (/Upload failed/i.test(raw)) throw new Error("فشل حفظ الصورة على السيرفر");
+      if (/Unauthorized/i.test(raw)) throw new Error("انتهت الجلسة — سجّل الدخول مرة أخرى");
+      throw err;
+    }
   }
 
   async function updateStock(id, stock) {

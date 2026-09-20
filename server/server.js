@@ -68,11 +68,12 @@ function requireAuth(req, res, roles) {
 }
 
 function saveUpload(dataUrl, folder = "products") {
-  const match = String(dataUrl || "").match(/^data:image\/(\w+);base64,(.+)$/);
-  if (!match) throw new Error("Invalid image data");
-  const ext = match[1] === "jpeg" ? "jpg" : match[1];
-  const buf = Buffer.from(match[2], "base64");
-  if (buf.length > 8 * 1024 * 1024) throw new Error("Image too large (max 8MB)");
+  const match = String(dataUrl || "").match(/^data:image\/(jpeg|jpg|png|webp|gif);base64,([A-Za-z0-9+/=\s]+)$/i);
+  if (!match) throw new Error("صيغة الصورة غير مدعومة. استخدم JPG أو PNG أو WEBP");
+  const extRaw = match[1].toLowerCase();
+  const ext = extRaw === "jpeg" || extRaw === "jpg" ? "jpg" : extRaw;
+  const buf = Buffer.from(match[2].replace(/\s+/g, ""), "base64");
+  if (buf.length > 8 * 1024 * 1024) throw new Error("الصورة كبيرة جدًا (الحد 8MB)");
   const dir = path.join(UPLOADS, folder);
   fs.mkdirSync(dir, { recursive: true });
   const name = `${Date.now()}-${crypto.randomBytes(4).toString("hex")}.${ext}`;

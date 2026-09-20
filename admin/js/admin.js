@@ -636,9 +636,88 @@ function readFileAsDataUrl(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
+    reader.onerror = () => reject(new Error("تعذر قراءة الملف"));
     reader.readAsDataURL(file);
   });
+}
+
+function loadImageElement(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("تعذر فتح الصورة — جرّب PNG أو JPG"));
+    img.src = src;
+  });
+}
+
+/** يضغط صورة الهاتف الكبيرة قبل الرفع حتى ما تتجاوز حد السيرفر */
+async function prepareImageForUpload(file, { maxSide = 2000, maxBytes = 7.5 * 1024 * 1024 } = {}) {
+  if (!file) throw new Error("لم يتم اختيار ملف");
+  const type = String(file.type || "").toLowerCase();
+  if (type && !type.startsWith("image/")) {
+    throw new Error("الملف ليس صورة. اختر PNG أو JPG أو WEBP");
+  }
+  if (/heic|heif/i.test(type) || /\.(heic|heif)$/i.test(file.name || "")) {
+    throw new Error("صيغة HEIC غير مدعومة. من الآيفون: اضبط الكاميرا على Most Compatible أو حوّل الصورة إلى JPG");
+  }
+  if (file.size > 40 * 1024 * 1024) {
+    throw new Error("الصورة كبيرة جدًا (أكثر من 40MB). صغّرها ثم أعد المحاولة");
+  }
+
+  const rawUrl = await readFileAsDataUrl(file);
+  // صور صغيرة أصلًا وضمن الحد — ارفعها كما هي
+  if (file.size <= maxBytes && /image\/(jpeg|jpg|png|webp|gif)/i.test(type || "image/jpeg")) {
+    if (/^data:image\/\w+;base64,/.test(rawUrl)) return rawUrl;
+  }
+
+  let img;
+  try {
+    img = await loadImageElement(rawUrl);
+  } catch {
+    // بعض المتصفحات تفشل بفتح الصيغة — جرّب الرفع الخام إن كان ضمن الحد
+    if (file.size <= maxBytes && /^data:image\/\w+;base64,/.test(rawUrl)) return rawUrl;
+    throw new Error("تعذر معالجة الصورة. جرّب حفظها كـ JPG ثم ارفعها");
+  }
+
+  const w0 = img.naturalWidth || img.width;
+  const h0 = img.naturalHeight || img.height;
+  if (!w0 || !h0) throw new Error("صورة غير صالحة");
+
+  let scale = Math.min(1, maxSide / Math.max(w0, h0));
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d", { alpha: true });
+  if (!ctx) throw new Error("المتصفح لا يدعم معالجة الصور");
+
+  const preferPng = /png/i.test(type) || /png/i.test(file.name || "");
+  let quality = 0.88;
+  let dataUrl = "";
+
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const w = Math.max(1, Math.round(w0 * scale));
+    const h = Math.max(1, Math.round(h0 * scale));
+    canvas.width = w;
+    canvas.height = h;
+    ctx.clearRect(0, 0, w, h);
+    ctx.drawImage(img, 0, 0, w, h);
+
+    if (preferPng && attempt === 0) {
+      dataUrl = canvas.toDataURL("image/png");
+    } else {
+      dataUrl = canvas.toDataURL("image/jpeg", quality);
+    }
+    const approxBytes = Math.ceil((dataUrl.length - (dataUrl.indexOf(",") + 1)) * 0.75);
+    if (approxBytes <= maxBytes) return dataUrl;
+
+    if (preferPng && attempt === 0) {
+      // PNG كبير — حوّل إلى JPEG
+      quality = 0.85;
+      continue;
+    }
+    quality = Math.max(0.55, quality - 0.08);
+    if (quality <= 0.6) scale *= 0.82;
+  }
+
+  throw new Error("الصورة ما زالت كبيرة بعد الضغط. جرّب صورة أوضح/أصغر");
 }
 
 function imageUrlKey(src) {
@@ -1012,11 +1091,11 @@ function renderProductEditor(productId = null) {
           <aside class="pe-aside">
             <section class="pe-aside-block">
               ${peAsideBlock("4", "صور المنتج", "الصورة 1 هي غلاف المنتج. استخدم ↑ ↓ لترتيب الصور و ★ لتعيين الغلاف.", `
-                <label class="pe-upload">
-                  <input type="file" accept="image/*" multiple data-product-files hidden />
+                <label class="pe-upload" data-product-upload-zone>
+                  <input id="product-files-input" class="pe-file-input" type="file" accept="image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif" multiple data-product-files />
                   <span class="pe-upload-icon" aria-hidden="true">↑</span>
                   <strong>رفع صور المنتج</strong>
-                  <small>انقر أو اسحب لرفع الصور كما هي (PNG / JPG / WEBP)</small>
+                  <small>انقر أو اسحب الصور هنا (JPG / PNG / WEBP) — يُضغط تلقائيًا إن كانت كبيرة</small>
                 </label>
                 <div class="pe-gallery" data-image-previews></div>
                 <textarea name="imagesJson" data-images-json hidden aria-hidden="true"></textarea>
@@ -2472,20 +2551,21 @@ document.addEventListener("change", (e) => {
   }
   if (e.target.matches("[data-product-files]")) {
     void (async () => {
-      const files = [...e.target.files];
+      const input = e.target;
+      const files = [...input.files];
       if (!files.length) return;
       const list = getProductImages();
       try {
-        toast("جاري رفع الصور…");
+        toast(`جاري رفع ${files.length > 1 ? files.length + " صور" : "الصورة"}…`);
         for (const file of files) {
-          const dataUrl = await readFileAsDataUrl(file);
+          const dataUrl = await prepareImageForUpload(file);
           const url = normalizeImagePath(await StoreDB.uploadImage(dataUrl, "products"));
           list.push(url);
         }
         setProductImages(list);
-        e.target.value = "";
+        input.value = "";
         syncProductEditorPreview();
-        toast("تم رفع الصور");
+        toast(files.length > 1 ? "تم رفع الصور" : "تم رفع الصورة");
       } catch (err) {
         toast(err.message || "تعذر رفع الصورة");
       }
@@ -2511,7 +2591,8 @@ document.addEventListener("change", (e) => {
       const file = e.target.files?.[0];
       if (!file) return;
       try {
-        const dataUrl = await readFileAsDataUrl(file);
+        toast("جاري رفع صورة البانر…");
+        const dataUrl = await prepareImageForUpload(file, { maxSide: 2400 });
         const url = await StoreDB.uploadImage(dataUrl, "slides");
         const form = e.target.closest("form");
         const hidden = form?.querySelector("[data-slide-image]");
@@ -2520,6 +2601,8 @@ document.addEventListener("change", (e) => {
         toast("تم رفع الصورة");
       } catch (err) {
         toast(err.message || "تعذر رفع الصورة");
+      } finally {
+        e.target.value = "";
       }
     })();
   }
@@ -2805,7 +2888,8 @@ document.addEventListener("submit", (e) => {
       };
       if (file) {
         try {
-          const dataUrl = await readFileAsDataUrl(file);
+          toast("جاري رفع الشعار…");
+          const dataUrl = await prepareImageForUpload(file, { maxSide: 1200 });
           next.logo = await StoreDB.uploadImage(dataUrl, "logo");
           await finish();
         } catch (err) {
@@ -2825,7 +2909,7 @@ document.addEventListener("submit", (e) => {
         for (const key of keys) {
           const file = galleryForm.querySelector(`input[name="file_${key}"]`)?.files?.[0];
           if (file) {
-            const dataUrl = await readFileAsDataUrl(file);
+            const dataUrl = await prepareImageForUpload(file, { maxSide: 2200 });
             images[key] = await StoreDB.uploadImage(dataUrl, "gallery");
           } else {
             images[key] = String(f.get(`keep_${key}`) || "");
@@ -2900,6 +2984,34 @@ async function bootAdmin() {
   window.__adminReady = true;
   render();
 }
+
+document.addEventListener("dragover", (e) => {
+  const zone = e.target.closest("[data-product-upload-zone]");
+  if (!zone) return;
+  e.preventDefault();
+  zone.classList.add("is-drag");
+});
+document.addEventListener("dragleave", (e) => {
+  const zone = e.target.closest("[data-product-upload-zone]");
+  if (!zone) return;
+  zone.classList.remove("is-drag");
+});
+document.addEventListener("drop", (e) => {
+  const zone = e.target.closest("[data-product-upload-zone]");
+  if (!zone) return;
+  e.preventDefault();
+  zone.classList.remove("is-drag");
+  const input = zone.querySelector("[data-product-files]");
+  const files = [...(e.dataTransfer?.files || [])].filter((f) => /^image\//i.test(f.type) || /\.(jpe?g|png|webp|gif)$/i.test(f.name));
+  if (!input || !files.length) {
+    toast("أسقط ملفات صور فقط (JPG / PNG / WEBP)");
+    return;
+  }
+  const dt = new DataTransfer();
+  files.forEach((f) => dt.items.add(f));
+  input.files = dt.files;
+  input.dispatchEvent(new Event("change", { bubbles: true }));
+});
 
 window.addEventListener("hashchange", () => {
   if (window.__adminReady) render();
