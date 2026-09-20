@@ -25,6 +25,8 @@ const ICONS = {
     '<svg class="search-close-ico" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12 19 6.4 17.6 5 12 10.6z"/></svg>',
   pin: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 14.5 9 2.5 2.5 0 0 1 12 11.5z"/></svg>',
   clock: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 5h-2v6.2l4.4 2.6.9-1.6-3.3-1.9z"/></svg>',
+  laptopMissing:
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5V15H4zm-1.5 11h19v1.5a1 1 0 0 1-1 1h-17a1 1 0 0 1-1-1zm6.2-7.1 1.4-1.4L12 9.9l1.9-1.9 1.4 1.4-1.9 1.9 1.9 1.9-1.4 1.4-1.9-1.9-1.9 1.9-1.4-1.4 1.9-1.9z"/></svg>',
 };
 
 function isMaintenanceMode() {
@@ -587,6 +589,59 @@ function productsHiddenState(context = "catalog") {
         </div>
       </div>
     </section>`;
+}
+
+function productMissingStateHtml({ error = false } = {}) {
+  const phone = STORE.phone || STORE.whatsapp || "";
+  const wa = storeWhatsAppNumber?.() || phoneDigits(STORE.whatsapp || STORE.phone);
+  const waBtn = wa
+    ? `<a class="btn btn-whatsapp btn-lg" href="https://wa.me/${wa}" target="_blank" rel="noopener">${ICONS.whatsapp}<span>استفسار واتساب</span></a>`
+    : "";
+  return `
+    <section class="pdp-missing" role="status" aria-live="polite">
+      <div class="pdp-missing-card">
+        <div class="pdp-missing-visual" aria-hidden="true">
+          <span class="pdp-missing-ring"></span>
+          <span class="pdp-missing-ring pdp-missing-ring-2"></span>
+          <div class="pdp-missing-icon">${ICONS.laptopMissing}</div>
+        </div>
+        <div class="pdp-missing-body">
+          <p class="eyebrow">${error ? "حدث خطأ" : "عذراً"}</p>
+          <h1>${error ? "تعذر عرض الجهاز" : "الجهاز غير موجود"}</h1>
+          <p class="pdp-missing-lead">
+            ${
+              error
+                ? "حصل خلل أثناء تحميل صفحة المنتج. حدّث الصفحة أو تصفّح الأجهزة المتاحة."
+                : "الرابط قديم أو الجهاز أُزيل من المتجر. تصفّح التشكيلة الحالية أو تواصل معنا لنرشّح لك بديلاً مناسباً."
+            }
+          </p>
+          <div class="pdp-missing-actions">
+            <a class="btn btn-primary btn-lg" href="/products">تصفح المنتجات</a>
+            <a class="btn btn-ghost btn-lg" href="/">الرئيسية</a>
+            ${waBtn}
+          </div>
+          ${phone ? `<p class="pdp-missing-phone muted">أو اتصل بنا: ${phoneLinkHtml(phone)}</p>` : ""}
+        </div>
+      </div>
+    </section>`;
+}
+
+function showProductMissingSuggestions() {
+  const mount = document.querySelector("[data-related]");
+  if (!mount || !PRODUCTS.length) {
+    if (mount) {
+      mount.innerHTML = "";
+      mount.hidden = true;
+    }
+    return;
+  }
+  const fake = { id: "__missing__", category: PRODUCTS[0]?.category || "gaming" };
+  renderRelatedProductsSlider(fake);
+  const head = mount.querySelector(".pdp-related-head h2, .section-head h2");
+  const eye = mount.querySelector(".pdp-related-head .eyebrow, .section-head .eyebrow");
+  if (eye) eye.textContent = "اقتراحات لك";
+  if (head) head.textContent = "أجهزة متوفرة قد تناسبك";
+  mount.hidden = false;
 }
 
 function applyStorefrontProductsMode() {
@@ -2434,12 +2489,9 @@ function renderProductPage() {
       return;
     }
     if (!p) {
-      el.innerHTML = `<p class="empty">الجهاز غير موجود. <a href="/products">العودة للمتجر</a></p>`;
-      const related = document.querySelector("[data-related]");
-      if (related) {
-        related.innerHTML = "";
-        related.hidden = true;
-      }
+      el.innerHTML = productMissingStateHtml();
+      document.title = "الجهاز غير موجود | BEST LAPTOP";
+      showProductMissingSuggestions();
       return;
     }
     document.title =
@@ -2549,7 +2601,9 @@ function renderProductPage() {
   bindPdpImageReveal(el);
   } catch (err) {
     console.error("renderProductPage", err);
-    el.innerHTML = `<p class="empty">تعذر عرض المنتج. <a href="/products">العودة للمتجر</a></p>`;
+    el.innerHTML = productMissingStateHtml({ error: true });
+    document.title = "تعذر عرض المنتج | BEST LAPTOP";
+    showProductMissingSuggestions();
   }
 }
 
