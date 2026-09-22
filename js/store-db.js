@@ -101,6 +101,8 @@ const StoreDB = (() => {
         address: cache.settings.address,
         fullAddress: cache.settings.fullAddress,
         mapEmbedUrl: cache.settings.mapEmbedUrl || "",
+        mapLat: cache.settings.mapLat || "",
+        mapLng: cache.settings.mapLng || "",
         mapActive: cache.settings.mapActive !== false,
         phone: cache.settings.phone,
         whatsapp: cache.settings.whatsapp || cache.settings.phone,

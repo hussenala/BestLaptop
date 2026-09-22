@@ -1237,6 +1237,8 @@ function getPublicStore() {
       address: settings.address,
       fullAddress: settings.fullAddress,
       mapEmbedUrl: settings.mapEmbedUrl || "",
+      mapLat: settings.mapLat || "",
+      mapLng: settings.mapLng || "",
       mapActive: settings.mapActive !== false,
       phone: settings.phone,
       whatsapp: settings.whatsapp || settings.phone,

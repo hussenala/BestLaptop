@@ -99,13 +99,83 @@ function isAllowedMapHost(hostname) {
   );
 }
 
+function isValidMapCoord(lat, lng) {
+  const la = Number(lat);
+  const ln = Number(lng);
+  return Number.isFinite(la) && Number.isFinite(ln) && Math.abs(la) <= 90 && Math.abs(ln) <= 180;
+}
+
+function parseMapCoords(raw) {
+  const text = String(raw || "").trim();
+  if (!text) return null;
+
+  const bare = text.match(/^(-?\d{1,2}(?:\.\d+)?)\s*[,،]\s*(-?\d{1,3}(?:\.\d+)?)$/);
+  if (bare && isValidMapCoord(bare[1], bare[2])) {
+    return { lat: Number(bare[1]), lng: Number(bare[2]) };
+  }
+
+  const at = text.match(/@(-?\d{1,2}(?:\.\d+)?),\s*(-?\d{1,3}(?:\.\d+)?)/);
+  if (at && isValidMapCoord(at[1], at[2])) {
+    return { lat: Number(at[1]), lng: Number(at[2]) };
+  }
+
+  const d34 = text.match(/!3d(-?\d{1,2}(?:\.\d+)?)!4d(-?\d{1,3}(?:\.\d+)?)/);
+  if (d34 && isValidMapCoord(d34[1], d34[2])) {
+    return { lat: Number(d34[1]), lng: Number(d34[2]) };
+  }
+
+  try {
+    const candidate = extractMapUrlCandidate(text);
+    if (candidate.startsWith("http")) {
+      const u = new URL(candidate);
+      for (const key of ["q", "query", "ll", "center", "destination"]) {
+        const val = u.searchParams.get(key);
+        if (!val) continue;
+        const m = String(val).match(/(-?\d{1,2}(?:\.\d+)?)[,\s]+(-?\d{1,3}(?:\.\d+)?)/);
+        if (m && isValidMapCoord(m[1], m[2])) {
+          return { lat: Number(m[1]), lng: Number(m[2]) };
+        }
+      }
+      const pathAt = u.pathname.match(/@(-?\d{1,2}(?:\.\d+)?),(-?\d{1,3}(?:\.\d+)?)/);
+      if (pathAt && isValidMapCoord(pathAt[1], pathAt[2])) {
+        return { lat: Number(pathAt[1]), lng: Number(pathAt[2]) };
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+
+  return null;
+}
+
+function storeMapCoords(s = STORE) {
+  if (isValidMapCoord(s?.mapLat, s?.mapLng)) {
+    return { lat: Number(s.mapLat), lng: Number(s.mapLng) };
+  }
+  return parseMapCoords(s?.mapEmbedUrl);
+}
+
+function mapsCoordsEmbedUrl(lat, lng, zoom = 16) {
+  if (!isValidMapCoord(lat, lng)) return "";
+  const z = Math.min(20, Math.max(12, Number(zoom) || 16));
+  return `https://maps.google.com/maps?q=${encodeURIComponent(`${lat},${lng}`)}&z=${z}&hl=ar&output=embed`;
+}
+
+function mapsCoordsOpenUrl(lat, lng) {
+  if (!isValidMapCoord(lat, lng)) return "";
+  return `https://www.google.com/maps?q=${encodeURIComponent(`${lat},${lng}`)}`;
+}
+
 function mapsSearchEmbedUrl(query) {
   const q = String(query || "").trim();
   if (!q) return "";
   return `https://maps.google.com/maps?q=${encodeURIComponent(q)}&z=16&hl=ar&output=embed`;
 }
 
-function mapsOpenUrl(query, preferred) {
+function mapsOpenUrl(query, preferred, coords = null) {
+  if (coords && isValidMapCoord(coords.lat, coords.lng)) {
+    return mapsCoordsOpenUrl(coords.lat, coords.lng);
+  }
   const preferredUrl = extractMapUrlCandidate(preferred);
   if (preferredUrl) {
     try {
@@ -126,7 +196,13 @@ function mapsOpenUrl(query, preferred) {
   return q ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}` : "";
 }
 
-function normalizeMapEmbedUrl(raw, fallbackQuery = "") {
+function normalizeMapEmbedUrl(raw, fallbackQuery = "", coords = null) {
+  if (coords && isValidMapCoord(coords.lat, coords.lng)) {
+    return mapsCoordsEmbedUrl(coords.lat, coords.lng);
+  }
+  const parsed = parseMapCoords(raw);
+  if (parsed) return mapsCoordsEmbedUrl(parsed.lat, parsed.lng);
+
   const candidate = extractMapUrlCandidate(raw);
   if (candidate) {
     try {
@@ -152,11 +228,13 @@ function normalizeMapEmbedUrl(raw, fallbackQuery = "") {
 
 function getOfficeMapConfig(s = STORE) {
   const query = storeMapQuery(s);
-  const embed = normalizeMapEmbedUrl(s?.mapEmbedUrl, query);
-  const openUrl = mapsOpenUrl(query, s?.mapEmbedUrl);
+  const coords = storeMapCoords(s);
+  const embed = normalizeMapEmbedUrl(s?.mapEmbedUrl, query, coords);
+  const openUrl = mapsOpenUrl(query, s?.mapEmbedUrl, coords);
   return {
     active: s?.mapActive !== false,
     query,
+    coords,
     embed,
     openUrl,
     title: "موقع المكتب",
@@ -183,16 +261,57 @@ function officeMapSectionHtml(cfg, { compact = false } = {}) {
         </div>
         ${openBtn}
       </div>
-      <div class="office-map-frame${compact ? " is-compact" : ""}">
-        <iframe
-          title="خريطة موقع مكتب بيست لابتوب"
-          src="${safeEmbed}"
-          loading="lazy"
-          referrerpolicy="no-referrer-when-downgrade"
-          allowfullscreen
-        ></iframe>
+      <div class="office-map-frame${compact ? " is-compact" : ""}" data-map-frame>
+        <div class="office-map-stage">
+          <iframe
+            title="خريطة موقع مكتب بيست لابتوب"
+            src="${safeEmbed}"
+            loading="lazy"
+            referrerpolicy="no-referrer-when-downgrade"
+            allowfullscreen
+          ></iframe>
+          <div class="office-map-fx" aria-hidden="true">
+            <span class="office-map-radar"></span>
+            <span class="office-map-radar office-map-radar--late"></span>
+            <span class="office-map-beacon"></span>
+          </div>
+        </div>
+        <div class="office-map-badge" aria-hidden="true">
+          ${ICONS.pin}
+          <span>نحن هنا</span>
+        </div>
       </div>
     </div>`;
+}
+
+function initMapEffects() {
+  const frames = document.querySelectorAll("[data-map-frame]");
+  if (!frames.length) return;
+
+  const mark = (el) => el.classList.add("is-map-inview");
+
+  if (!("IntersectionObserver" in window)) {
+    frames.forEach(mark);
+    return;
+  }
+
+  if (!initMapEffects._io) {
+    initMapEffects._io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          mark(entry.target);
+          initMapEffects._io.unobserve(entry.target);
+        });
+      },
+      { threshold: 0.28, rootMargin: "0px 0px -6% 0px" }
+    );
+  }
+
+  frames.forEach((el) => {
+    if (el.classList.contains("is-map-inview")) return;
+    initMapEffects._io.observe(el);
+  });
 }
 
 function renderOfficeMap() {
@@ -208,6 +327,7 @@ function renderOfficeMap() {
   }
   mount.hidden = false;
   mount.innerHTML = officeMapSectionHtml(cfg);
+  initMapEffects();
 }
 
 function renderContactMap() {
@@ -221,6 +341,7 @@ function renderContactMap() {
   }
   host.hidden = false;
   host.innerHTML = officeMapSectionHtml(cfg, { compact: true });
+  initMapEffects();
 }
 
 function applyFooterChrome(s) {
@@ -1109,7 +1230,11 @@ function productCard(p, opts = {}) {
   return `
     <article class="${cls} ${oos ? "is-oos" : ""}" data-product-link="${p.id}">
       <a class="pc-media" href="${productUrl(p.id)}">
-        <img src="${p.image}" alt="${p.name}"${lazy} />
+        <span class="pc-laptop-stage">
+          <span class="pc-laptop-glow" aria-hidden="true"></span>
+          <img class="pc-laptop-img" src="${p.image}" alt="${p.name}"${lazy} />
+          <span class="pc-laptop-base" aria-hidden="true"></span>
+        </span>
         <span class="badge">${p.tag}</span>
         ${off && !oos ? `<span class="badge badge-sale">خصم ${off}%</span>` : ""}
         ${oos ? `<span class="oos-ribbon">غير متوفر</span>` : ""}
@@ -4325,11 +4450,13 @@ function bindLaptopCardTilt(scope = document) {
   if (!laptopFxAllowed() || !laptopMotionAllowed()) return;
   scope.querySelectorAll(".product-card:not([data-tilt-bound])").forEach((card) => {
     const media = card.querySelector(".pc-media");
-    if (!media) return;
+    const stage = card.querySelector(".pc-laptop-stage") || media;
+    if (!media || !stage) return;
     card.dataset.tiltBound = "1";
     const reset = () => {
       card.classList.remove("is-tilting");
-      media.style.transform = "";
+      stage.style.transform = "";
+      stage.style.transition = "";
     };
     card.addEventListener("pointerenter", () => {
       if (card.closest(".product-slider-viewport.is-dragging")) return;
@@ -4346,7 +4473,8 @@ function bindLaptopCardTilt(scope = document) {
       if (!r.width || !r.height) return;
       const x = (e.clientX - r.left) / r.width - 0.5;
       const y = (e.clientY - r.top) / r.height - 0.5;
-      media.style.transform = `perspective(700px) rotateY(${(x * 12).toFixed(2)}deg) rotateX(${(-y * 9).toFixed(2)}deg) scale(1.03)`;
+      stage.style.transition = "transform 0.08s linear";
+      stage.style.transform = `perspective(820px) rotateY(${(x * 14).toFixed(2)}deg) rotateX(${(-y * 10 + 4).toFixed(2)}deg) translateY(-6px) scale(1.045)`;
     });
   });
 }

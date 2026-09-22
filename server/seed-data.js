@@ -181,6 +181,8 @@ function getSeedData() {
     address: "شارع الصناعة، مجمع النعمان، الطابق الثاني",
     fullAddress: "العراق، بغداد — شارع الصناعة، مجمع النعمان، الطابق الثاني",
     mapEmbedUrl: "",
+    mapLat: "",
+    mapLng: "",
     mapActive: true,
     phone: "0772 222 4489",
     whatsapp: "0772 222 4489",

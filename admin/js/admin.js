@@ -73,6 +73,67 @@ function esc(value) {
     .replace(/"/g, "&quot;");
 }
 
+function isValidAdminMapCoord(lat, lng) {
+  const la = Number(lat);
+  const ln = Number(lng);
+  return Number.isFinite(la) && Number.isFinite(ln) && Math.abs(la) <= 90 && Math.abs(ln) <= 180;
+}
+
+function parseAdminMapCoords(raw) {
+  const text = String(raw || "").trim();
+  if (!text) return null;
+  const bare = text.match(/^(-?\d{1,2}(?:\.\d+)?)\s*[,،]\s*(-?\d{1,3}(?:\.\d+)?)$/);
+  if (bare && isValidAdminMapCoord(bare[1], bare[2])) {
+    return { lat: Number(bare[1]), lng: Number(bare[2]) };
+  }
+  const at = text.match(/@(-?\d{1,2}(?:\.\d+)?),\s*(-?\d{1,3}(?:\.\d+)?)/);
+  if (at && isValidAdminMapCoord(at[1], at[2])) {
+    return { lat: Number(at[1]), lng: Number(at[2]) };
+  }
+  const d34 = text.match(/!3d(-?\d{1,2}(?:\.\d+)?)!4d(-?\d{1,3}(?:\.\d+)?)/);
+  if (d34 && isValidAdminMapCoord(d34[1], d34[2])) {
+    return { lat: Number(d34[1]), lng: Number(d34[2]) };
+  }
+  try {
+    const urlMatch = text.match(/https?:\/\/[^\s"'<>]+/i);
+    const iframe = text.match(/src\s*=\s*["']([^"']+)["']/i);
+    const candidate = (iframe?.[1] || urlMatch?.[0] || "").trim();
+    if (candidate.startsWith("http")) {
+      const u = new URL(candidate);
+      for (const key of ["q", "query", "ll", "center", "destination"]) {
+        const val = u.searchParams.get(key);
+        if (!val) continue;
+        const m = String(val).match(/(-?\d{1,2}(?:\.\d+)?)[,\s]+(-?\d{1,3}(?:\.\d+)?)/);
+        if (m && isValidAdminMapCoord(m[1], m[2])) {
+          return { lat: Number(m[1]), lng: Number(m[2]) };
+        }
+      }
+      const pathAt = u.pathname.match(/@(-?\d{1,2}(?:\.\d+)?),(-?\d{1,3}(?:\.\d+)?)/);
+      if (pathAt && isValidAdminMapCoord(pathAt[1], pathAt[2])) {
+        return { lat: Number(pathAt[1]), lng: Number(pathAt[2]) };
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+function adminMapPreviewEmbed(s) {
+  const lat = s?.mapLat;
+  const lng = s?.mapLng;
+  if (isValidAdminMapCoord(lat, lng)) {
+    return `https://maps.google.com/maps?q=${encodeURIComponent(`${lat},${lng}`)}&z=16&hl=ar&output=embed`;
+  }
+  const parsed = parseAdminMapCoords(s?.mapEmbedUrl);
+  if (parsed) {
+    return `https://maps.google.com/maps?q=${encodeURIComponent(`${parsed.lat},${parsed.lng}`)}&z=16&hl=ar&output=embed`;
+  }
+  const address = String(s?.fullAddress || [s?.city, s?.address].filter(Boolean).join(" · ") || "").trim();
+  if (!address) return "";
+  return `https://maps.google.com/maps?q=${encodeURIComponent(address)}&z=16&hl=ar&output=embed`;
+}
+
 function money(n) {
   return `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(Number(n) || 0)} IQD`;
 }
@@ -1993,11 +2054,37 @@ function renderSettings() {
     <p class="muted span-2">رقم واتساب المدير يستقبل رسالة تأكيد الطلب التلقائية من الزبون بعد إتمام الشراء.</p>
     <label class="span-2">العنوان<input name="address" value="${esc(s.address)}" /></label>
     <label class="span-2">العنوان الكامل<input name="fullAddress" value="${esc(s.fullAddress)}" /></label>
-    <label class="span-2 check-row"><input type="checkbox" name="mapActive" value="1" ${s.mapActive !== false ? "checked" : ""} /> إظهار خريطة المكتب على الرئيسية وصفحة التواصل</label>
-    <label class="span-2">رابط / كود خريطة Google (اختياري)
-      <textarea name="mapEmbedUrl" rows="3" placeholder="الصق هنا كود التضمين من Google Maps، أو اتركه فاضي ونستخدم العنوان تلقائياً">${esc(s.mapEmbedUrl || "")}</textarea>
-    </label>
-    <p class="muted span-2">كيف تجيب الرابط: افتح موقع المكتب على Google Maps → <strong>مشاركة</strong> → <strong>تضمين خريطة</strong> → انسخ والصق هنا. إذا ما لصقت شيء، الخريطة تطلع من العنوان الكامل أعلاه.</p>
+    <section class="panel map-location-panel span-2">
+      <h3>خريطة المكتب — اللوكيشن</h3>
+      <label class="check-row">
+        <input type="checkbox" name="mapActive" value="1" ${s.mapActive !== false ? "checked" : ""} />
+        إظهار الخريطة على الرئيسية وصفحة التواصل
+      </label>
+      <ol class="map-location-steps muted">
+        <li>افتح <strong>Google Maps</strong> واضغط مطولاً على موقع مكتبك (أو ابحث عنه).</li>
+        <li>اضغط <strong>مشاركة</strong> → انسخ الرابط، أو انسخ الإحداثيات اللي تظهر تحت الاسم (مثل <span dir="ltr">33.31, 44.36</span>).</li>
+        <li>الصق هنا تحت — النظام يلتقط الموقع أوتوماتيك.</li>
+      </ol>
+      <label class="span-2">الصق رابط Google Maps أو الإحداثيات
+        <textarea name="mapEmbedUrl" data-map-paste rows="3" placeholder="مثال: https://maps.app.goo.gl/... أو 33.3128, 44.3661">${esc(s.mapEmbedUrl || "")}</textarea>
+      </label>
+      <div class="map-coords-row">
+        <label>خط العرض (Latitude)
+          <input name="mapLat" data-map-lat dir="ltr" inputmode="decimal" placeholder="33.3128" value="${esc(s.mapLat || "")}" />
+        </label>
+        <label>خط الطول (Longitude)
+          <input name="mapLng" data-map-lng dir="ltr" inputmode="decimal" placeholder="44.3661" value="${esc(s.mapLng || "")}" />
+        </label>
+      </div>
+      <p class="muted map-location-hint">إذا ما لصقت شيء، الخريطة تعتمد على العنوان الكامل أعلاه. رابط المشاركة المختصر يعمل أفضل إذا نسخت الإحداثيات أو الرابط الكامل اللي فيه أرقام الموقع.</p>
+      ${
+        adminMapPreviewEmbed(s)
+          ? `<div class="map-admin-preview" data-map-preview>
+              <iframe title="معاينة الخريطة" src="${esc(adminMapPreviewEmbed(s))}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+            </div>`
+          : `<p class="muted map-admin-preview-empty" data-map-preview-empty>المعاينة تظهر بعد ما تضيف عنوان أو إحداثيات.</p>`
+      }
+    </section>
     <label>البريد<input name="email" value="${esc(s.email)}" /></label>
     <label>ساعات العمل<input name="hours" value="${esc(s.hours)}" /></label>
     <label class="span-2">الضمان<input name="warranty" value="${esc(s.warranty)}" /></label>
@@ -2639,6 +2726,47 @@ document.addEventListener("input", (e) => {
   if (e.target.matches("[data-p-q], [data-o-q]")) {
     render({ focus: e.target.matches("[data-p-q]") ? "[data-p-q]" : "[data-o-q]", pos: e.target.selectionStart });
   }
+
+  const form = e.target.closest("[data-settings-form]");
+  if (!form) return;
+
+  const paste = form.querySelector("[data-map-paste]");
+  const latInput = form.querySelector("[data-map-lat]");
+  const lngInput = form.querySelector("[data-map-lng]");
+  if (!paste || !latInput || !lngInput) return;
+
+  if (e.target === paste) {
+    const parsed = parseAdminMapCoords(paste.value);
+    if (parsed) {
+      latInput.value = String(parsed.lat);
+      lngInput.value = String(parsed.lng);
+    }
+  }
+
+  if (e.target === paste || e.target === latInput || e.target === lngInput || e.target.name === "fullAddress") {
+    const previewHost = form.querySelector("[data-map-preview]") || form.querySelector("[data-map-preview-empty]");
+    if (!previewHost) return;
+    const embed = adminMapPreviewEmbed({
+      mapLat: latInput.value,
+      mapLng: lngInput.value,
+      mapEmbedUrl: paste.value,
+      fullAddress: form.querySelector('[name="fullAddress"]')?.value || "",
+      city: form.querySelector('[name="city"]')?.value || "",
+      address: form.querySelector('[name="address"]')?.value || "",
+    });
+    if (!embed) {
+      previewHost.outerHTML = `<p class="muted map-admin-preview-empty" data-map-preview-empty>المعاينة تظهر بعد ما تضيف عنوان أو إحداثيات.</p>`;
+      return;
+    }
+    if (previewHost.matches("[data-map-preview]")) {
+      const iframe = previewHost.querySelector("iframe");
+      if (iframe && iframe.src !== embed) iframe.src = embed;
+    } else {
+      previewHost.outerHTML = `<div class="map-admin-preview" data-map-preview>
+        <iframe title="معاينة الخريطة" src="${esc(embed)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+      </div>`;
+    }
+  }
 });
 
 document.addEventListener("submit", (e) => {
@@ -2856,6 +2984,16 @@ document.addEventListener("submit", (e) => {
     void (async () => {
       const f = new FormData(settingsForm);
       const file = settingsForm.logoFile?.files?.[0];
+      const mapEmbedUrl = String(f.get("mapEmbedUrl") || "").trim();
+      let mapLat = String(f.get("mapLat") || "").trim();
+      let mapLng = String(f.get("mapLng") || "").trim();
+      if (!isValidAdminMapCoord(mapLat, mapLng)) {
+        const parsed = parseAdminMapCoords(mapEmbedUrl) || parseAdminMapCoords(`${mapLat},${mapLng}`);
+        if (parsed) {
+          mapLat = String(parsed.lat);
+          mapLng = String(parsed.lng);
+        }
+      }
       const next = {
         ...db().settings,
         name: f.get("name"),
@@ -2865,7 +3003,9 @@ document.addEventListener("submit", (e) => {
         whatsapp: normalizeStorePhone(f.get("whatsapp") || f.get("phone")),
         address: f.get("address"),
         fullAddress: f.get("fullAddress"),
-        mapEmbedUrl: String(f.get("mapEmbedUrl") || "").trim(),
+        mapEmbedUrl,
+        mapLat,
+        mapLng,
         mapActive: f.get("mapActive") === "1",
         email: f.get("email"),
         hours: f.get("hours"),

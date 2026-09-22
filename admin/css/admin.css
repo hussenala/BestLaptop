@@ -1831,6 +1831,59 @@ body.admin-nav-open {
   margin: 0 0 12px;
 }
 
+.map-location-panel {
+  display: grid;
+  gap: 12px;
+}
+.map-location-panel h3 {
+  margin: 0;
+}
+.map-location-steps {
+  margin: 0;
+  padding-inline-start: 1.25rem;
+  display: grid;
+  gap: 6px;
+  line-height: 1.55;
+}
+.map-coords-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.map-coords-row input {
+  direction: ltr;
+  text-align: start;
+  font-variant-numeric: tabular-nums;
+}
+.map-location-hint {
+  margin: 0;
+}
+.map-admin-preview {
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.12));
+  border-radius: 14px;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  min-height: 200px;
+  background: rgba(0, 0, 0, 0.18);
+}
+.map-admin-preview iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+.map-admin-preview-empty {
+  margin: 0;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px dashed rgba(255, 255, 255, 0.16);
+}
+@media (max-width: 640px) {
+  .map-coords-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 .maintenance-admin-panel textarea {
   width: 100%;
   min-height: 96px;
