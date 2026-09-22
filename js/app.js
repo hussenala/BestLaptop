@@ -1230,11 +1230,7 @@ function productCard(p, opts = {}) {
   return `
     <article class="${cls} ${oos ? "is-oos" : ""}" data-product-link="${p.id}">
       <a class="pc-media" href="${productUrl(p.id)}">
-        <span class="pc-laptop-stage">
-          <span class="pc-laptop-glow" aria-hidden="true"></span>
-          <img class="pc-laptop-img" src="${p.image}" alt="${p.name}"${lazy} />
-          <span class="pc-laptop-base" aria-hidden="true"></span>
-        </span>
+        <img src="${p.image}" alt="${p.name}"${lazy} />
         <span class="badge">${p.tag}</span>
         ${off && !oos ? `<span class="badge badge-sale">خصم ${off}%</span>` : ""}
         ${oos ? `<span class="oos-ribbon">غير متوفر</span>` : ""}
@@ -4450,13 +4446,11 @@ function bindLaptopCardTilt(scope = document) {
   if (!laptopFxAllowed() || !laptopMotionAllowed()) return;
   scope.querySelectorAll(".product-card:not([data-tilt-bound])").forEach((card) => {
     const media = card.querySelector(".pc-media");
-    const stage = card.querySelector(".pc-laptop-stage") || media;
-    if (!media || !stage) return;
+    if (!media) return;
     card.dataset.tiltBound = "1";
     const reset = () => {
       card.classList.remove("is-tilting");
-      stage.style.transform = "";
-      stage.style.transition = "";
+      media.style.transform = "";
     };
     card.addEventListener("pointerenter", () => {
       if (card.closest(".product-slider-viewport.is-dragging")) return;
@@ -4473,8 +4467,7 @@ function bindLaptopCardTilt(scope = document) {
       if (!r.width || !r.height) return;
       const x = (e.clientX - r.left) / r.width - 0.5;
       const y = (e.clientY - r.top) / r.height - 0.5;
-      stage.style.transition = "transform 0.08s linear";
-      stage.style.transform = `perspective(820px) rotateY(${(x * 14).toFixed(2)}deg) rotateX(${(-y * 10 + 4).toFixed(2)}deg) translateY(-6px) scale(1.045)`;
+      media.style.transform = `perspective(700px) rotateY(${(x * 12).toFixed(2)}deg) rotateX(${(-y * 9).toFixed(2)}deg) scale(1.03)`;
     });
   });
 }
