@@ -87,6 +87,16 @@ const StoreAPI = (() => {
     return "";
   }
 
+  function normalizeOfficeGalleryImage(value) {
+    const src = galleryImageSrc(value);
+    if (!src) return "";
+    const href =
+      value && typeof value === "object"
+        ? String(value.href || value.link || "").trim()
+        : "";
+    return { src, href };
+  }
+
   function applyStore(payload) {
     if (!payload) return;
     version = String(payload.version || version || "0");
@@ -137,10 +147,10 @@ const StoreAPI = (() => {
       STORE.officeGallery = {
         ...officeGallery,
         images: {
-          wide: galleryImageSrc(images.wide),
-          tall: galleryImageSrc(images.tall),
-          bottomStart: galleryImageSrc(images.bottomStart),
-          bottomEnd: galleryImageSrc(images.bottomEnd),
+          wide: normalizeOfficeGalleryImage(images.wide),
+          tall: normalizeOfficeGalleryImage(images.tall),
+          bottomStart: normalizeOfficeGalleryImage(images.bottomStart),
+          bottomEnd: normalizeOfficeGalleryImage(images.bottomEnd),
         },
       };
     }

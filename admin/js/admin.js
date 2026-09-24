@@ -1258,16 +1258,25 @@ function renderCategories() {
 function renderBrands() {
   return `
     <div class="toolbar-admin"><button class="btn btn-primary" type="button" data-add-brand>إضافة علامة</button></div>
+    <p class="muted" style="margin:0 0 12px">ارفع شعار لكل ماركة وضيف رابط مخصص — تظهر في قسم «تسوق حسب الماركة» على الرئيسية.</p>
     <div class="panel table-wrap">
       <table class="data-table">
-        <thead><tr><th>الاسم</th><th>البلد</th><th></th></tr></thead>
+        <thead><tr><th>الشعار</th><th>الاسم</th><th>البلد</th><th>الرابط</th><th></th></tr></thead>
         <tbody>
           ${db()
-            .brands.map(
-              (b) => `<tr><td>${esc(b.name)}</td><td>${esc(b.country)}</td>
+            .brands.map((b) => {
+              const logo = b.logo
+                ? `<img src="${esc(resolveAdminAsset(b.logo))}" alt="" class="brand-logo-thumb" />`
+                : `<span class="muted">—</span>`;
+              const href = b.href || `/products?brand=${encodeURIComponent(b.name || "")}`;
+              return `<tr>
+              <td>${logo}</td>
+              <td>${esc(b.name)}</td>
+              <td>${esc(b.country || "")}</td>
+              <td><code dir="ltr" class="brand-href-cell">${esc(href)}</code></td>
               <td class="row-actions"><button class="btn btn-ghost" data-edit-brand="${esc(b.id)}">تعديل</button>
-              <button class="btn btn-ghost" data-del-brand="${esc(b.id)}">حذف</button></td></tr>`
-            )
+              <button class="btn btn-ghost" data-del-brand="${esc(b.id)}">حذف</button></td></tr>`;
+            })
             .join("")}
         </tbody>
       </table>
@@ -2102,6 +2111,11 @@ function galleryImageSrc(value) {
   return "";
 }
 
+function galleryImageHref(value) {
+  if (!value || typeof value !== "object") return "";
+  return String(value.href || value.link || "").trim();
+}
+
 function gallerySlotPreview(src, label) {
   const url = typeof src === "object" && src ? src.src || src.url || "" : src;
   if (!url) return `<div class="gallery-slot-empty">${esc(label)}</div>`;
@@ -2128,6 +2142,7 @@ function renderGalleryAdmin() {
     ${uploadHint}
     <label class="span-2 check-row"><input type="checkbox" name="active" value="1" ${g.active !== false ? "checked" : ""} /> تفعيل قسم المعرض على الرئيسية</label>
     <label class="span-2">عنوان القسم<input name="title" value="${esc(g.title || "من داخل مكتب بيست لابتوب")}" /></label>
+    <p class="muted span-2">لكل صورة تقدر تضيف رابط اختياري — الزائر إذا داس على الصورة يروح للرابط.</p>
     <div class="span-2 gallery-slots">
       ${slots
         .map(
@@ -2138,6 +2153,9 @@ function renderGalleryAdmin() {
             <p class="muted">${esc(s.hint)}</p>
             <input type="hidden" name="keep_${s.key}" value="${esc(galleryImageSrc(images[s.key]))}" />
             <label class="file-label">رفع / استبدال<input name="file_${s.key}" type="file" accept="image/*" /></label>
+            <label class="gallery-link-label">رابط عند الضغط (اختياري)
+              <input name="href_${s.key}" dir="ltr" inputmode="url" placeholder="https://... أو /products.html" value="${esc(galleryImageHref(images[s.key]))}" />
+            </label>
             <button class="btn btn-ghost" type="button" data-clear-gallery="${esc(s.key)}" ${images[s.key] ? "" : "disabled"}>إزالة الصورة</button>
           </div>
         </div>`
@@ -2192,10 +2210,23 @@ function catForm(c = {}) {
 }
 
 function brandForm(b = {}) {
+  const logo = b.logo || "";
   return `<h2>${b.id ? "تعديل علامة" : "علامة جديدة"}</h2>
     <form class="admin-form" data-brand-form data-id="${esc(b.id || "")}">
       <label>الاسم<input name="name" required value="${esc(b.name || "")}" /></label>
       <label>البلد<input name="country" value="${esc(b.country || "")}" /></label>
+      <label class="span-2">رابط عند الضغط (اختياري)
+        <input name="href" dir="ltr" inputmode="url" placeholder="https://... أو اتركه فاضي لفتح صفحة المنتجات حسب الماركة" value="${esc(b.href || "")}" />
+      </label>
+      <input type="hidden" name="logo" value="${esc(logo)}" />
+      <label class="span-2">شعار الماركة
+        <input name="logoFile" type="file" accept="image/*" />
+      </label>
+      <p class="muted span-2">الشعار الحالي: ${
+        logo
+          ? `<img src="${esc(resolveAdminAsset(logo))}" alt="" class="brand-logo-preview" />`
+          : "—"
+      }</p>
       <div class="modal-actions span-2"><button class="btn btn-ghost" type="button" data-close-modal>إلغاء</button>
       <button class="btn btn-primary" type="submit">حفظ</button></div></form>`;
 }
@@ -2845,8 +2876,21 @@ document.addEventListener("submit", (e) => {
     void (async () => {
       const f = new FormData(brandFormEl);
       const id = brandFormEl.dataset.id || StoreDB.uid("br");
-      const item = { id, name: f.get("name"), country: f.get("country") };
+      const existing = db().brands.find((x) => x.id === id);
+      let logo = String(f.get("logo") || existing?.logo || "").trim();
+      const file = brandFormEl.logoFile?.files?.[0];
       try {
+        if (file) {
+          const dataUrl = await prepareImageForUpload(file, { maxSide: 800 });
+          logo = await StoreDB.uploadImage(dataUrl, "brands");
+        }
+        const item = {
+          id,
+          name: String(f.get("name") || "").trim(),
+          country: String(f.get("country") || "").trim(),
+          logo,
+          href: String(f.get("href") || "").trim(),
+        };
         await StoreDB.saveBrand(item);
         closeModal(true);
         render();
@@ -3048,12 +3092,15 @@ document.addEventListener("submit", (e) => {
       try {
         for (const key of keys) {
           const file = galleryForm.querySelector(`input[name="file_${key}"]`)?.files?.[0];
+          const href = String(f.get(`href_${key}`) || "").trim();
+          let src = "";
           if (file) {
             const dataUrl = await prepareImageForUpload(file, { maxSide: 2200 });
-            images[key] = await StoreDB.uploadImage(dataUrl, "gallery");
+            src = await StoreDB.uploadImage(dataUrl, "gallery");
           } else {
-            images[key] = String(f.get(`keep_${key}`) || "");
+            src = String(f.get(`keep_${key}`) || "").trim();
           }
+          images[key] = src ? { src, href } : "";
         }
         await StoreDB.saveOfficeGallery({
           active: f.get("active") === "1",

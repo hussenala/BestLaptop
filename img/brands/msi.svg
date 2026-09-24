@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 40" role="img" aria-label="MSI">
+  <path fill="#C8102E" d="M18 6l10 4.5V29L18 34 8 29V10.5z"/>
+  <path fill="#fff" d="M18 12.2l4.8 2.1v11.4L18 27.8l-4.8-2.1V14.3z"/>
+  <text x="88" y="28" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="22" font-weight="900" fill="#111">msi</text>
+</svg>

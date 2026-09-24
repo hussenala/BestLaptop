@@ -497,6 +497,13 @@ function migrateSchema() {
   if (!columnExists("product_sliders", "brand")) {
     db.exec("ALTER TABLE product_sliders ADD COLUMN brand TEXT DEFAULT ''");
   }
+  if (!columnExists("brands", "logo")) {
+    db.exec("ALTER TABLE brands ADD COLUMN logo TEXT DEFAULT ''");
+  }
+  if (!columnExists("brands", "href")) {
+    db.exec("ALTER TABLE brands ADD COLUMN href TEXT DEFAULT ''");
+  }
+  ensureDefaultBrandLogos();
 
   const isSeeded = !!db.prepare("SELECT value FROM meta WHERE key = 'seeded'").get();
   if (!isSeeded) return;
@@ -615,9 +622,9 @@ function seedDatabase() {
     seed.categories.forEach((c) => insCat.run(c.id, c.title, c.text));
 
     const insBrand = db.prepare(
-      "INSERT INTO brands (id,name,country) VALUES (?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name, country=excluded.country"
+      "INSERT INTO brands (id,name,country,logo,href) VALUES (?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name, country=excluded.country, logo=COALESCE(NULLIF(excluded.logo,''), brands.logo), href=COALESCE(NULLIF(excluded.href,''), brands.href)"
     );
-    seed.brands.forEach((b) => insBrand.run(b.id, b.name, b.country));
+    seed.brands.forEach((b) => insBrand.run(b.id, b.name, b.country, b.logo || "", b.href || ""));
 
     const insProd = db.prepare(`
       INSERT INTO products (id,name,brand,category,price,old_price,cpu,ram,storage,stock,tag,specs,screen,gpu,tgp,cooling,headline,blurb,slide,image,images_json)
@@ -729,8 +736,34 @@ function defaultOfficeGallery() {
 
 function normalizeGalleryImage(value) {
   if (!value) return "";
-  if (typeof value === "string") return value;
-  if (typeof value === "object") return value.src || value.url || "";
+  let src = "";
+  let href = "";
+  if (typeof value === "string") {
+    src = value.trim();
+  } else if (typeof value === "object") {
+    src = String(value.src || value.url || "").trim();
+    href = sanitizeGalleryHref(value.href || value.link || "");
+  }
+  if (!src) return "";
+  return href ? { src, href } : { src, href: "" };
+}
+
+function sanitizeGalleryHref(raw) {
+  const href = String(raw || "").trim();
+  if (!href) return "";
+  const lower = href.toLowerCase();
+  if (lower.startsWith("javascript:") || lower.startsWith("data:") || lower.startsWith("vbscript:")) {
+    return "";
+  }
+  if (
+    href.startsWith("/") ||
+    href.startsWith("#") ||
+    href.startsWith("?") ||
+    /^https?:\/\//i.test(href) ||
+    /^[a-z0-9][a-z0-9._/-]*(\?[^#]*)?(#.*)?$/i.test(href)
+  ) {
+    return href;
+  }
   return "";
 }
 
@@ -851,16 +884,56 @@ function deleteCategory(id) {
   bumpVersion();
 }
 
+function defaultBrandLogoPath(name) {
+  const key = String(name || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "");
+  const map = {
+    asus: "img/brands/asus.svg",
+    acer: "img/brands/acer.svg",
+    apple: "img/brands/apple.svg",
+    dell: "img/brands/dell.svg",
+    gigabyte: "img/brands/gigabyte.svg",
+    hp: "img/brands/hp.svg",
+    lenovo: "img/brands/lenovo.svg",
+    msi: "img/brands/msi.svg",
+    microsoft: "img/brands/microsoft.svg",
+    razer: "img/brands/razer.svg",
+    samsung: "img/brands/samsung.svg",
+    bestlaptop: "img/brands/bestlaptop.svg",
+  };
+  return map[key] || "";
+}
+
+function ensureDefaultBrandLogos() {
+  if (!columnExists("brands", "logo")) return;
+  const rows = db.prepare("SELECT id, name, country, COALESCE(logo, '') AS logo, COALESCE(href, '') AS href FROM brands").all();
+  const upd = db.prepare("UPDATE brands SET logo = ? WHERE id = ? AND (logo IS NULL OR logo = '')");
+  rows.forEach((b) => {
+    if (b.logo) return;
+    const logo = defaultBrandLogoPath(b.name);
+    if (logo) upd.run(logo, b.id);
+  });
+}
+
 function listBrands() {
-  return db.prepare("SELECT id, name, country FROM brands ORDER BY name").all();
+  return db
+    .prepare("SELECT id, name, country, COALESCE(logo, '') AS logo, COALESCE(href, '') AS href FROM brands ORDER BY name")
+    .all()
+    .map((b) => ({
+      id: b.id,
+      name: b.name,
+      country: b.country || "",
+      logo: b.logo || "",
+      href: b.href || "",
+    }));
 }
 
 function upsertBrand(b) {
-  db.prepare("INSERT INTO brands (id,name,country) VALUES (?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name, country=excluded.country").run(
-    b.id,
-    b.name,
-    b.country
-  );
+  db.prepare(
+    "INSERT INTO brands (id,name,country,logo,href) VALUES (?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name, country=excluded.country, logo=excluded.logo, href=excluded.href"
+  ).run(b.id, b.name, b.country || "", b.logo || "", b.href || "");
   bumpVersion();
 }
 

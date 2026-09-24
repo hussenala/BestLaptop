@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 40" role="img" aria-label="BestLaptop">
+  <rect x="6" y="8" width="24" height="24" rx="6" fill="#00d084"/>
+  <path fill="#04140e" d="M12 16h12v2.2H12zm0 5h9v2.2h-9z"/>
+  <text x="108" y="27" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="800" fill="#111">BestLaptop</text>
+</svg>

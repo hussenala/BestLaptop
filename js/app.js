@@ -479,6 +479,30 @@ function galleryImageSrc(value) {
   return "";
 }
 
+function sanitizeGalleryHref(raw) {
+  const href = String(raw || "").trim();
+  if (!href) return "";
+  const lower = href.toLowerCase();
+  if (lower.startsWith("javascript:") || lower.startsWith("data:") || lower.startsWith("vbscript:")) {
+    return "";
+  }
+  if (
+    href.startsWith("/") ||
+    href.startsWith("#") ||
+    href.startsWith("?") ||
+    /^https?:\/\//i.test(href) ||
+    /^[a-z0-9][a-z0-9._/-]*(\?[^#]*)?(#.*)?$/i.test(href)
+  ) {
+    return href;
+  }
+  return "";
+}
+
+function galleryImageHref(value) {
+  if (!value || typeof value !== "object") return "";
+  return sanitizeGalleryHref(value.href || value.link || "");
+}
+
 function storeHref(key, query) {
   return typeof SitePages !== "undefined" ? SitePages.href(key, query) : `${key}.html`;
 }
@@ -1741,13 +1765,20 @@ function renderOfficeGallery() {
   const title = g.title || "من داخل مكتب بيست لابتوب";
   const cells = slots
     .map((s) => {
-      const src = galleryImageSrc(images[s.key]);
+      const slot = images[s.key];
+      const src = galleryImageSrc(slot);
       if (!src) {
         return `<div class="office-gallery-cell office-gallery-cell--empty" style="grid-area:${s.area}" aria-hidden="true"></div>`;
       }
-      return `<figure class="office-gallery-cell" style="grid-area:${s.area}">
-        <img src="${resolveAsset(src)}" alt="" loading="lazy" decoding="async" />
-      </figure>`;
+      const img = `<img src="${resolveAsset(src)}" alt="" loading="lazy" decoding="async" />`;
+      const href = galleryImageHref(slot);
+      if (!href) {
+        return `<figure class="office-gallery-cell" style="grid-area:${s.area}">${img}</figure>`;
+      }
+      const safeHref = String(href).replace(/"/g, "&quot;");
+      const external = /^https?:\/\//i.test(href);
+      const rel = external ? ' target="_blank" rel="noopener noreferrer"' : "";
+      return `<a class="office-gallery-cell is-linked" style="grid-area:${s.area}" href="${safeHref}"${rel}>${img}</a>`;
     })
     .join("");
 
@@ -1968,30 +1999,131 @@ function bindTouchPan(el) {
 }
 
 function initTouchPanStrips() {
-  document.querySelectorAll("[data-header-brands], .cat-grid").forEach(bindTouchPan);
+  document.querySelectorAll("[data-header-brands], [data-brands-track], .cat-grid").forEach(bindTouchPan);
+}
+
+function defaultBrandLogo(name) {
+  const key = String(name || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "");
+  const map = {
+    asus: "img/brands/asus.svg",
+    acer: "img/brands/acer.svg",
+    apple: "img/brands/apple.svg",
+    dell: "img/brands/dell.svg",
+    gigabyte: "img/brands/gigabyte.svg",
+    hp: "img/brands/hp.svg",
+    lenovo: "img/brands/lenovo.svg",
+    msi: "img/brands/msi.svg",
+    microsoft: "img/brands/microsoft.svg",
+    razer: "img/brands/razer.svg",
+    samsung: "img/brands/samsung.svg",
+    bestlaptop: "img/brands/bestlaptop.svg",
+  };
+  return map[key] || "";
 }
 
 function getStoreBrands() {
+  const list =
+    typeof BRANDS !== "undefined" && BRANDS.length
+      ? BRANDS.slice()
+      : [...new Set(PRODUCTS.map((p) => p.brand).filter(Boolean))].map((name) => ({ name, logo: "", href: "" }));
+  return list.map((b) => ({
+    ...b,
+    logo: b.logo || defaultBrandLogo(b.name),
+  }));
+}
+
+function getCatalogBrands() {
   const productBrands = new Set(PRODUCTS.map((p) => p.brand).filter(Boolean));
-  if (typeof BRANDS !== "undefined" && BRANDS.length) {
-    return BRANDS.filter((b) => productBrands.has(b.name));
-  }
-  return [...productBrands].map((name) => ({ name }));
+  return getStoreBrands().filter((b) => productBrands.has(b.name));
+}
+
+function brandHref(b) {
+  const custom = sanitizeGalleryHref(b?.href || "");
+  if (custom) return custom;
+  const name = String(b?.name || "").trim();
+  return name ? `/products?brand=${encodeURIComponent(name)}` : "/products";
 }
 
 function renderHeaderBrands() {
   const el = document.querySelector("[data-header-brands]");
   if (!el) return;
-  const brands = getStoreBrands();
+  const brands = getCatalogBrands();
   const section = el.closest(".header-brands");
   if (section) section.hidden = brands.length === 0;
   el.innerHTML = brands
-    .map(
-      (b) =>
-        `<a href="/products?brand=${encodeURIComponent(b.name)}" class="header-brand-link">${b.name}</a>`
-    )
+    .map((b) => {
+      const href = brandHref(b).replace(/"/g, "&quot;");
+      const external = /^https?:\/\//i.test(href);
+      const rel = external ? ' target="_blank" rel="noopener noreferrer"' : "";
+      return `<a href="${href}" class="header-brand-link"${rel}>${String(b.name || "").replace(/</g, "&lt;")}</a>`;
+    })
     .join("");
   bindTouchPan(el);
+}
+
+function renderBrandsStrip() {
+  const mount = document.querySelector("[data-brands-strip]");
+  if (!mount) return;
+  const layout = getHomeLayout();
+  const block = layout.find((b) => b.type === "brands-strip");
+  const brands = getStoreBrands();
+  if (block?.active === false || !brands.length) {
+    mount.hidden = true;
+    mount.innerHTML = "";
+    return;
+  }
+
+  const title = "تسوق حسب الماركة";
+  const subtitle = "أفضل الماركات العالمية متوفرة لدينا";
+  const items = brands
+    .map((b) => {
+      const name = String(b.name || "").replace(/</g, "&lt;");
+      const href = brandHref(b).replace(/"/g, "&quot;");
+      const external = /^https?:\/\//i.test(href);
+      const rel = external ? ' target="_blank" rel="noopener noreferrer"' : "";
+      const logo = b.logo ? resolveAsset(b.logo) : "";
+      const media = logo
+        ? `<img src="${logo.replace(/"/g, "&quot;")}" alt="${name}" loading="lazy" decoding="async" />`
+        : `<span class="brands-strip-name">${name}</span>`;
+      return `<a class="brands-strip-item" href="${href}"${rel} aria-label="${name}">${media}</a>`;
+    })
+    .join("");
+
+  mount.hidden = false;
+  mount.innerHTML = `<div class="container">
+    <div class="brands-strip">
+      <div class="brands-strip-panel">
+        <div class="brands-strip-copy">
+          <h2>${title}</h2>
+          <p>${subtitle}</p>
+        </div>
+        <div class="brands-strip-actions">
+          <button class="brands-strip-nav" type="button" data-brands-prev aria-label="السابق">
+            <span aria-hidden="true">‹</span>
+          </button>
+          <button class="brands-strip-nav" type="button" data-brands-next aria-label="التالي">
+            <span aria-hidden="true">›</span>
+          </button>
+        </div>
+      </div>
+      <div class="brands-strip-track" data-brands-track tabindex="0" aria-label="الماركات">${items}</div>
+    </div>
+  </div>`;
+
+  const track = mount.querySelector("[data-brands-track]");
+  const prev = mount.querySelector("[data-brands-prev]");
+  const next = mount.querySelector("[data-brands-next]");
+  const scrollBrands = (dir) => {
+    if (!track) return;
+    const step = Math.max(180, Math.floor(track.clientWidth * 0.55));
+    track.scrollBy({ left: dir * step, behavior: "smooth" });
+  };
+  prev?.addEventListener("click", () => scrollBrands(-1));
+  next?.addEventListener("click", () => scrollBrands(1));
+  bindTouchPan(track);
 }
 
 function catalogPriceBounds() {
@@ -2140,7 +2272,7 @@ function renderShopFilters() {
   if (maxInput && !maxInput.value) {
     maxInput.placeholder = money(bounds.max).replace(/\s*IQD$/, "");
   }
-  listEl.innerHTML = getStoreBrands()
+  listEl.innerHTML = getCatalogBrands()
     .map((b) => {
       const count = PRODUCTS.filter((p) => p.brand === b.name).length;
       const checked = selectedSet.has(b.name) ? "checked" : "";
@@ -4580,6 +4712,7 @@ async function bootStorefront() {
   renderNewProductsSlider();
   renderFeatured();
   renderOfficeGallery();
+  renderBrandsStrip();
   renderOfficeMap();
   renderContactMap();
   applyHomeLayout();
@@ -4613,6 +4746,7 @@ window.refreshStorefrontViews = function refreshStorefrontViews() {
   renderNewProductsSlider();
   renderFeatured();
   renderOfficeGallery();
+  renderBrandsStrip();
   renderOfficeMap();
   renderContactMap();
   applyHomeLayout();

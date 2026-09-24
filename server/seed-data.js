@@ -225,20 +225,25 @@ function getSeedData() {
   };
 
   const brands = [
-    { id: "br-asus", name: "ASUS", country: "تايوان" },
-    { id: "br-msi", name: "MSI", country: "تايوان" },
-    { id: "br-lenovo", name: "Lenovo", country: "الصين" },
-    { id: "br-hp", name: "HP", country: "USA" },
-    { id: "br-dell", name: "Dell", country: "USA" },
-    { id: "br-apple", name: "Apple", country: "USA" },
-    { id: "br-acer", name: "Acer", country: "تايوان" },
-    { id: "br-razer", name: "Razer", country: "USA" },
-    { id: "br-gigabyte", name: "Gigabyte", country: "تايوان" },
-    { id: "br-microsoft", name: "Microsoft", country: "USA" },
-    { id: "br-samsung", name: "Samsung", country: "كوريا" },
+    { id: "br-asus", name: "ASUS", country: "تايوان", logo: "img/brands/asus.svg" },
+    { id: "br-msi", name: "MSI", country: "تايوان", logo: "img/brands/msi.svg" },
+    { id: "br-lenovo", name: "Lenovo", country: "الصين", logo: "img/brands/lenovo.svg" },
+    { id: "br-hp", name: "HP", country: "USA", logo: "img/brands/hp.svg" },
+    { id: "br-dell", name: "Dell", country: "USA", logo: "img/brands/dell.svg" },
+    { id: "br-apple", name: "Apple", country: "USA", logo: "img/brands/apple.svg" },
+    { id: "br-acer", name: "Acer", country: "تايوان", logo: "img/brands/acer.svg" },
+    { id: "br-razer", name: "Razer", country: "USA", logo: "img/brands/razer.svg" },
+    { id: "br-gigabyte", name: "Gigabyte", country: "تايوان", logo: "img/brands/gigabyte.svg" },
+    { id: "br-microsoft", name: "Microsoft", country: "USA", logo: "img/brands/microsoft.svg" },
+    { id: "br-samsung", name: "Samsung", country: "كوريا", logo: "img/brands/samsung.svg" },
     ...[...new Set(products.map((p) => p.brand))]
       .filter((name) => !["ASUS", "MSI", "Lenovo", "HP", "Dell", "Apple", "Acer", "Razer", "Gigabyte", "Microsoft", "Samsung"].includes(name))
-      .map((name, i) => ({ id: `br-local-${i + 1}`, name, country: "عراق / عالمي" })),
+      .map((name, i) => ({
+        id: `br-local-${i + 1}`,
+        name,
+        country: "عراق / عالمي",
+        logo: String(name).toLowerCase().replace(/\s+/g, "") === "bestlaptop" ? "img/brands/bestlaptop.svg" : "",
+      })),
   ];
 
   const daysAgo = (n) => {

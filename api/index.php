@@ -196,6 +196,15 @@ function init_schema(PDO $pdo) {
   } catch (Throwable $e) {
     /* ignore migration errors */
   }
+  try {
+    $cols = $pdo->query("PRAGMA table_info(brands)")->fetchAll();
+    $names = [];
+    foreach ($cols as $c) $names[$c["name"] ?? ""] = true;
+    if (empty($names["logo"])) $pdo->exec("ALTER TABLE brands ADD COLUMN logo TEXT DEFAULT ''");
+    if (empty($names["href"])) $pdo->exec("ALTER TABLE brands ADD COLUMN href TEXT DEFAULT ''");
+  } catch (Throwable $e) {
+    /* ignore migration errors */
+  }
   $n = (int) $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
   if ($n === 0) {
     $ins = $pdo->prepare("INSERT INTO users (id,name,username,password_hash,role) VALUES (?,?,?,?,?)");
@@ -298,12 +307,36 @@ function normalize_text_position($value) {
   return in_array($v, ["center", "right"], true) ? $v : "default";
 }
 
-function normalize_gallery_image($value) {
-  if (is_string($value)) return trim($value);
-  if (is_array($value)) {
-    return trim((string) ($value["src"] ?? $value["url"] ?? ""));
+function normalize_gallery_href($raw) {
+  $href = trim((string) $raw);
+  if ($href === "") return "";
+  $lower = strtolower($href);
+  if (str_starts_with($lower, "javascript:") || str_starts_with($lower, "data:") || str_starts_with($lower, "vbscript:")) {
+    return "";
+  }
+  if (
+    str_starts_with($href, "/") ||
+    str_starts_with($href, "#") ||
+    str_starts_with($href, "?") ||
+    preg_match('#^https?://#i', $href) ||
+    preg_match('#^[a-z0-9][a-z0-9._/\-]*(\?[^#]*)?(#.*)?$#i', $href)
+  ) {
+    return $href;
   }
   return "";
+}
+
+function normalize_gallery_image($value) {
+  $src = "";
+  $href = "";
+  if (is_string($value)) {
+    $src = trim($value);
+  } elseif (is_array($value)) {
+    $src = trim((string) ($value["src"] ?? $value["url"] ?? ""));
+    $href = normalize_gallery_href($value["href"] ?? $value["link"] ?? "");
+  }
+  if ($src === "") return "";
+  return ["src" => $src, "href" => $href];
 }
 
 function normalize_office_gallery($gallery) {
@@ -652,7 +685,36 @@ function list_categories(PDO $pdo) {
   return $pdo->query("SELECT id, title, text FROM categories ORDER BY title")->fetchAll();
 }
 function list_brands(PDO $pdo) {
-  return $pdo->query("SELECT * FROM brands ORDER BY name")->fetchAll();
+  $rows = $pdo->query("SELECT id, name, country, COALESCE(logo, '') AS logo, COALESCE(href, '') AS href FROM brands ORDER BY name")->fetchAll();
+  return array_map(static function ($b) {
+    return [
+      "id" => $b["id"],
+      "name" => $b["name"],
+      "country" => $b["country"] ?? "",
+      "logo" => $b["logo"] ?? "",
+      "href" => $b["href"] ?? "",
+    ];
+  }, $rows);
+}
+
+function upsert_brand(PDO $pdo, array $body) {
+  $id = $body["id"] ?? uid("br");
+  $pdo->prepare(
+    "INSERT INTO brands (id,name,country,logo,href) VALUES (?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name, country=excluded.country, logo=excluded.logo, href=excluded.href"
+  )->execute([
+    $id,
+    $body["name"] ?? "",
+    $body["country"] ?? "",
+    $body["logo"] ?? "",
+    $body["href"] ?? "",
+  ]);
+  return [
+    "id" => $id,
+    "name" => $body["name"] ?? "",
+    "country" => $body["country"] ?? "",
+    "logo" => $body["logo"] ?? "",
+    "href" => $body["href"] ?? "",
+  ];
 }
 function list_coupons(PDO $pdo) {
   $rows = $pdo->query("SELECT id,code,type,value,min_amount as min,active,uses FROM coupons ORDER BY code")->fetchAll();
@@ -1033,11 +1095,9 @@ try {
     if ($method === "GET") json_out(200, list_brands($pdo));
     if ($method === "POST") {
       $body = read_json();
-      $body["id"] = $body["id"] ?? uid("br");
-      $pdo->prepare("INSERT INTO brands (id,name,country) VALUES (?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name, country=excluded.country")
-        ->execute([$body["id"], $body["name"] ?? "", $body["country"] ?? ""]);
+      $saved = upsert_brand($pdo, is_array($body) ? $body : []);
       bump($pdo);
-      json_out(201, $body);
+      json_out(201, $saved);
     }
   }
   if (preg_match("#^/admin/brands/([^/]+)$#", $path, $m)) {
@@ -1045,11 +1105,11 @@ try {
     $id = urldecode($m[1]);
     if ($method === "PUT") {
       $body = read_json();
+      if (!is_array($body)) $body = [];
       $body["id"] = $id;
-      $pdo->prepare("INSERT INTO brands (id,name,country) VALUES (?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name, country=excluded.country")
-        ->execute([$id, $body["name"] ?? "", $body["country"] ?? ""]);
+      $saved = upsert_brand($pdo, $body);
       bump($pdo);
-      json_out(200, $body);
+      json_out(200, $saved);
     }
     if ($method === "DELETE") {
       $pdo->prepare("DELETE FROM brands WHERE id=?")->execute([$id]);
@@ -1122,7 +1182,7 @@ try {
     if ($bin === false || strlen($bin) > 8 * 1024 * 1024) {
       json_out(400, ["error" => "الصورة كبيرة جدًا (الحد 8MB)"]);
     }
-    $folder = in_array($body["folder"] ?? "", ["logo", "slides", "gallery"], true) ? $body["folder"] : "products";
+    $folder = in_array($body["folder"] ?? "", ["logo", "slides", "gallery", "brands"], true) ? $body["folder"] : "products";
     [$dir, $uploadError] = ensure_upload_dir($folder);
     if (!$dir) {
       json_out(500, ["error" => "Upload folder not writable", "detail" => $uploadError]);
