@@ -452,6 +452,299 @@ function money(n) {
   return `${value} IQD`;
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function formatMoneyDigits(value) {
+  const digits = String(value ?? "").replace(/\D/g, "");
+  if (!digits) return "";
+  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(Number(digits));
+}
+
+function parseMoneyDigits(value) {
+  const digits = String(value ?? "").replace(/\D/g, "");
+  return digits ? Number(digits) : 0;
+}
+
+function adminAuthToken() {
+  return localStorage.getItem("bestlaptop-admin-token") || "";
+}
+
+function adminSessionUser() {
+  if (typeof StoreDB !== "undefined" && typeof StoreDB.session === "function") {
+    return StoreDB.session();
+  }
+  try {
+    return JSON.parse(localStorage.getItem("bestlaptop-admin-user") || "null");
+  } catch {
+    return null;
+  }
+}
+
+function isStoreAdminSession() {
+  return Boolean(adminAuthToken() && adminSessionUser());
+}
+
+async function verifyStoreAdminSession() {
+  const token = adminAuthToken();
+  if (!token) return null;
+  if (typeof StoreDB !== "undefined" && typeof StoreDB.verifySession === "function") {
+    return StoreDB.verifySession();
+  }
+  try {
+    const { res, body } = await StoreAPI.fetchApi("/api/auth/me", {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    if (!res.ok || !body?.user) return null;
+    localStorage.setItem("bestlaptop-admin-user", JSON.stringify(body.user));
+    return body.user;
+  } catch {
+    return adminSessionUser();
+  }
+}
+
+const PDP_ADMIN_OPEN_KEY = "bestlaptop-pdp-admin-open";
+
+function isPdpAdminOpen() {
+  try {
+    return sessionStorage.getItem(PDP_ADMIN_OPEN_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function setPdpAdminOpen(open) {
+  try {
+    sessionStorage.setItem(PDP_ADMIN_OPEN_KEY, open ? "1" : "0");
+  } catch {
+    /* ignore */
+  }
+}
+
+function pdpAdminEditHtml(p) {
+  if (!isStoreAdminSession()) return "";
+  const user = adminSessionUser();
+  const userLabel = escapeHtml(user?.name || user?.username || "أدمن");
+  const autoSpecs = [p.gpu, p.ram, p.storage].filter(Boolean).join(" · ");
+  const open = isPdpAdminOpen();
+  const field = (label, name, value, opts = {}) => {
+    const span = opts.span ? ` ${opts.span}` : "";
+    const type = opts.type || "text";
+    const inputMode = opts.inputmode ? ` inputmode="${opts.inputmode}"` : "";
+    const extra = opts.extra || "";
+    return `<label class="pdp-admin-field${span}">
+      <span>${label}</span>
+      <input name="${name}" type="${type}"${inputMode} value="${escapeHtml(value ?? "")}" ${extra} />
+    </label>`;
+  };
+  return `
+    <section class="pdp-admin${open ? " is-open" : ""}" data-pdp-admin aria-label="تعديل سريع للأدمن">
+      <button type="button" class="pdp-admin-toggle" data-pdp-admin-toggle aria-expanded="${open ? "true" : "false"}">
+        <span class="pdp-admin-toggle-arrow" aria-hidden="true"></span>
+        <span class="pdp-admin-toggle-text">
+          <strong>تعديل سريع</strong>
+          <small>أدمن · ${userLabel}</small>
+        </span>
+      </button>
+      <div class="pdp-admin-body" data-pdp-admin-body ${open ? "" : "hidden"}>
+        <header class="pdp-admin-head">
+          <div class="pdp-admin-head-text">
+            <p class="pdp-admin-kicker">وضع الأدمن</p>
+            <h2>تعديل السعر والمواصفات</h2>
+            <p class="pdp-admin-meta">يشمل سعر الخصم · مسجّل كـ ${userLabel}</p>
+          </div>
+          <div class="pdp-admin-head-actions">
+            <a class="btn btn-ghost pdp-admin-full" href="/admin/#/products/edit/${encodeURIComponent(p.id)}">تعديل كامل</a>
+            <button type="button" class="btn btn-ghost pdp-admin-collapse" data-pdp-admin-toggle aria-label="إخفاء التعديل السريع">إخفاء</button>
+          </div>
+        </header>
+        <form class="pdp-admin-form" data-pdp-admin-form data-product-id="${escapeHtml(p.id)}">
+          <div class="pdp-admin-section">
+            <h3>السعر والخصم والمخزون</h3>
+            <div class="pdp-admin-grid pdp-admin-grid-price">
+              ${field("السعر (IQD)", "price", formatMoneyDigits(p.price), {
+                inputmode: "numeric",
+                extra: 'class="pdp-admin-money" data-pdp-admin-money autocomplete="off" required',
+              })}
+              ${field("السعر قبل الخصم", "oldPrice", formatMoneyDigits(p.oldPrice), {
+                inputmode: "numeric",
+                extra: 'class="pdp-admin-money" data-pdp-admin-money autocomplete="off" placeholder="اختياري"',
+              })}
+              ${field("المخزون", "stock", p.stock ?? 0, { type: "number", extra: 'min="0" step="1" required' })}
+            </div>
+          </div>
+          <div class="pdp-admin-section">
+            <h3>المواصفات</h3>
+            <div class="pdp-admin-grid">
+              ${field("المعالج", "cpu", p.cpu || "")}
+              ${field("كرت الشاشة", "gpu", p.gpu || "")}
+              ${field("قدرة الكرت (TGP)", "tgp", p.tgp || "")}
+              ${field("التبريد", "cooling", p.cooling || "")}
+              ${field("الذاكرة (RAM)", "ram", p.ram || "")}
+              ${field("التخزين", "storage", p.storage || "")}
+              ${field("الشاشة", "screen", p.screen || "", { span: "span-2" })}
+              ${field("سطر البطاقة", "specs", p.specs || "", {
+                span: "span-2",
+                extra: `placeholder="${escapeHtml(autoSpecs || "RTX 4070 · 32GB · 1TB")}"`,
+              })}
+            </div>
+          </div>
+          <footer class="pdp-admin-foot">
+            <p class="pdp-admin-hint muted" data-pdp-admin-status>التغييرات تُحفظ مباشرة في المتجر.</p>
+            <button class="btn btn-primary" type="submit" data-pdp-admin-save>حفظ التعديلات</button>
+          </footer>
+        </form>
+      </div>
+    </section>`;
+}
+
+function bindPdpAdminMoneyInputs(root) {
+  root?.querySelectorAll("[data-pdp-admin-money]").forEach((el) => {
+    if (el.dataset.moneyBound === "1") return;
+    el.dataset.moneyBound = "1";
+    el.addEventListener("input", () => {
+      const start = el.selectionStart ?? el.value.length;
+      const digitsBefore = el.value.slice(0, start).replace(/\D/g, "").length;
+      const digits = el.value.replace(/\D/g, "");
+      el.value = digits ? formatMoneyDigits(digits) : "";
+      let pos = 0;
+      let seen = 0;
+      for (let i = 0; i < el.value.length; i += 1) {
+        if (/\d/.test(el.value[i])) seen += 1;
+        if (seen >= digitsBefore) {
+          pos = i + 1;
+          break;
+        }
+        pos = el.value.length;
+      }
+      try {
+        el.setSelectionRange(pos, pos);
+      } catch {
+        /* ignore */
+      }
+    });
+  });
+}
+
+async function savePdpAdminForm(form) {
+  const id = form.dataset.productId;
+  const p = PRODUCTS.find((item) => item.id === id);
+  const status = form.querySelector("[data-pdp-admin-status]");
+  const btn = form.querySelector("[data-pdp-admin-save]");
+  if (!p) {
+    showToast("المنتج غير موجود");
+    return;
+  }
+  const user = await verifyStoreAdminSession();
+  if (!user) {
+    form.closest("[data-pdp-admin]")?.remove();
+    showToast("انتهت جلسة الأدمن — سجّل الدخول من لوحة التحكم");
+    return;
+  }
+  const fd = new FormData(form);
+  const price = parseMoneyDigits(fd.get("price"));
+  const oldPriceRaw = String(fd.get("oldPrice") || "").trim();
+  const oldPrice = oldPriceRaw ? parseMoneyDigits(oldPriceRaw) : null;
+  const stock = Math.max(0, Number(fd.get("stock")) || 0);
+  const cpu = String(fd.get("cpu") || "").trim();
+  const gpu = String(fd.get("gpu") || "").trim();
+  const tgp = String(fd.get("tgp") || "").trim();
+  const cooling = String(fd.get("cooling") || "").trim();
+  const ram = String(fd.get("ram") || "").trim();
+  const storage = String(fd.get("storage") || "").trim();
+  const screen = String(fd.get("screen") || "").trim();
+  const specs = String(fd.get("specs") || "").trim() || [gpu, ram, storage].filter(Boolean).join(" · ");
+  if (!price || price < 1) {
+    showToast("أدخل سعراً صحيحاً");
+    return;
+  }
+  if (oldPrice != null && oldPrice > 0 && oldPrice <= price) {
+    showToast("سعر قبل الخصم يجب أن يكون أعلى من السعر الحالي");
+    return;
+  }
+  const payload = {
+    ...p,
+    price,
+    oldPrice: oldPrice && oldPrice > 0 ? oldPrice : null,
+    stock,
+    cpu,
+    gpu,
+    tgp,
+    cooling,
+    ram,
+    storage,
+    screen,
+    specs,
+    condition: typeof normalizeProductCondition === "function" ? normalizeProductCondition(p.condition) : p.condition || "new",
+  };
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "جاري الحفظ…";
+  }
+  if (status) status.textContent = "جاري حفظ التعديلات…";
+  try {
+    const token = adminAuthToken();
+    const { res, body } = await StoreAPI.fetchApi(`/api/admin/products/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      if (res.status === 401) {
+        form.closest("[data-pdp-admin]")?.remove();
+        throw new Error("انتهت جلسة الأدمن — سجّل الدخول من لوحة التحكم");
+      }
+      throw new Error(body?.error || body?.detail || "تعذر الحفظ");
+    }
+    if (typeof StoreAPI.fetchStore === "function") await StoreAPI.fetchStore();
+    else {
+      const idx = PRODUCTS.findIndex((item) => item.id === id);
+      if (idx >= 0) PRODUCTS[idx] = { ...PRODUCTS[idx], ...payload, ...(body || {}) };
+    }
+    if (typeof StoreAPI.publishStorefront === "function") StoreAPI.publishStorefront();
+    showToast("تم حفظ تعديلات المنتج");
+    if (status) status.textContent = "تم الحفظ بنجاح.";
+    renderProductPage();
+  } catch (err) {
+    if (status) status.textContent = err.message || "تعذر الحفظ";
+    showToast(err.message || "تعذر الحفظ");
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "حفظ التعديلات";
+    }
+  }
+}
+
+function setPdpAdminExpanded(root, open) {
+  if (!root) return;
+  const body = root.querySelector("[data-pdp-admin-body]");
+  const toggles = root.querySelectorAll("[data-pdp-admin-toggle]");
+  root.classList.toggle("is-open", open);
+  if (body) body.hidden = !open;
+  toggles.forEach((btn) => btn.setAttribute("aria-expanded", open ? "true" : "false"));
+  setPdpAdminOpen(open);
+}
+
+function setupPdpAdminEdit() {
+  const root = document.querySelector("[data-pdp-admin]");
+  if (!root) return;
+  bindPdpAdminMoneyInputs(root);
+  setPdpAdminExpanded(root, isPdpAdminOpen());
+  void verifyStoreAdminSession().then((user) => {
+    if (!user) root.remove();
+  });
+}
+
 function productIdFromUrl() {
   const pathMatch = location.pathname.match(/\/product\/([^/]+)\/?$/i);
   if (pathMatch) return decodeURIComponent(pathMatch[1]);
@@ -2841,6 +3134,7 @@ function renderProductPage() {
         <tr><th>التبريد</th><td>${p.cooling}</td></tr>
         <tr><th>الضمان</th><td>${STORE.warranty}</td></tr>
       </table>
+      ${pdpAdminEditHtml(p)}
     </div>
   `;
   const related = document.querySelector("[data-related]");
@@ -2848,6 +3142,7 @@ function renderProductPage() {
   setupPdpCarousel(images, p.name);
   setupPdpThumbSlider(images);
   setupPdpArabization(p);
+  setupPdpAdminEdit();
   el.classList.remove("pdp-enter");
   void el.offsetWidth;
   el.classList.add("pdp-enter");
@@ -4276,7 +4571,21 @@ function renderSlider() {
   }
 }
 
+document.addEventListener("submit", (e) => {
+  const form = e.target.closest("[data-pdp-admin-form]");
+  if (!form) return;
+  e.preventDefault();
+  void savePdpAdminForm(form);
+});
+
 document.addEventListener("click", (e) => {
+  const adminToggle = e.target.closest("[data-pdp-admin-toggle]");
+  if (adminToggle) {
+    const root = adminToggle.closest("[data-pdp-admin]");
+    if (root) setPdpAdminExpanded(root, !root.classList.contains("is-open"));
+    return;
+  }
+
   if (e.target.closest("[data-back-page]")) {
     if (window.history.length > 1) window.history.back();
     else location.href = "/products";
