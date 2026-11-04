@@ -115,14 +115,27 @@ function gini_read_secrets() {
 
 function gini_write_secrets($clientId, $clientSecret) {
   $dir = gini_data_dir();
-  if (!is_dir($dir)) mkdir($dir, 0775, true);
+  if (!is_dir($dir) && !@mkdir($dir, 0775, true) && !is_dir($dir)) {
+    throw new RuntimeException("مجلد حفظ المفاتيح غير قابل للإنشاء");
+  }
+  if (!is_writable($dir)) {
+    throw new RuntimeException("مجلد حفظ المفاتيح غير قابل للكتابة");
+  }
   $payload = json_encode([
     "v" => 1,
     "clientId" => gini_encrypt($clientId),
     "clientSecret" => gini_encrypt($clientSecret),
-  ]);
-  file_put_contents($dir . DIRECTORY_SEPARATOR . "gini.secrets.json", $payload);
-  @chmod($dir . DIRECTORY_SEPARATOR . "gini.secrets.json", 0600);
+  ], JSON_UNESCAPED_SLASHES);
+  if ($payload === false) throw new RuntimeException("تعذر تجهيز ملف المفاتيح");
+  $path = $dir . DIRECTORY_SEPARATOR . "gini.secrets.json";
+  if (file_put_contents($path, $payload, LOCK_EX) === false) {
+    throw new RuntimeException("تعذر كتابة ملف مفاتيح الربط");
+  }
+  @chmod($path, 0600);
+  $read = gini_read_secrets();
+  if (!$read || $read["clientId"] !== $clientId || $read["clientSecret"] !== $clientSecret) {
+    throw new RuntimeException("تعذر قراءة مفاتيح الربط بعد حفظها");
+  }
 }
 
 function gini_credentials() {
@@ -413,13 +426,21 @@ function gini_cleanup_temps($files) {
   }
 }
 
+function gini_sale_price($product) {
+  $raw = $product["giniPrice"] ?? null;
+  if ($raw === null || $raw === "") return null;
+  if (!is_numeric($raw)) return null;
+  $price = (int) round((float) $raw);
+  return $price < 0 ? null : $price;
+}
+
 function gini_payload(PDO $pdo, $product, $map) {
   $installments = gini_config($pdo, "is_installments", "0") === "1";
   $months = (int) gini_config($pdo, "months", "0");
   $body = [
     "name" => gini_cut($product["name"] ?? "منتج", 255),
     "description" => gini_description($product),
-    "price" => max(0, (int) round((float) ($product["price"] ?? 0))),
+    "price" => gini_sale_price($product),
     "quantity" => max(0, (int) round((float) ($product["stock"] ?? 0))),
     "security_stock" => max(0, (int) gini_config($pdo, "security_stock", "1")),
     "category_id" => (int) $map["gini_category_id"],
@@ -488,6 +509,12 @@ function gini_sync(PDO $pdo, $localId, $action) {
     ]);
     gini_log($pdo, $localId, $action, false, "تم تخطي منتج محذوف محلياً دون حذفه من جني");
     return ["ok" => false, "message" => "المنتج غير موجود محلياً"];
+  }
+  if (gini_sale_price($product) === null) {
+    $message = "يرجى تحديد سعر أسواق جني قبل النشر";
+    gini_remember($pdo, $localId, ["status" => "failed", "last_error" => $message, "gini_sku" => gini_sku($localId)]);
+    gini_log($pdo, $localId, $action, false, $message);
+    return ["ok" => false, "message" => $message, "permanent" => true];
   }
   $st = $pdo->prepare("SELECT * FROM gini_category_map WHERE local_category_id=?");
   $st->execute([$product["category"] ?? ""]);
@@ -737,15 +764,29 @@ function gini_save_settings(PDO $pdo, array $input) {
     $clientSecret = $incomingSecret !== "" ? $incomingSecret : ($current["clientSecret"] ?? "");
     if ($clientId === "" || $clientSecret === "") json_out(400, ["error" => "أدخل Client ID وClient Secret معاً عند الحفظ الأول"]);
     if (strlen($clientId) > 300 || strlen($clientSecret) > 500) json_out(400, ["error" => "قيمة المفتاح أطول من المتوقع"]);
-    gini_write_secrets($clientId, $clientSecret);
-    $message = "حُفظت المفاتيح مشفّرة على السيرفر";
+    try {
+      gini_write_secrets($clientId, $clientSecret);
+    } catch (Throwable $error) {
+      json_out(500, ["error" => "تعذر حفظ مفاتيح الربط"]);
+    }
+    $message = "تم حفظ بيانات الربط";
   }
   if (array_key_exists("autoSync", $input)) gini_config_set($pdo, "auto_sync", !empty($input["autoSync"]) ? "1" : "0");
   if (isset($input["securityStock"]) && $input["securityStock"] !== "") gini_config_set($pdo, "security_stock", (string) max(0, (int) $input["securityStock"]));
   if (array_key_exists("isInstallments", $input)) gini_config_set($pdo, "is_installments", !empty($input["isInstallments"]) ? "1" : "0");
   if (isset($input["months"]) && $input["months"] !== "") gini_config_set($pdo, "months", (string) max(0, min(10, (int) $input["months"])));
   if (array_key_exists("isGiniPartner", $input)) gini_config_set($pdo, "is_gini_partner", !empty($input["isGiniPartner"]) ? "1" : "0");
-  return ["ok" => true, "message" => $message !== "" ? $message : "تم حفظ الإعدادات"];
+  $stored = gini_credentials();
+  $savedKeys = is_array($stored) && ($stored["clientId"] ?? "") !== "" && ($stored["clientSecret"] ?? "") !== "";
+  if (($incomingId !== "" || $incomingSecret !== "") && !$savedKeys) {
+    json_out(500, ["error" => "تعذر حفظ مفاتيح الربط"]);
+  }
+  return [
+    "ok" => true,
+    "saved" => $savedKeys,
+    "configured" => $savedKeys,
+    "message" => $savedKeys ? "تم حفظ بيانات الربط" : ($message !== "" ? $message : "تم حفظ الإعدادات"),
+  ];
 }
 
 function gini_save_maps(PDO $pdo, $maps) {
@@ -844,7 +885,7 @@ function gini_handle(PDO $pdo, $path, $method) {
   require_auth($pdo, ["admin"]);
   if ($path === "/admin/gini" && $method === "GET") json_out(200, gini_overview($pdo));
   if ($path === "/admin/gini/links" && $method === "GET") json_out(200, ["links" => gini_links($pdo)]);
-  if ($path === "/admin/gini/settings" && $method === "PUT") json_out(200, gini_save_settings($pdo, read_json() ?: []));
+  if ($path === "/admin/gini/settings" && ($method === "PUT" || $method === "POST")) json_out(200, gini_save_settings($pdo, read_json() ?: []));
   if ($path === "/admin/gini/test" && $method === "POST") json_out(200, gini_test($pdo));
   if ($path === "/admin/gini/categories" && $method === "GET") {
     try {

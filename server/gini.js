@@ -162,6 +162,10 @@ function writeSecretFile(clientId, clientSecret) {
   } catch {
     /* windows */
   }
+  const readBack = readSecretFile();
+  if (!readBack || readBack.clientId !== clientId || readBack.clientSecret !== clientSecret) {
+    throw new Error("تعذر قراءة مفاتيح الربط بعد حفظها");
+  }
 }
 
 function getCredentials() {
@@ -488,13 +492,21 @@ function categoryMap(localCategoryId) {
   return database().prepare("SELECT * FROM gini_category_map WHERE local_category_id=?").get(localCategoryId) || null;
 }
 
+function salePriceOf(product) {
+  const raw = product?.giniPrice;
+  if (raw == null || raw === "") return null;
+  const price = Math.round(Number(raw));
+  if (!Number.isFinite(price) || price < 0) return null;
+  return price;
+}
+
 function payloadOf(product, map, filesReady) {
   const installments = flag("is_installments");
   const months = Number(configGet("months", "0"));
   const body = {
     name: String(product.name || "منتج").slice(0, 255),
     description: descriptionOf(product),
-    price: Math.max(0, Math.round(Number(product.price) || 0)),
+    price: salePriceOf(product),
     quantity: Math.max(0, Math.round(Number(product.stock) || 0)),
     security_stock: securityStock(),
     category_id: Number(map.gini_category_id),
@@ -594,6 +606,12 @@ async function syncLocal(localId, action) {
     );
     log(localId, action, false, "تم تخطي منتج محذوف محلياً دون حذفه من جني");
     return { ok: false, message: "المنتج غير موجود محلياً" };
+  }
+  if (salePriceOf(product) == null) {
+    const message = "يرجى تحديد سعر أسواق جني قبل النشر";
+    rememberLink(localId, { status: "failed", last_error: message, gini_sku: skuFor(localId) });
+    log(localId, action, false, message);
+    return { ok: false, message, permanent: true };
   }
   const map = categoryMap(product.category);
   if (!map) {
@@ -871,14 +889,24 @@ function saveSettings(input) {
       throw new Error("قيمة المفتاح أطول من المتوقع");
     }
     writeSecretFile(clientId, clientSecret);
-    credentialsMessage = "حُفظت المفاتيح مشفّرة على السيرفر";
+    credentialsMessage = "تم حفظ بيانات الربط";
   }
   if (Object.prototype.hasOwnProperty.call(input, "autoSync")) configSet("auto_sync", input.autoSync ? "1" : "0");
   if (input.securityStock != null && input.securityStock !== "") configSet("security_stock", String(Math.max(0, Math.round(Number(input.securityStock) || 0))));
   if (Object.prototype.hasOwnProperty.call(input, "isInstallments")) configSet("is_installments", input.isInstallments ? "1" : "0");
   if (input.months != null && input.months !== "") configSet("months", String(Math.max(0, Math.min(10, Math.round(Number(input.months) || 0)))));
   if (Object.prototype.hasOwnProperty.call(input, "isGiniPartner")) configSet("is_gini_partner", input.isGiniPartner ? "1" : "0");
-  return { ok: true, message: credentialsMessage || "تم حفظ الإعدادات" };
+  const stored = getCredentials();
+  const savedKeys = !!(stored && stored.clientId && stored.clientSecret);
+  if ((incomingId || incomingSecret) && !savedKeys) {
+    throw new Error("تعذر حفظ مفاتيح الربط");
+  }
+  return {
+    ok: true,
+    saved: savedKeys,
+    configured: savedKeys,
+    message: savedKeys ? "تم حفظ بيانات الربط" : credentialsMessage || "تم حفظ الإعدادات",
+  };
 }
 
 function saveMaps(maps) {
@@ -1001,4 +1029,7 @@ module.exports = {
   syncAll,
   tick,
   sign,
+  salePriceOf,
+  payloadOf,
+  syncLocal,
 };

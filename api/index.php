@@ -164,6 +164,11 @@ function init_schema(PDO $pdo) {
       }
       $pdo->exec("UPDATE products SET product_condition = 'new' WHERE product_condition IS NULL OR product_condition = ''");
     }
+    $hasGiniPrice = false;
+    foreach ($cols as $c) {
+      if (($c["name"] ?? "") === "gini_price") $hasGiniPrice = true;
+    }
+    if (!$hasGiniPrice) $pdo->exec("ALTER TABLE products ADD COLUMN gini_price INTEGER");
   } catch (Throwable $e) {
     /* ignore migration errors */
   }
@@ -620,6 +625,7 @@ function product_from_row($row) {
     "category" => $row["category"],
     "price" => (int) $row["price"],
     "oldPrice" => $row["old_price"] === null ? null : (int) $row["old_price"],
+    "giniPrice" => !array_key_exists("gini_price", $row) || $row["gini_price"] === null || $row["gini_price"] === "" ? null : (int) $row["gini_price"],
     "cpu" => $row["cpu"],
     "ram" => $row["ram"],
     "storage" => $row["storage"],
@@ -638,6 +644,19 @@ function product_from_row($row) {
     "image" => $images[0] ?? ($row["image"] ?? ""),
     "createdAt" => $row["created_at"] ?? "",
   ];
+}
+
+function normalize_gini_price($value) {
+  if ($value === null || $value === "") return null;
+  if (!is_numeric($value)) return null;
+  $n = (int) round((float) $value);
+  return $n < 0 ? null : $n;
+}
+
+function public_product($product) {
+  if (!is_array($product)) return $product;
+  unset($product["giniPrice"]);
+  return $product;
 }
 
 function list_products(PDO $pdo) {
@@ -663,16 +682,19 @@ function upsert_product(PDO $pdo, $p) {
   $existing = get_product($pdo, $p["id"]);
   $created = $existing["createdAt"] ?? ($p["createdAt"] ?? gmdate("c"));
   $condition = product_condition_from_payload($p, $existing["condition"] ?? "new");
-  $st = $pdo->prepare("INSERT INTO products (id,name,brand,category,price,old_price,cpu,ram,storage,stock,tag,specs,screen,gpu,tgp,cooling,headline,blurb,slide,image,images_json,product_condition,created_at)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+  $giniPrice = array_key_exists("giniPrice", $p)
+    ? normalize_gini_price($p["giniPrice"])
+    : (is_array($existing) ? ($existing["giniPrice"] ?? null) : null);
+  $st = $pdo->prepare("INSERT INTO products (id,name,brand,category,price,old_price,gini_price,cpu,ram,storage,stock,tag,specs,screen,gpu,tgp,cooling,headline,blurb,slide,image,images_json,product_condition,created_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ON CONFLICT(id) DO UPDATE SET name=excluded.name, brand=excluded.brand, category=excluded.category, price=excluded.price,
-      old_price=excluded.old_price, cpu=excluded.cpu, ram=excluded.ram, storage=excluded.storage, stock=excluded.stock,
+      old_price=excluded.old_price, gini_price=excluded.gini_price, cpu=excluded.cpu, ram=excluded.ram, storage=excluded.storage, stock=excluded.stock,
       tag=excluded.tag, specs=excluded.specs, screen=excluded.screen, gpu=excluded.gpu, tgp=excluded.tgp, cooling=excluded.cooling,
       headline=excluded.headline, blurb=excluded.blurb, slide=excluded.slide, image=excluded.image, images_json=excluded.images_json,
       product_condition=excluded.product_condition");
   $st->execute([
     $p["id"], $p["name"] ?? "", $p["brand"] ?? "", $p["category"] ?? "",
-    (int) ($p["price"] ?? 0), isset($p["oldPrice"]) ? (int) $p["oldPrice"] : null,
+    (int) ($p["price"] ?? 0), isset($p["oldPrice"]) ? (int) $p["oldPrice"] : null, $giniPrice,
     $p["cpu"] ?? "", $p["ram"] ?? "", $p["storage"] ?? "", (int) ($p["stock"] ?? 0),
     $p["tag"] ?? "", $p["specs"] ?? "", $p["screen"] ?? "", $p["gpu"] ?? "", $p["tgp"] ?? "",
     $p["cooling"] ?? "", $p["headline"] ?? "", $p["blurb"] ?? "", !empty($p["slide"]) ? 1 : 0,
@@ -896,7 +918,7 @@ function public_store(PDO $pdo) {
   $s = settings($pdo);
   return [
     "version" => version($pdo),
-    "products" => is_products_hidden($pdo) ? [] : list_products($pdo),
+    "products" => is_products_hidden($pdo) ? [] : array_map("public_product", list_products($pdo)),
     "categories" => list_categories($pdo),
     "brands" => list_brands($pdo),
     "settings" => $s,
@@ -934,6 +956,10 @@ function public_store(PDO $pdo) {
   ];
 }
 
+if (PHP_SAPI === "cli") {
+  return;
+}
+
 try {
   $pdo = pdo();
   $method = strtoupper($_SERVER["REQUEST_METHOD"] ?? "GET");
@@ -950,10 +976,19 @@ try {
     $body = read_json();
     if (empty($body["items"])) json_out(400, ["error" => "Empty order"]);
     $id = $body["id"] ?? ("BL-" . substr((string) time(), -6));
-    foreach ($body["items"] as $item) {
+    $subtotal = 0;
+    foreach ($body["items"] as &$item) {
       $p = get_product($pdo, $item["id"]);
       if (!$p || $p["stock"] < (int) $item["qty"]) json_out(400, ["error" => "Product unavailable: " . $item["id"]]);
+      $unit = max(0, (int) $p["price"]) + (!empty($item["arabization"]) ? 10000 : 0);
+      $item["price"] = $unit;
+      unset($item["giniPrice"], $item["gini_price"]);
+      $subtotal += $unit * max(1, (int) ($item["qty"] ?? 1));
     }
+    unset($item);
+    $previousSubtotal = (int) ($body["subtotal"] ?? 0);
+    $body["subtotal"] = $subtotal;
+    $body["total"] = max(0, (int) ($body["total"] ?? 0) + ($subtotal - $previousSubtotal));
     $pdo->prepare("INSERT INTO orders (id,created_at,status,customer_json,address_json,delivery_json,payment_json,items_json,subtotal,discount,shipping,total) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)")
       ->execute([
         $id, $body["createdAt"] ?? gmdate("c"), "new",

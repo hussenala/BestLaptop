@@ -141,6 +141,7 @@ function rowToProduct(row) {
     category: row.category,
     price: row.price,
     oldPrice: row.old_price,
+    giniPrice: row.gini_price == null || row.gini_price === "" ? null : Math.round(Number(row.gini_price)),
     cpu: row.cpu,
     ram: row.ram,
     storage: row.storage,
@@ -170,6 +171,20 @@ function normalizeProductCondition(value) {
   return allowed.includes(raw) ? raw : "new";
 }
 
+function normalizeGiniPrice(value) {
+  if (value == null || value === "") return null;
+  const n = Math.round(Number(value));
+  if (!Number.isFinite(n) || n < 0) return null;
+  return n;
+}
+
+function publicProduct(product) {
+  if (!product) return product;
+  const copy = { ...product };
+  delete copy.giniPrice;
+  return copy;
+}
+
 function productToRow(p) {
   const images = normalizeProductImages(p);
   return {
@@ -179,6 +194,7 @@ function productToRow(p) {
     category: p.category,
     price: Number(p.price) || 0,
     old_price: p.oldPrice == null ? null : Number(p.oldPrice),
+    gini_price: normalizeGiniPrice(p.giniPrice),
     cpu: p.cpu || "",
     ram: p.ram || "",
     storage: p.storage || "",
@@ -476,6 +492,9 @@ function migrateSchema() {
   }
   if (!columnExists("products", "product_condition")) {
     db.exec("ALTER TABLE products ADD COLUMN product_condition TEXT NOT NULL DEFAULT 'new'");
+  }
+  if (!columnExists("products", "gini_price")) {
+    db.exec("ALTER TABLE products ADD COLUMN gini_price INTEGER");
   }
   if (columnExists("products", "condition")) {
     db.prepare(
@@ -851,11 +870,11 @@ function upsertProduct(p) {
   });
   row.created_at = existing?.createdAt || p.createdAt || new Date().toISOString();
   db.prepare(`
-    INSERT INTO products (id,name,brand,category,price,old_price,cpu,ram,storage,stock,tag,specs,screen,gpu,tgp,cooling,headline,blurb,slide,image,images_json,product_condition,created_at)
-    VALUES (@id,@name,@brand,@category,@price,@old_price,@cpu,@ram,@storage,@stock,@tag,@specs,@screen,@gpu,@tgp,@cooling,@headline,@blurb,@slide,@image,@images_json,@product_condition,@created_at)
+    INSERT INTO products (id,name,brand,category,price,old_price,gini_price,cpu,ram,storage,stock,tag,specs,screen,gpu,tgp,cooling,headline,blurb,slide,image,images_json,product_condition,created_at)
+    VALUES (@id,@name,@brand,@category,@price,@old_price,@gini_price,@cpu,@ram,@storage,@stock,@tag,@specs,@screen,@gpu,@tgp,@cooling,@headline,@blurb,@slide,@image,@images_json,@product_condition,@created_at)
     ON CONFLICT(id) DO UPDATE SET
       name=excluded.name, brand=excluded.brand, category=excluded.category, price=excluded.price,
-      old_price=excluded.old_price, cpu=excluded.cpu, ram=excluded.ram, storage=excluded.storage,
+      old_price=excluded.old_price, gini_price=excluded.gini_price, cpu=excluded.cpu, ram=excluded.ram, storage=excluded.storage,
       stock=excluded.stock, tag=excluded.tag, specs=excluded.specs,
       screen=excluded.screen, gpu=excluded.gpu, tgp=excluded.tgp, cooling=excluded.cooling,
       headline=excluded.headline, blurb=excluded.blurb, slide=excluded.slide, image=excluded.image,
@@ -1299,7 +1318,7 @@ function getPublicStore() {
   const settings = getSettings();
   return {
     version: getVersion(),
-    products: settings.hideAllProducts ? [] : listProducts(),
+    products: settings.hideAllProducts ? [] : listProducts().map(publicProduct),
     categories: listCategories(),
     brands: listBrands(),
     settings,

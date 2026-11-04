@@ -1439,6 +1439,11 @@ body.admin-nav-open {
   font-weight: 700;
   color: var(--text);
 }
+.pe-hint {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
 .pe-editor .pe-field input,
 .pe-editor .pe-field select,
 .pe-editor .pe-field textarea {
@@ -2121,6 +2126,14 @@ body.admin-nav-open {
   gap: 14px;
 }
 .gini-form { align-content: start; }
+.gini-key-state {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-weight: 700;
+}
+.gini-key-state.is-saved { background: rgba(52, 199, 123, 0.14); color: #8ee0b2; }
+.gini-key-state.is-missing { background: rgba(255, 93, 143, 0.12); color: #ff9bb8; }
 .gini-check {
   display: flex;
   align-items: center;

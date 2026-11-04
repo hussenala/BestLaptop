@@ -1047,8 +1047,9 @@ function setupProductEditor() {
   syncProductEditorPreview();
 }
 
-function peField(label, inputHtml, span = 1) {
-  return `<label class="pe-field ${span === 2 ? "pe-field-wide" : ""}"><span class="pe-label">${label}</span>${inputHtml}</label>`;
+function peField(label, inputHtml, span = 1, hint = "") {
+  const note = hint ? `<small class="pe-hint">${hint}</small>` : "";
+  return `<label class="pe-field ${span === 2 ? "pe-field-wide" : ""}"><span class="pe-label">${label}</span>${inputHtml}${note}</label>`;
 }
 
 function peSection(step, title, desc, bodyHtml) {
@@ -1104,8 +1105,9 @@ function renderProductEditor(productId = null) {
     ${peField("وسم البطاقة", `<input name="tag" value="${esc(p.tag || "")}" placeholder="الأكثر مبيعاً · جديد" />`)}
   `;
   const pricing = `
-    ${peField("السعر (IQD)", `<input name="price" type="text" inputmode="numeric" class="money-input" data-money-input required value="${esc(formatMoneyInput(p.price))}" autocomplete="off" placeholder="مثال: 2,500,000" />`)}
-    ${peField("السعر قبل الخصم", `<input name="oldPrice" type="text" inputmode="numeric" class="money-input" data-money-input value="${esc(formatMoneyInput(p.oldPrice))}" autocomplete="off" placeholder="اختياري" />`)}
+    ${peField("سعر الموقع (IQD)", `<input name="price" type="text" inputmode="numeric" class="money-input" data-money-input required value="${esc(formatMoneyInput(p.price))}" autocomplete="off" placeholder="مثال: 750,000" />`, 1, "السعر الأساسي داخل Best Laptop. يظهر في المنتجات والتفاصيل والسلة والطلبات.")}
+    ${peField("سعر أسواق جني (IQD)", `<input name="giniPrice" type="text" inputmode="numeric" class="money-input" data-money-input value="${esc(formatMoneyInput(p.giniPrice))}" autocomplete="off" placeholder="مثال: 800,000" />`, 1, "سعر مستقل يُرسل إلى أسواق جني فقط، ولا يظهر للزبائن.")}
+    ${peField("السعر قبل الخصم", `<input name="oldPrice" type="text" inputmode="numeric" class="money-input" data-money-input value="${esc(formatMoneyInput(p.oldPrice))}" autocomplete="off" placeholder="اختياري" />`, 1, "يظهر في الموقع كسعر قبل الخصم، ولا يُرسل إلى جني.")}
     ${peField("المخزون", `<input name="stock" type="number" min="0" required value="${esc(p.stock ?? (isNew ? 1 : 0))}" />`)}
   `;
   const specsFields = `
@@ -1147,7 +1149,7 @@ function renderProductEditor(productId = null) {
         <div class="pe-layout">
           <div class="pe-main">
             ${peSection("1", "المعلومات الأساسية", "الاسم والتصنيف والوصف الذي يراه الزبون.", basics)}
-            ${peSection("2", "السعر والمخزون", "الأسعار بالدينار العراقي وتوفر الجهاز.", pricing)}
+            ${peSection("2", "السعر والمخزون", "سعر الموقع للزبائن. سعر أسواق جني حقل منفصل ولا يغيّر سعر المتجر.", pricing)}
             ${peSection("3", "المواصفات التقنية", "تظهر في بطاقة المتجر وصفحة التفاصيل.", specsFields)}
           </div>
 
@@ -1223,7 +1225,7 @@ function renderProducts() {
               <td><img src="${esc(p.image)}" alt="" /></td>
               <td><b>${esc(p.name)}</b><div class="muted">${esc(p.cpu)} · ${esc(p.gpu)}</div><div class="product-row-meta">${conditionBadgeHtml(p.condition)}</div></td>
               <td>${esc(p.category)}</td>
-              <td>${money(p.price)}</td>
+              <td>${money(p.price)}${p.giniPrice == null ? "" : `<div class="muted">جني ${money(p.giniPrice)}</div>`}</td>
               <td><span class="pill ${p.stock ? "" : "danger"}">${p.stock}</span></td>
               <td class="row-actions">
                 <a class="btn btn-ghost" href="#/products/edit/${encodeURIComponent(p.id)}">تعديل</a>
@@ -2291,10 +2293,10 @@ function paintGini(state) {
     <div class="gini-grid">
       <form class="panel admin-form gini-form" data-gini-settings>
         <h2>الاتصال</h2>
-        <p class="muted span-2">أنشئ Client ID وClient Secret من لوحة جني: Settings ثم Integrations. المفتاح السري لا يُعرض هنا بعد حفظه.</p>
-        <p class="span-2">${connection.clientIdMasked ? `المعرّف المحفوظ: <b dir="ltr">${esc(connection.clientIdMasked)}</b>` : "لا توجد مفاتيح محفوظة"} ${connection.source === "env" ? "· من بيئة السيرفر" : ""}</p>
-        <label>Client ID<input name="clientId" dir="ltr" autocomplete="off" placeholder="اتركه فارغاً للإبقاء على المحفوظ" /></label>
-        <label>Client Secret<input name="clientSecret" type="password" dir="ltr" autocomplete="new-password" placeholder="اتركه فارغاً للإبقاء على المحفوظ" /></label>
+        <p class="muted span-2">أنشئ Client ID وClient Secret من لوحة جني: Settings ثم Integrations. بعد الحفظ تبقى الحقول فارغة ولا يُعرض المفتاح السري.</p>
+        <p class="span-2 gini-key-state ${connection.configured ? "is-saved" : "is-missing"}" data-gini-key-state>${connection.configured ? "المفاتيح محفوظة" : "المفاتيح غير محفوظة"}${connection.source === "env" ? " · من بيئة السيرفر" : ""}</p>
+        <label>Client ID<input name="clientId" dir="ltr" autocomplete="off" placeholder="أدخل Client ID" /></label>
+        <label>Client Secret<input name="clientSecret" type="password" dir="ltr" autocomplete="new-password" placeholder="أدخل Client Secret" /></label>
         <label class="span-2 gini-check"><input type="checkbox" name="autoSync" ${state.autoSync ? "checked" : ""} /> تفعيل النشر التلقائي للمنتجات الجديدة</label>
         <label>حد تنبيه المخزون security_stock<input name="securityStock" type="number" min="0" value="${esc(state.securityStock ?? 1)}" /></label>
         <label>أشهر الأقساط<input name="months" type="number" min="0" max="10" value="${esc(state.months ?? 0)}" /></label>
@@ -3039,6 +3041,7 @@ document.addEventListener("submit", (e) => {
         condition: normalizeProductCondition(f.get("productCondition") || f.get("condition")),
         category: f.get("category"),
         price: parseMoneyInput(f.get("price")),
+        giniPrice: String(f.get("giniPrice") || "").trim() ? parseMoneyInput(f.get("giniPrice")) : null,
         oldPrice: f.get("oldPrice") ? parseMoneyInput(f.get("oldPrice")) : null,
         stock: Number(f.get("stock")),
         cpu: f.get("cpu"),
@@ -3417,12 +3420,14 @@ document.addEventListener("submit", (e) => {
   if (!form) return;
   e.preventDefault();
   void (async () => {
+    const clientId = form.querySelector("[name=clientId]")?.value || "";
+    const clientSecret = form.querySelector("[name=clientSecret]")?.value || "";
     try {
       const body = await StoreDB.request("/api/admin/gini/settings", {
-        method: "PUT",
+        method: "POST",
         body: JSON.stringify({
-          clientId: form.querySelector("[name=clientId]")?.value || "",
-          clientSecret: form.querySelector("[name=clientSecret]")?.value || "",
+          clientId,
+          clientSecret,
           autoSync: !!form.querySelector("[name=autoSync]")?.checked,
           securityStock: form.querySelector("[name=securityStock]")?.value,
           months: form.querySelector("[name=months]")?.value,
@@ -3430,7 +3435,17 @@ document.addEventListener("submit", (e) => {
           isGiniPartner: !!form.querySelector("[name=isGiniPartner]")?.checked,
         }),
       });
-      toast(body.message || "تم حفظ الإعدادات");
+      const secretInput = form.querySelector("[name=clientSecret]");
+      const idInput = form.querySelector("[name=clientId]");
+      if (secretInput) secretInput.value = "";
+      if (idInput) idInput.value = "";
+      if ((clientId || clientSecret) && !body.configured) {
+        toast("تعذر حفظ بيانات الربط");
+      } else if (body.configured) {
+        toast("تم حفظ بيانات الربط");
+      } else {
+        toast(body.message || "تم حفظ الإعدادات");
+      }
       await loadGiniPage();
     } catch (err) {
       toast(err.message || "تعذر الحفظ");

@@ -106,10 +106,19 @@ async function handleApi(req, res, pathname) {
     if (!body?.items?.length) return send(res, 400, { error: "Empty order" });
     const id = body.id || `BL-${String(Date.now()).slice(-6)}`;
     const order = { ...body, id, createdAt: body.createdAt || new Date().toISOString(), status: "new" };
+    let subtotal = 0;
     for (const item of order.items) {
       const p = db.getProduct(item.id);
       if (!p || p.stock < item.qty) return send(res, 400, { error: `Product unavailable: ${item.id}` });
+      const unit = Math.max(0, Math.round(Number(p.price) || 0)) + (item.arabization ? 10000 : 0);
+      item.price = unit;
+      delete item.giniPrice;
+      delete item.gini_price;
+      subtotal += unit * (Number(item.qty) || 1);
     }
+    const previousSubtotal = Number(order.subtotal) || 0;
+    order.subtotal = subtotal;
+    order.total = Math.max(0, (Number(order.total) || 0) + (subtotal - previousSubtotal));
     const saved = db.createOrder(order);
     gini.noteStockChanged((order.items || []).map((item) => item.id));
     return send(res, 201, saved);
@@ -486,7 +495,7 @@ async function handleApi(req, res, pathname) {
     try {
       if (pathname === "/api/admin/gini" && method === "GET") return send(res, 200, gini.overview());
       if (pathname === "/api/admin/gini/links" && method === "GET") return send(res, 200, { links: gini.links() });
-      if (pathname === "/api/admin/gini/settings" && method === "PUT") {
+      if (pathname === "/api/admin/gini/settings" && (method === "PUT" || method === "POST")) {
         const body = await readBody(req);
         return send(res, 200, gini.saveSettings(body || {}));
       }
