@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . DIRECTORY_SEPARATOR . "load-env.php";
+require_once __DIR__ . DIRECTORY_SEPARATOR . "gini.php";
 header("Content-Type: application/json; charset=utf-8");
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 header("Pragma: no-cache");
@@ -964,9 +965,12 @@ try {
         (int) ($body["subtotal"] ?? 0), (int) ($body["discount"] ?? 0),
         (int) ($body["shipping"] ?? 0), (int) ($body["total"] ?? 0),
       ]);
+    $stockIds = [];
     foreach ($body["items"] as $item) {
       $pdo->prepare("UPDATE products SET stock = MAX(0, stock - ?) WHERE id=?")->execute([(int) $item["qty"], $item["id"]]);
+      $stockIds[] = $item["id"];
     }
+    gini_note_stock($pdo, $stockIds);
     bump($pdo);
     $orders = list_orders($pdo);
     foreach ($orders as $o) if ($o["id"] === $id) json_out(201, $o);
@@ -1043,7 +1047,9 @@ try {
     if ($method === "POST") {
       $body = read_json();
       $body["id"] = $body["id"] ?? uid("pr");
-      json_out(201, upsert_product($pdo, $body));
+      $saved = upsert_product($pdo, $body);
+      gini_note_product_saved($pdo, $saved["id"]);
+      json_out(201, $saved);
     }
   }
   if (preg_match("#^/admin/products/([^/]+)$#", $path, $m)) {
@@ -1052,7 +1058,9 @@ try {
     if ($method === "PUT") {
       $body = read_json();
       $body["id"] = $id;
-      json_out(200, upsert_product($pdo, $body));
+      $saved = upsert_product($pdo, $body);
+      gini_note_product_saved($pdo, $saved["id"]);
+      json_out(200, $saved);
     }
     if ($method === "DELETE") {
       $pdo->prepare("DELETE FROM products WHERE id=?")->execute([$id]);
@@ -1214,7 +1222,9 @@ try {
     $p = get_product($pdo, $body["id"] ?? "");
     if (!$p) json_out(404, ["error" => "Not found"]);
     $p["stock"] = (int) $body["stock"];
-    json_out(200, upsert_product($pdo, $p));
+    $saved = upsert_product($pdo, $p);
+    gini_note_stock($pdo, [$saved["id"]]);
+    json_out(200, $saved);
   }
 
   if ($path === "/admin/settings") {
@@ -1345,6 +1355,8 @@ try {
       json_out(200, ["ok" => true]);
     }
   }
+
+  if (str_starts_with($path, "/admin/gini")) gini_handle($pdo, $path, $method);
 
   json_out(404, ["error" => "API route not found", "path" => $path]);
 } catch (Throwable $e) {

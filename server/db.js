@@ -285,6 +285,10 @@ function getHealth() {
   }
 }
 
+function getDb() {
+  return db;
+}
+
 function initDb() {
   db = openDatabase();
 
@@ -1352,6 +1356,7 @@ function getAdminState() {
 
 module.exports = {
   initDb,
+  getDb,
   AUTH_SECRET,
   ORDER_STATUSES,
   getHealth,

@@ -45,6 +45,7 @@ const NAV = [
   { id: "home-layout", label: "ترتيب الرئيسية", icon: ICO.layout },
   { id: "gallery", label: "معرض المكتب", icon: ICO.gallery },
   { id: "settings", label: "إعدادات المتجر", icon: ICO.gear },
+  { id: "gini", label: "ربط أسواق جني", icon: ICO.gear },
   { id: "users", label: "المستخدمون والصلاحيات", icon: ICO.shield },
 ];
 
@@ -62,6 +63,7 @@ const TITLES = {
   "home-layout": ["ترتيب الرئيسية", "سحب الأقسام وترتيبها"],
   gallery: ["معرض المكتب", "صور من داخل المكتب"],
   settings: ["الإعدادات", "هوية المتجر"],
+  gini: ["أسواق جني", "ربط المنتجات"],
   users: ["الصلاحيات", "مستخدمو اللوحة"],
 };
 
@@ -1225,6 +1227,11 @@ function renderProducts() {
               <td><span class="pill ${p.stock ? "" : "danger"}">${p.stock}</span></td>
               <td class="row-actions">
                 <a class="btn btn-ghost" href="#/products/edit/${encodeURIComponent(p.id)}">تعديل</a>
+                ${
+                  session() && StoreDB.can(session().role, "gini")
+                    ? `<button class="btn btn-ghost" type="button" data-gini-publish="${esc(p.id)}">نشر إلى جني</button><span class="gini-mini" data-gini-mini="${esc(p.id)}"></span>`
+                    : ""
+                }
                 <button class="btn btn-ghost danger-text" data-del-product="${esc(p.id)}">حذف</button>
               </td>
             </tr>`
@@ -2231,9 +2238,206 @@ function brandForm(b = {}) {
       <button class="btn btn-primary" type="submit">حفظ</button></div></form>`;
 }
 
+let giniTree = [];
+let giniSyncStop = false;
+
+function renderGini() {
+  return `<div data-gini-root class="gini-page"><p class="muted">جاري تحميل ربط أسواق جني…</p></div>`;
+}
+
+function giniWhen(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return esc(value);
+  return esc(date.toLocaleString("ar-IQ"));
+}
+
+function giniCategoryOptions(selected) {
+  return [`<option value="">اختر تصنيف جني</option>`]
+    .concat(giniTree.map((row) => `<option value="${row.id}" ${Number(selected) === Number(row.id) ? "selected" : ""}>${esc(row.name)}</option>`))
+    .join("");
+}
+
+function giniSubOptions(categoryId, selected) {
+  const category = giniTree.find((row) => Number(row.id) === Number(categoryId));
+  const subs = category?.subcategories || [];
+  return [`<option value="">اختر التصنيف الفرعي</option>`]
+    .concat(subs.map((row) => `<option value="${row.id}" ${Number(selected) === Number(row.id) ? "selected" : ""}>${esc(row.name)}</option>`))
+    .join("");
+}
+
+function paintGini(state) {
+  const root = document.querySelector("[data-gini-root]");
+  if (!root || pageId() !== "gini") return;
+  const connection = state.connection || {};
+  const connected = connection.configured && connection.lastOk;
+  const pill = !connection.configured ? "بانتظار المفاتيح" : connected ? "متصل" : "غير مؤكد";
+  const maps = new Map((state.maps || []).map((row) => [row.local_category_id, row]));
+  root.innerHTML = `
+    <div class="gini-head panel">
+      <div>
+        <p class="pe-kicker">GINI</p>
+        <h2>ربط أسواق جني</h2>
+        <p class="muted">النشر يتم من السيرفر فقط. النشر التلقائي يبقى متوقفاً حتى تفعّله بعد نجاح اختبار الاتصال.</p>
+      </div>
+      <span class="pill ${connected ? "" : "warn"}">${pill}</span>
+    </div>
+    <div class="kpi-grid gini-kpis">
+      ${kpi("منشور في جني", state.counts?.published ?? 0)}
+      ${kpi("بانتظار النشر", state.counts?.waiting ?? 0)}
+      ${kpi("فشلت مزامنته", state.counts?.failed ?? 0)}
+      ${kpi("في الطابور", state.counts?.queued ?? 0)}
+    </div>
+    <div class="gini-grid">
+      <form class="panel admin-form gini-form" data-gini-settings>
+        <h2>الاتصال</h2>
+        <p class="muted span-2">أنشئ Client ID وClient Secret من لوحة جني: Settings ثم Integrations. المفتاح السري لا يُعرض هنا بعد حفظه.</p>
+        <p class="span-2">${connection.clientIdMasked ? `المعرّف المحفوظ: <b dir="ltr">${esc(connection.clientIdMasked)}</b>` : "لا توجد مفاتيح محفوظة"} ${connection.source === "env" ? "· من بيئة السيرفر" : ""}</p>
+        <label>Client ID<input name="clientId" dir="ltr" autocomplete="off" placeholder="اتركه فارغاً للإبقاء على المحفوظ" /></label>
+        <label>Client Secret<input name="clientSecret" type="password" dir="ltr" autocomplete="new-password" placeholder="اتركه فارغاً للإبقاء على المحفوظ" /></label>
+        <label class="span-2 gini-check"><input type="checkbox" name="autoSync" ${state.autoSync ? "checked" : ""} /> تفعيل النشر التلقائي للمنتجات الجديدة</label>
+        <label>حد تنبيه المخزون security_stock<input name="securityStock" type="number" min="0" value="${esc(state.securityStock ?? 1)}" /></label>
+        <label>أشهر الأقساط<input name="months" type="number" min="0" max="10" value="${esc(state.months ?? 0)}" /></label>
+        <label class="gini-check"><input type="checkbox" name="isInstallments" ${state.isInstallments ? "checked" : ""} /> is_installments</label>
+        <label class="gini-check"><input type="checkbox" name="isGiniPartner" ${state.isGiniPartner ? "checked" : ""} /> is_gini_partner</label>
+        <p class="muted span-2">آخر اختبار: ${giniWhen(connection.lastAt)} — ${esc(connection.lastMessage || "لم يُختبر بعد")}</p>
+        <div class="span-2 gini-actions">
+          <button class="btn btn-primary" type="submit">حفظ الإعدادات</button>
+          <button class="btn btn-ghost" type="button" data-gini-test>اختبار الاتصال</button>
+        </div>
+      </form>
+      <section class="panel">
+        <h2>المزامنة</h2>
+        <p class="muted">مزامنة الجميع تنشر المنتجات القديمة وتحدّث المرتبطة. لا يُحذف أي منتج من جني.</p>
+        <div class="gini-actions">
+          <button class="btn btn-primary" type="button" data-gini-sync>مزامنة جميع المنتجات</button>
+          <button class="btn btn-ghost" type="button" data-gini-stop>إيقاف</button>
+        </div>
+        <p class="gini-sync-status" data-gini-sync-status></p>
+      </section>
+    </div>
+    <section class="panel">
+      <div class="gini-section-head">
+        <h2>ربط التصنيفات</h2>
+        <button class="btn btn-ghost" type="button" data-gini-categories>جلب تصنيفات جني</button>
+      </div>
+      <p class="muted">معرفات أقسام المتجر مختلفة عن معرفات جني. اختر التصنيف والتصنيف الفرعي لكل قسم.</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th>قسم المتجر</th><th>تصنيف جني</th><th>التصنيف الفرعي</th></tr></thead>
+          <tbody>
+            ${(state.localCategories || [])
+              .map((category) => {
+                const map = maps.get(category.id);
+                return `<tr data-gini-map="${esc(category.id)}">
+                  <td>${esc(category.title)}</td>
+                  <td><select data-gini-cat>${giniCategoryOptions(map?.gini_category_id)}</select></td>
+                  <td><select data-gini-sub>${giniSubOptions(map?.gini_category_id, map?.gini_subcategory_id)}</select></td>
+                </tr>`;
+              })
+              .join("")}
+          </tbody>
+        </table>
+      </div>
+      <div class="gini-actions"><button class="btn btn-primary" type="button" data-gini-save-maps>حفظ ربط التصنيفات</button></div>
+    </section>
+    <section class="panel">
+      <h2>منتجات فشلت مزامنتها</h2>
+      ${
+        state.failed?.length
+          ? `<div class="table-wrap"><table class="data-table"><thead><tr><th>المنتج</th><th>السبب</th><th></th></tr></thead><tbody>
+            ${state.failed
+              .map(
+                (row) => `<tr>
+                  <td>${esc(row.name)}</td>
+                  <td>${esc(row.error)}</td>
+                  <td><button class="btn btn-ghost" type="button" data-gini-publish="${esc(row.localId)}">إعادة المحاولة</button></td>
+                </tr>`
+              )
+              .join("")}
+          </tbody></table></div>`
+          : `<p class="muted">لا توجد عمليات فاشلة.</p>`
+      }
+    </section>
+    <section class="panel">
+      <h2>سجل آخر العمليات</h2>
+      <div class="table-wrap gini-log">
+        <table class="data-table">
+          <thead><tr><th>الوقت</th><th>العملية</th><th>النتيجة</th></tr></thead>
+          <tbody>
+            ${(state.log || [])
+              .map(
+                (row) => `<tr>
+                  <td>${giniWhen(row.created_at)}</td>
+                  <td>${esc(row.action || "")}${row.local_id ? ` · ${esc(row.local_id)}` : ""}</td>
+                  <td><span class="pill ${Number(row.ok) ? "" : "danger"}">${Number(row.ok) ? "نجاح" : "فشل"}</span> ${esc(row.message || "")}</td>
+                </tr>`
+              )
+              .join("") || `<tr><td colspan="3">لا يوجد سجل بعد.</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+    </section>`;
+}
+
+async function loadGiniPage() {
+  const root = document.querySelector("[data-gini-root]");
+  if (!root) return;
+  try {
+    const state = await StoreDB.request("/api/admin/gini");
+    paintGini(state);
+  } catch (err) {
+    root.innerHTML = `<section class="panel"><p>${esc(err.message || "تعذر تحميل صفحة جني")}</p></section>`;
+  }
+}
+
+async function hydrateGiniProducts() {
+  if (!session() || !StoreDB.can(session().role, "gini")) return;
+  try {
+    const body = await StoreDB.request("/api/admin/gini/links");
+    const map = new Map((body.links || []).map((row) => [row.localId, row]));
+    document.querySelectorAll("[data-gini-publish]").forEach((button) => {
+      const link = map.get(button.dataset.giniPublish);
+      const mini = button.parentElement?.querySelector(`[data-gini-mini="${CSS.escape(button.dataset.giniPublish)}"]`);
+      if (link?.status === "published" && !link.lastError) {
+        button.textContent = "تحديث في جني";
+        if (mini) mini.textContent = "منشور";
+        return;
+      }
+      if (link?.lastError || link?.status === "failed") {
+        button.textContent = "إعادة المحاولة";
+        if (mini) mini.textContent = link.lastError || "فشل";
+        return;
+      }
+      button.textContent = "نشر إلى جني";
+      if (mini) mini.textContent = "";
+    });
+  } catch {
+    /* الزر يبقى متاحاً حتى لو تعذر جلب الحالة */
+  }
+}
+
+async function publishProductToGini(productId, button) {
+  if (button) button.disabled = true;
+  try {
+    const body = await StoreDB.request("/api/admin/gini/publish", {
+      method: "POST",
+      body: JSON.stringify({ productId }),
+    });
+    toast(body.message || (body.ok ? "تمت المزامنة" : "تعذرت المزامنة"));
+    if (pageId() === "products") await hydrateGiniProducts();
+    if (pageId() === "gini") await loadGiniPage();
+  } catch (err) {
+    toast(err.message || "تعذرت المزامنة");
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
 const PAGES = {
   dashboard: renderDashboard,
   products: renderProducts,
+  gini: renderGini,
   categories: renderCategories,
   brands: renderBrands,
   orders: renderOrders,
@@ -2288,6 +2492,8 @@ function render(opts = {}) {
   document.querySelector("[data-page-kicker]").textContent = TITLES[id][0];
   document.querySelector("[data-page-title]").textContent = TITLES[id][1];
   document.querySelector("[data-admin-view]").innerHTML = PAGES[id]();
+  if (id === "gini") void loadGiniPage();
+  if (id === "products") void hydrateGiniProducts();
   if (id === "slider") setupSlideDragDrop();
   if (id === "featured") setupPsDragDrop();
   if (id === "home-layout") setupHomeLayoutDragDrop();
@@ -2319,6 +2525,12 @@ function toggleAdminNav() {
 }
 
 document.addEventListener("click", (e) => {
+  const giniPublish = e.target.closest("[data-gini-publish]");
+  if (giniPublish) {
+    e.preventDefault();
+    void publishProductToGini(giniPublish.dataset.giniPublish, giniPublish);
+    return;
+  }
   if (e.target.closest("[data-logout]")) {
     StoreDB.logout();
     location.replace("login.html");
@@ -3198,6 +3410,123 @@ document.addEventListener("drop", (e) => {
   files.forEach((f) => dt.items.add(f));
   input.files = dt.files;
   input.dispatchEvent(new Event("change", { bubbles: true }));
+});
+
+document.addEventListener("submit", (e) => {
+  const form = e.target.closest("[data-gini-settings]");
+  if (!form) return;
+  e.preventDefault();
+  void (async () => {
+    try {
+      const body = await StoreDB.request("/api/admin/gini/settings", {
+        method: "PUT",
+        body: JSON.stringify({
+          clientId: form.querySelector("[name=clientId]")?.value || "",
+          clientSecret: form.querySelector("[name=clientSecret]")?.value || "",
+          autoSync: !!form.querySelector("[name=autoSync]")?.checked,
+          securityStock: form.querySelector("[name=securityStock]")?.value,
+          months: form.querySelector("[name=months]")?.value,
+          isInstallments: !!form.querySelector("[name=isInstallments]")?.checked,
+          isGiniPartner: !!form.querySelector("[name=isGiniPartner]")?.checked,
+        }),
+      });
+      toast(body.message || "تم حفظ الإعدادات");
+      await loadGiniPage();
+    } catch (err) {
+      toast(err.message || "تعذر الحفظ");
+    }
+  })();
+});
+
+document.addEventListener("change", (e) => {
+  const select = e.target.closest("[data-gini-cat]");
+  if (!select) return;
+  const sub = select.closest("tr")?.querySelector("[data-gini-sub]");
+  if (!sub) return;
+  sub.innerHTML = giniSubOptions(select.value, "");
+});
+
+document.addEventListener("click", (e) => {
+  const test = e.target.closest("[data-gini-test]");
+  if (test) {
+    test.disabled = true;
+    void (async () => {
+      try {
+        const body = await StoreDB.request("/api/admin/gini/test", { method: "POST" });
+        toast(body.message || (body.ok ? "تم الاتصال" : "فشل الاتصال"));
+        await loadGiniPage();
+      } catch (err) {
+        toast(err.message || "فشل الاتصال");
+      } finally {
+        test.disabled = false;
+      }
+    })();
+    return;
+  }
+  const sync = e.target.closest("[data-gini-sync]");
+  if (sync) {
+    giniSyncStop = false;
+    sync.disabled = true;
+    void (async () => {
+      try {
+        let first = true;
+        while (!giniSyncStop && pageId() === "gini") {
+          const body = await StoreDB.request(first ? "/api/admin/gini/sync-all" : "/api/admin/gini/tick", { method: "POST" });
+          first = false;
+          const status = document.querySelector("[data-gini-sync-status]");
+          if (status) status.textContent = `المتبقي في الطابور: ${body.remaining ?? 0}`;
+          if (!body.remaining || !body.processed) break;
+          await new Promise((resolve) => setTimeout(resolve, 400));
+        }
+        await loadGiniPage();
+      } catch (err) {
+        toast(err.message || "تعذرت المزامنة");
+      } finally {
+        sync.disabled = false;
+      }
+    })();
+    return;
+  }
+  if (e.target.closest("[data-gini-stop]")) {
+    giniSyncStop = true;
+    return;
+  }
+  if (e.target.closest("[data-gini-categories]")) {
+    const button = e.target.closest("[data-gini-categories]");
+    button.disabled = true;
+    void (async () => {
+      try {
+        const body = await StoreDB.request("/api/admin/gini/categories");
+        giniTree = body.categories || [];
+        toast(giniTree.length ? "تم جلب تصنيفات جني" : "لا توجد تصنيفات ممنوحة لهذا الحساب");
+        await loadGiniPage();
+      } catch (err) {
+        toast(err.message || "تعذر جلب التصنيفات");
+      } finally {
+        button.disabled = false;
+      }
+    })();
+    return;
+  }
+  if (e.target.closest("[data-gini-save-maps]")) {
+    const rows = [...document.querySelectorAll("[data-gini-map]")].map((row) => ({
+      localCategoryId: row.dataset.giniMap,
+      giniCategoryId: row.querySelector("[data-gini-cat]")?.value,
+      giniSubcategoryId: row.querySelector("[data-gini-sub]")?.value,
+    }));
+    void (async () => {
+      try {
+        await StoreDB.request("/api/admin/gini/category-map", {
+          method: "PUT",
+          body: JSON.stringify({ maps: rows }),
+        });
+        toast("تم حفظ ربط التصنيفات");
+        await loadGiniPage();
+      } catch (err) {
+        toast(err.message || "تعذر الحفظ");
+      }
+    })();
+  }
 });
 
 window.addEventListener("hashchange", () => {

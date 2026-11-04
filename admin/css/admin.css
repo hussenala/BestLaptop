@@ -2105,3 +2105,37 @@ body.admin-nav-open {
     min-width: 640px;
   }
 }
+
+.gini-page { display: grid; gap: 14px; }
+.gini-head, .gini-section-head, .gini-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.gini-head h2, .gini-page h2 { margin: 0 0 6px; }
+.gini-grid {
+  display: grid;
+  grid-template-columns: 1.3fr 0.7fr;
+  gap: 14px;
+}
+.gini-form { align-content: start; }
+.gini-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.gini-sync-status { min-height: 1.4em; color: var(--muted); }
+.gini-log { max-height: 360px; }
+.gini-mini {
+  display: block;
+  max-width: 180px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.row-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+@media (max-width: 900px) {
+  .gini-grid { grid-template-columns: 1fr; }
+}

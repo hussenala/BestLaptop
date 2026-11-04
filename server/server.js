@@ -4,6 +4,7 @@ const path = require("path");
 const url = require("url");
 const crypto = require("crypto");
 const db = require("./db");
+const gini = require("./gini");
 
 const ROOT = path.join(__dirname, "..");
 const PORT = Number(process.env.PORT || 8765);
@@ -110,6 +111,7 @@ async function handleApi(req, res, pathname) {
       if (!p || p.stock < item.qty) return send(res, 400, { error: `Product unavailable: ${item.id}` });
     }
     const saved = db.createOrder(order);
+    gini.noteStockChanged((order.items || []).map((item) => item.id));
     return send(res, 201, saved);
   }
 
@@ -156,7 +158,9 @@ async function handleApi(req, res, pathname) {
     if (method === "POST") {
       const body = await readBody(req);
       body.id = body.id || db.uid("pr");
-      return send(res, 201, db.upsertProduct(body));
+      const saved = db.upsertProduct(body);
+      gini.noteProductSaved(saved.id);
+      return send(res, 201, saved);
     }
   }
 
@@ -168,7 +172,9 @@ async function handleApi(req, res, pathname) {
     if (method === "PUT") {
       const body = await readBody(req);
       body.id = id;
-      return send(res, 200, db.upsertProduct(body));
+      const saved = db.upsertProduct(body);
+      gini.noteProductSaved(saved.id);
+      return send(res, 200, saved);
     }
     if (method === "DELETE") {
       db.deleteProduct(id);
@@ -384,7 +390,9 @@ async function handleApi(req, res, pathname) {
     const p = db.getProduct(body.id);
     if (!p) return send(res, 404, { error: "Not found" });
     p.stock = Number(body.stock);
-    return send(res, 200, db.upsertProduct(p));
+    const saved = db.upsertProduct(p);
+    gini.noteStockChanged([saved.id]);
+    return send(res, 200, saved);
   }
 
   if (pathname === "/api/admin/office-gallery") {
@@ -472,6 +480,36 @@ async function handleApi(req, res, pathname) {
     }
   }
 
+  if (pathname === "/api/admin/gini" || pathname.startsWith("/api/admin/gini/")) {
+    const user = requireAuth(req, res, ["admin"]);
+    if (!user) return;
+    try {
+      if (pathname === "/api/admin/gini" && method === "GET") return send(res, 200, gini.overview());
+      if (pathname === "/api/admin/gini/links" && method === "GET") return send(res, 200, { links: gini.links() });
+      if (pathname === "/api/admin/gini/settings" && method === "PUT") {
+        const body = await readBody(req);
+        return send(res, 200, gini.saveSettings(body || {}));
+      }
+      if (pathname === "/api/admin/gini/test" && method === "POST") return send(res, 200, await gini.testConnection());
+      if (pathname === "/api/admin/gini/categories" && method === "GET") {
+        return send(res, 200, { categories: await gini.fetchCategories() });
+      }
+      if (pathname === "/api/admin/gini/category-map" && method === "PUT") {
+        const body = await readBody(req);
+        return send(res, 200, gini.saveMaps(body?.maps || []));
+      }
+      if (pathname === "/api/admin/gini/publish" && method === "POST") {
+        const body = await readBody(req);
+        if (!body?.productId) return send(res, 400, { error: "productId required" });
+        return send(res, 200, await gini.publishNow(body.productId));
+      }
+      if (pathname === "/api/admin/gini/sync-all" && method === "POST") return send(res, 200, await gini.syncAll());
+      if (pathname === "/api/admin/gini/tick" && method === "POST") return send(res, 200, await gini.tick(1));
+    } catch (err) {
+      return send(res, 400, { error: err.message || "تعذر تنفيذ طلب جني" });
+    }
+  }
+
   send(res, 404, { error: "API route not found" });
 }
 
@@ -538,6 +576,8 @@ function serveStatic(req, res, pathname) {
 }
 
 db.initDb();
+gini.ensureSchema();
+gini.startWorker();
 
 function requestHandler(req, res) {
   const parsed = url.parse(req.url);

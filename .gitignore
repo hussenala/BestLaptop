@@ -1,6 +1,8 @@
 uploads/
 server/data/*.db
 server/data/*.db-*
+server/data/gini.key
+server/data/gini.secrets.json
 .env
 api/.env
 node_modules/

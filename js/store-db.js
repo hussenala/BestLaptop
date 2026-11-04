@@ -182,7 +182,7 @@ const StoreDB = (() => {
 
   function can(role, page) {
     if (role === "admin") return true;
-    return !["settings", "users"].includes(page);
+    return !["settings", "users", "gini"].includes(page);
   }
 
   function uid(prefix) {
@@ -455,6 +455,7 @@ const StoreDB = (() => {
     updateUser,
     deleteUser,
     uploadImage,
+    request: api,
     ORDER_KEY,
   };
 })();
